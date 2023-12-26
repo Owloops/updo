@@ -1,4 +1,4 @@
-module updo
+module github.com/Owloops/updo
 
 go 1.21.5
 

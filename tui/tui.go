@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"strconv"
 	"time"
-	"updo/net"
-	"updo/utils"
-	uw "updo/widgets"
+
+	"github.com/Owloops/updo/net"
+	"github.com/Owloops/updo/utils"
+	uw "github.com/Owloops/updo/widgets"
 
 	ui "github.com/gizak/termui/v3"
 	"github.com/gizak/termui/v3/widgets"

@@ -7,7 +7,8 @@ import (
 	"os"
 	"strings"
 	"time"
-	"updo/tui"
+
+	"github.com/Owloops/updo/tui"
 
 	"github.com/gen2brain/beeep"
 	ui "github.com/gizak/termui/v3"
