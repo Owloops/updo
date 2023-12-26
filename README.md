@@ -45,7 +45,7 @@ go build
 Another way to install it if you have go in your machine just:
 
 ```sh
-GOBIN="absolute_path_where_you_want_binaries_to_be_installed" go install github.com/sheepla/pingu@latest
+GOBIN="absolute_path_where_you_want_binaries_to_be_installed" go install github.com/Owloops/updo@latest
 ```
 
 ## Usage
