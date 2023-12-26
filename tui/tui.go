@@ -174,8 +174,8 @@ func PerformCheckAndUpdateWidgets(url string, shouldFail bool, timeout time.Dura
 		assertionWidget.Text = "Failing"
 	}
 
-	utils.UpdatePlot(uptimePlot, utils.BoolToFloat64(isUp))
-	utils.UpdatePlot(responseTimePlot, responseTime.Seconds())
+	utils.UpdatePlot(uptimePlot, utils.BoolToFloat64(isUp), refreshFlag)
+	utils.UpdatePlot(responseTimePlot, responseTime.Seconds(), refreshFlag)
 
 	grid.SetRect(0, 0, width, height)
 

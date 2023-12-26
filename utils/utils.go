@@ -37,13 +37,15 @@ func FormatInt(i int) string {
 	return strconv.Itoa(i)
 }
 
-func UpdatePlot(plot *widgets.Plot, dataPoint float64) {
+func UpdatePlot(plot *widgets.Plot, dataPoint float64, refreshInterval int) {
+	maxDataPoints := 3600 / refreshInterval
+
 	if len(plot.Data) == 0 || len(plot.Data[0]) == 0 {
 		plot.Data = [][]float64{{dataPoint}}
 	} else {
 		plot.Data[0] = append(plot.Data[0], dataPoint)
-		if len(plot.Data[0]) > 100 {
-			plot.Data[0] = plot.Data[0][1:]
+		if len(plot.Data[0]) > maxDataPoints {
+			plot.Data[0] = plot.Data[0][len(plot.Data[0])-maxDataPoints:]
 		}
 	}
 }
