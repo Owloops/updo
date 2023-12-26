@@ -25,3 +25,4 @@ go.work
 .mypy_cache/
 .idea
 dist/
+bin/
