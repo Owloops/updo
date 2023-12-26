@@ -13,7 +13,9 @@ Updo is a command-line tool for monitoring website uptime and performance. It pr
 
 ## Installation
 
-Make sure you have Go installed on your system. You can install Updo by cloning the repository and building the binary:
+Make sure you have Go [installed](https://go.dev/doc/install) on your system.
+
+You can install Updo by cloning the repository and building the binary:
 
 ```bash
 git clone https://github.com/Owloops/updo.git
