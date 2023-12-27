@@ -40,11 +40,11 @@ func NewManager() *Manager {
 	}
 }
 
-func (m *Manager) InitializeWidgets() {
+func (m *Manager) InitializeWidgets(url string, refreshInterval time.Duration) {
 	m.QuitWidget = widgets.NewParagraph()
 	m.QuitWidget.Title = "Information"
 	m.QuitWidget.Text = "Press q or <C-c> to quit"
-	m.QuitWidget.BorderStyle.Fg = ui.ColorCyan
+	m.QuitWidget.BorderStyle.Fg = ui.ColorClear
 
 	m.UptimeWidget = widgets.NewParagraph()
 	m.UptimeWidget.Title = "Uptime"
@@ -54,7 +54,7 @@ func (m *Manager) InitializeWidgets() {
 	m.UpForWidget = widgets.NewParagraph()
 	m.UpForWidget.Title = "Duration"
 	m.UpForWidget.Text = "0s"
-	m.UpForWidget.BorderStyle.Fg = ui.ColorCyan
+	m.UpForWidget.BorderStyle.Fg = ui.ColorBlue
 
 	m.AvgResponseTimeWidget = widgets.NewParagraph()
 	m.AvgResponseTimeWidget.Title = "Average Response Time"
@@ -84,18 +84,18 @@ func (m *Manager) InitializeWidgets() {
 
 	m.URLWidget = widgets.NewParagraph()
 	m.URLWidget.Title = "Monitoring URL"
-	m.URLWidget.Text = "N/A"
+	m.URLWidget.Text = url
 	m.URLWidget.BorderStyle.Fg = ui.ColorBlue
 
 	m.RefreshWidget = widgets.NewParagraph()
 	m.RefreshWidget.Title = "Refresh Interval"
-	m.RefreshWidget.Text = "N/A"
+	m.RefreshWidget.Text = fmt.Sprintf("%v seconds", refreshInterval.Seconds())
 	m.RefreshWidget.BorderStyle.Fg = ui.ColorBlue
 
 	m.AssertionWidget = widgets.NewParagraph()
 	m.AssertionWidget.Title = "Assertion Result"
 	m.AssertionWidget.Text = "N/A"
-	m.AssertionWidget.BorderStyle.Fg = ui.ColorBlue
+	m.AssertionWidget.BorderStyle.Fg = ui.ColorCyan
 
 	m.TimingBreakdownWidget = uw.NewTimingBreakdown()
 	m.TimingBreakdownWidget.Title = "Timing Breakdown"
@@ -109,13 +109,13 @@ func (m *Manager) InitializeWidgets() {
 		ui.NewRow(1.0/7,
 			ui.NewCol(1.0/4, m.URLWidget),
 			ui.NewCol(1.0/4, m.RefreshWidget),
-			ui.NewCol(1.0/4, m.AssertionWidget),
+			ui.NewCol(1.0/4, m.UpForWidget),
 			ui.NewCol(1.0/4, m.QuitWidget),
 		),
 		ui.NewRow(1.0/7,
 			ui.NewCol(1.0/4, m.UptimeWidget),
-			ui.NewCol(1.0/4, m.UpForWidget),
 			ui.NewCol(1.0/4, m.AvgResponseTimeWidget),
+			ui.NewCol(1.0/4, m.AssertionWidget),
 			ui.NewCol(1.0/4, m.SSLOkWidget),
 		),
 		ui.NewRow(5.0/7,
@@ -144,12 +144,9 @@ func (m *Manager) UpdateWidgets(result net.WebsiteCheckResult, width int, height
 	sslExpiry := net.GetSSLCertExpiry(result.URL)
 	m.SSLOkWidget.Text = fmt.Sprintf("%d days remaining", sslExpiry)
 
-	m.URLWidget.Text = result.URL
-
-	refreshRate := fmt.Sprintf("%v seconds", result.RefreshInterval.Seconds())
-	m.RefreshWidget.Text = refreshRate
-
-	if result.AssertionPassed {
+	if result.AssertText == "" {
+		m.AssertionWidget.Text = "N/A"
+	} else if result.AssertionPassed {
 		m.AssertionWidget.Text = "Passing"
 	} else {
 		m.AssertionWidget.Text = "Failing"

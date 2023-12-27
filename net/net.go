@@ -18,7 +18,7 @@ type WebsiteCheckResult struct {
 	TraceInfo       *HttpTraceInfo
 	AssertionPassed bool
 	LastCheckTime   time.Time
-	RefreshInterval time.Duration
+	AssertText      string
 }
 type HttpTraceInfo struct {
 	Wait             time.Duration
@@ -39,9 +39,8 @@ type NetworkConfig struct {
 
 func CheckWebsite(url string, config NetworkConfig) WebsiteCheckResult {
 	result := WebsiteCheckResult{
-		URL:             url,
-		LastCheckTime:   time.Now(),
-		RefreshInterval: config.RefreshInterval,
+		URL:           url,
+		LastCheckTime: time.Now(),
 	}
 
 	var start, connect, dnsStart, dnsDone, gotFirstByte time.Time
@@ -88,6 +87,7 @@ func CheckWebsite(url string, config NetworkConfig) WebsiteCheckResult {
 
 	bodyString := string(body)
 	result.AssertionPassed = true
+	result.AssertText = config.AssertText
 	if config.AssertText != "" {
 		result.AssertionPassed = strings.Contains(bodyString, config.AssertText)
 		if !result.AssertionPassed {

@@ -41,7 +41,7 @@ func main() {
 	defer ui.Close()
 
 	tuiManager := tui.NewManager()
-	tuiManager.InitializeWidgets()
+	tuiManager.InitializeWidgets(config.URL, config.RefreshInterval)
 
 	startMonitoring(config, tuiManager)
 }
