@@ -3,6 +3,7 @@ package net
 import (
 	"crypto/tls"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
@@ -10,6 +11,15 @@ import (
 	"time"
 )
 
+type WebsiteCheckResult struct {
+	URL             string
+	IsUp            bool
+	ResponseTime    time.Duration
+	TraceInfo       *HttpTraceInfo
+	AssertionPassed bool
+	LastCheckTime   time.Time
+	RefreshInterval time.Duration
+}
 type HttpTraceInfo struct {
 	Wait             time.Duration
 	DNSLookup        time.Duration
@@ -18,9 +28,23 @@ type HttpTraceInfo struct {
 	DownloadDuration time.Duration
 }
 
-func CheckWebsite(url string, shouldFail bool, timeout time.Duration, followRedirects bool, skipSSL bool, assertText string) (bool, time.Duration, *HttpTraceInfo, bool) {
-	var start, connect, dnsStart, dnsDone, gotFirstByte time.Time
+type NetworkConfig struct {
+	Timeout         time.Duration
+	ShouldFail      bool
+	FollowRedirects bool
+	SkipSSL         bool
+	AssertText      string
+	RefreshInterval time.Duration
+}
 
+func CheckWebsite(url string, config NetworkConfig) WebsiteCheckResult {
+	result := WebsiteCheckResult{
+		URL:             url,
+		LastCheckTime:   time.Now(),
+		RefreshInterval: config.RefreshInterval,
+	}
+
+	var start, connect, dnsStart, dnsDone, gotFirstByte time.Time
 	trace := &httptrace.ClientTrace{
 		DNSStart:             func(_ httptrace.DNSStartInfo) { dnsStart = time.Now() },
 		DNSDone:              func(_ httptrace.DNSDoneInfo) { dnsDone = time.Now() },
@@ -28,59 +52,60 @@ func CheckWebsite(url string, shouldFail bool, timeout time.Duration, followRedi
 		GotFirstResponseByte: func() { gotFirstByte = time.Now() },
 	}
 
-	req, _ := http.NewRequest("GET", url, nil)
-	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
-
 	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipSSL},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: config.SkipSSL},
 	}
-
 	client := &http.Client{
-		Timeout:   timeout,
+		Timeout:   config.Timeout,
 		Transport: transport,
 	}
-
-	if !followRedirects {
+	if !config.FollowRedirects {
 		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		}
 	}
 
+	req, _ := http.NewRequest("GET", url, nil)
+	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
 	start = time.Now()
 	resp, err := client.Do(req)
-	totalTime := time.Since(start)
+	result.ResponseTime = time.Since(start)
 
 	if err != nil {
-		return false, totalTime, nil, false
+		return result
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return false, totalTime, nil, false
+		log.Println("Error reading response body:", err)
+		return result
 	}
-
 	success := resp.StatusCode >= 200 && resp.StatusCode < 300
-	if shouldFail {
+	if config.ShouldFail {
 		success = !success
 	}
 
 	bodyString := string(body)
-	assertionPassed := true
-	if assertText != "" {
-		assertionPassed = strings.Contains(bodyString, assertText)
-		if !assertionPassed {
+	result.AssertionPassed = true
+	if config.AssertText != "" {
+		result.AssertionPassed = strings.Contains(bodyString, config.AssertText)
+		if !result.AssertionPassed {
 			success = false
 		}
 	}
 
-	return success, totalTime, &HttpTraceInfo{
+	result.IsUp = success
+
+	result.TraceInfo = &HttpTraceInfo{
 		Wait:             dnsStart.Sub(start),
 		DNSLookup:        dnsDone.Sub(dnsStart),
 		TCPConnection:    connect.Sub(dnsDone),
 		TimeToFirstByte:  gotFirstByte.Sub(connect),
 		DownloadDuration: time.Since(gotFirstByte),
-	}, assertionPassed
+	}
+
+	return result
 }
 
 func GetSSLCertExpiry(siteUrl string) int {
