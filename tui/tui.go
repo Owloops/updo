@@ -13,15 +13,12 @@ import (
 )
 
 type Manager struct {
-	ChecksCount         int
-	TotalResponseTime   time.Duration
-	TotalUptime         time.Duration
-	StartTime           time.Time
-	LastCheckTime       time.Time
-	IsUp                bool
-	Width               int
-	Height              int
-	FirstValidDataPoint int
+	ChecksCount       int
+	TotalResponseTime time.Duration
+	TotalUptime       time.Duration
+	StartTime         time.Time
+	LastCheckTime     time.Time
+	IsUp              bool
 
 	QuitWidget            *widgets.Paragraph
 	UptimeWidget          *widgets.Paragraph
@@ -44,8 +41,6 @@ func NewManager() *Manager {
 }
 
 func (m *Manager) InitializeWidgets() {
-	m.FirstValidDataPoint = -1
-
 	m.QuitWidget = widgets.NewParagraph()
 	m.QuitWidget.Title = "Information"
 	m.QuitWidget.Text = "Press q or <C-c> to quit"
@@ -170,26 +165,20 @@ func (m *Manager) UpdateWidgets(result net.WebsiteCheckResult, width int, height
 		})
 	}
 
-	m.updatePlotsData(result)
+	m.updatePlotsData(result, width)
 
 	m.Grid.SetRect(0, 0, width, height)
 	ui.Render(m.Grid)
 }
 
-func (m *Manager) updatePlotsData(result net.WebsiteCheckResult) {
-	if m.FirstValidDataPoint == -1 {
-		m.UptimePlot.Data[0] = append(m.UptimePlot.Data[0], utils.BoolToFloat64(result.IsUp))
-		m.FirstValidDataPoint = len(m.UptimePlot.Data[0]) - 1
-		m.ResponseTimePlot.Data[0] = append(m.ResponseTimePlot.Data[0], result.ResponseTime.Seconds())
-		m.FirstValidDataPoint = len(m.ResponseTimePlot.Data[0]) - 1
-		return
-	}
-
+func (m *Manager) updatePlotsData(result net.WebsiteCheckResult, width int) {
+	// Append new data points to the plots.
 	m.UptimePlot.Data[0] = append(m.UptimePlot.Data[0], utils.BoolToFloat64(result.IsUp))
 	m.ResponseTimePlot.Data[0] = append(m.ResponseTimePlot.Data[0], result.ResponseTime.Seconds())
 
-	maxLength := 100
+	maxLength := width / 2
 
+	// Trim the data arrays if they exceed the maxLength.
 	if len(m.UptimePlot.Data[0]) > maxLength {
 		m.UptimePlot.Data[0] = m.UptimePlot.Data[0][len(m.UptimePlot.Data[0])-maxLength:]
 	}
@@ -198,6 +187,7 @@ func (m *Manager) updatePlotsData(result net.WebsiteCheckResult) {
 		m.ResponseTimePlot.Data[0] = m.ResponseTimePlot.Data[0][len(m.ResponseTimePlot.Data[0])-maxLength:]
 	}
 }
+
 func (m *Manager) UpdateDurationWidgets(width int, height int) {
 	totalMonitoringTime := time.Since(m.StartTime)
 	m.UpForWidget.Text = utils.FormatDurationMinute(totalMonitoringTime)
@@ -207,31 +197,24 @@ func (m *Manager) UpdateDurationWidgets(width int, height int) {
 }
 
 func (m *Manager) calculateUptimePercentage(isUp bool) float64 {
-	if m.ChecksCount == 0 {
-		m.IsUp = isUp
-		if isUp {
-			m.TotalUptime = time.Since(m.StartTime)
-		}
-		return utils.BoolToFloat64(isUp) * 100
-	}
-
-	if isUp != m.IsUp {
-		m.IsUp = isUp
-		m.LastCheckTime = time.Now()
-	}
-
 	now := time.Now()
-	timeSinceLastCheck := now.Sub(m.LastCheckTime)
-	m.LastCheckTime = now
-
-	if m.IsUp {
-		m.TotalUptime += timeSinceLastCheck
+	totalMonitoredTime := now.Sub(m.StartTime)
+	if m.ChecksCount == 1 {
+		m.LastCheckTime = now
+		if isUp {
+			m.TotalUptime = now.Sub(m.StartTime)
+		}
 	} else {
-		m.TotalUptime -= timeSinceLastCheck
+		timeElapsedSinceLastCheck := now.Sub(m.LastCheckTime)
+		m.LastCheckTime = now
+
+		if isUp {
+			m.TotalUptime += timeElapsedSinceLastCheck
+		}
 	}
-
-	totalMonitoringTime := time.Since(m.StartTime)
-	uptimePercentage := (float64(m.TotalUptime) / float64(totalMonitoringTime)) * 100
-
-	return uptimePercentage
+	m.IsUp = isUp
+	if totalMonitoredTime == 0 {
+		return 0
+	}
+	return (float64(m.TotalUptime) / float64(totalMonitoredTime)) * 100
 }
