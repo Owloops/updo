@@ -28,7 +28,6 @@ type AppConfig struct {
 func alert(message string) {
 	err := beeep.Notify("Website Status Alert", message, "assets/information.png")
 	if err != nil {
-		log.Println("Alert error:", err)
 	}
 }
 

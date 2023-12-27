@@ -3,7 +3,6 @@ package net
 import (
 	"crypto/tls"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
@@ -77,7 +76,6 @@ func CheckWebsite(url string, config NetworkConfig) WebsiteCheckResult {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Println("Error reading response body:", err)
 		return result
 	}
 	success := resp.StatusCode >= 200 && resp.StatusCode < 300
