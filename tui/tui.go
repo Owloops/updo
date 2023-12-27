@@ -172,13 +172,11 @@ func (m *Manager) UpdateWidgets(result net.WebsiteCheckResult, width int, height
 }
 
 func (m *Manager) updatePlotsData(result net.WebsiteCheckResult, width int) {
-	// Append new data points to the plots.
 	m.UptimePlot.Data[0] = append(m.UptimePlot.Data[0], utils.BoolToFloat64(result.IsUp))
 	m.ResponseTimePlot.Data[0] = append(m.ResponseTimePlot.Data[0], result.ResponseTime.Seconds())
 
 	maxLength := width / 2
 
-	// Trim the data arrays if they exceed the maxLength.
 	if len(m.UptimePlot.Data[0]) > maxLength {
 		m.UptimePlot.Data[0] = m.UptimePlot.Data[0][len(m.UptimePlot.Data[0])-maxLength:]
 	}
