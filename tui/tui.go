@@ -2,12 +2,14 @@ package tui
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/Owloops/updo/net"
 	"github.com/Owloops/updo/utils"
 	uw "github.com/Owloops/updo/widgets"
 
+	"github.com/caio/go-tdigest/v4"
 	ui "github.com/gizak/termui/v3"
 	"github.com/gizak/termui/v3/widgets"
 )
@@ -19,11 +21,17 @@ type Manager struct {
 	StartTime         time.Time
 	LastCheckTime     time.Time
 	IsUp              bool
+	MinResponseTime   float64
+	MaxResponseTime   float64
+	TDigest           *tdigest.TDigest
 
 	QuitWidget            *widgets.Paragraph
 	UptimeWidget          *widgets.Paragraph
 	UpForWidget           *widgets.Paragraph
 	AvgResponseTimeWidget *widgets.Paragraph
+	MinResponseTimeWidget *widgets.Paragraph
+	MaxResponseTimeWidget *widgets.Paragraph
+	P95ResponseTimeWidget *widgets.Paragraph
 	SSLOkWidget           *widgets.Paragraph
 	UptimePlot            *widgets.Plot
 	ResponseTimePlot      *widgets.Plot
@@ -35,8 +43,14 @@ type Manager struct {
 }
 
 func NewManager() *Manager {
+	td, err := tdigest.New(tdigest.Compression(100))
+	if err != nil {
+	}
 	return &Manager{
-		StartTime: time.Now(),
+		StartTime:       time.Now(),
+		MinResponseTime: math.MaxFloat64,
+		MaxResponseTime: 0,
+		TDigest:         td,
 	}
 }
 
@@ -57,9 +71,24 @@ func (m *Manager) InitializeWidgets(url string, refreshInterval time.Duration) {
 	m.UpForWidget.BorderStyle.Fg = ui.ColorBlue
 
 	m.AvgResponseTimeWidget = widgets.NewParagraph()
-	m.AvgResponseTimeWidget.Title = "Average Response Time"
+	m.AvgResponseTimeWidget.Title = "Average"
 	m.AvgResponseTimeWidget.Text = "N/A"
 	m.AvgResponseTimeWidget.BorderStyle.Fg = ui.ColorCyan
+
+	m.MinResponseTimeWidget = widgets.NewParagraph()
+	m.MinResponseTimeWidget.Title = "Min"
+	m.MinResponseTimeWidget.Text = "N/A"
+	m.MinResponseTimeWidget.BorderStyle.Fg = ui.ColorCyan
+
+	m.MaxResponseTimeWidget = widgets.NewParagraph()
+	m.MaxResponseTimeWidget.Title = "Max"
+	m.MaxResponseTimeWidget.Text = "N/A"
+	m.MaxResponseTimeWidget.BorderStyle.Fg = ui.ColorCyan
+
+	m.P95ResponseTimeWidget = widgets.NewParagraph()
+	m.P95ResponseTimeWidget.Title = "95p"
+	m.P95ResponseTimeWidget.Text = "N/A"
+	m.P95ResponseTimeWidget.BorderStyle.Fg = ui.ColorCyan
 
 	m.SSLOkWidget = widgets.NewParagraph()
 	m.SSLOkWidget.Title = "SSL Certificate"
@@ -113,17 +142,26 @@ func (m *Manager) InitializeWidgets(url string, refreshInterval time.Duration) {
 			ui.NewCol(1.0/4, m.QuitWidget),
 		),
 		ui.NewRow(1.0/7,
-			ui.NewCol(1.0/4, m.UptimeWidget),
-			ui.NewCol(1.0/4, m.AvgResponseTimeWidget),
-			ui.NewCol(1.0/4, m.AssertionWidget),
-			ui.NewCol(1.0/4, m.SSLOkWidget),
+			ui.NewCol(1.0/3, m.UptimeWidget),
+			ui.NewCol(1.0/3, m.AssertionWidget),
+			ui.NewCol(1.0/3, m.SSLOkWidget),
 		),
 		ui.NewRow(5.0/7,
 			ui.NewCol(3.0/5,
 				ui.NewRow(0.5, m.ResponseTimePlot),
 				ui.NewRow(0.5, m.UptimePlot),
 			),
-			ui.NewCol(2.0/5, ui.NewRow(1.0, m.TimingBreakdownWidget)),
+			ui.NewCol(2.0/5,
+				ui.NewRow(0.5/2,
+					ui.NewCol(1.0/2, m.MinResponseTimeWidget),
+					ui.NewCol(1.0/2, m.MaxResponseTimeWidget),
+				),
+				ui.NewRow(0.5/2,
+					ui.NewCol(1.0/2, m.AvgResponseTimeWidget),
+					ui.NewCol(1.0/2, m.P95ResponseTimeWidget),
+				),
+				ui.NewRow(1.0/2, m.TimingBreakdownWidget),
+			),
 		),
 	)
 }
@@ -140,6 +178,23 @@ func (m *Manager) UpdateWidgets(result net.WebsiteCheckResult, width int, height
 	m.TotalResponseTime += result.ResponseTime
 	avgResponseTime := m.TotalResponseTime / time.Duration(m.ChecksCount)
 	m.AvgResponseTimeWidget.Text = utils.FormatDurationMillisecond(avgResponseTime)
+
+	if m.ChecksCount == 1 || result.ResponseTime < time.Duration(m.MinResponseTime) {
+		m.MinResponseTime = float64(result.ResponseTime)
+	}
+	if result.ResponseTime > time.Duration(m.MaxResponseTime) {
+		m.MaxResponseTime = float64(result.ResponseTime)
+	}
+
+	m.MinResponseTimeWidget.Text = utils.FormatDurationMillisecond(time.Duration(m.MinResponseTime))
+	m.MaxResponseTimeWidget.Text = utils.FormatDurationMillisecond(time.Duration(m.MaxResponseTime))
+
+	err := m.TDigest.Add(result.ResponseTime.Seconds())
+	if err != nil {
+	}
+
+	p95 := int(m.TDigest.Quantile(0.95) * 1000)
+	m.P95ResponseTimeWidget.Text = fmt.Sprintf("%d ms", p95)
 
 	sslExpiry := net.GetSSLCertExpiry(result.URL)
 	m.SSLOkWidget.Text = fmt.Sprintf("%d days remaining", sslExpiry)
