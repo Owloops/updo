@@ -28,8 +28,6 @@ https://github.com/Owloops/updo/assets/17541283/5edd2eb1-af81-4b88-96e2-643c80d4
 
 ## Installation
 
-Make sure your system has Go [installed](https://go.dev/doc/install).
-
 <details>
 <summary>Download executable binaries</summary>
 
@@ -42,6 +40,8 @@ Make sure your system has Go [installed](https://go.dev/doc/install).
 <summary>Build from source</summary>
 
 #### You can install Updo by cloning the repository and building the binary:
+
+Make sure your system has Go [installed](https://go.dev/doc/install).
 
 > ```bash
 > git clone https://github.com/Owloops/updo.git
