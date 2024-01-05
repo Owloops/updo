@@ -22,31 +22,41 @@ Updo is a command-line tool for monitoring website uptime and performance. It pr
 - Supports HTTP and HTTPS, with options to skip SSL verification
 - Assertion on response body content
 
+## Demo
+
+https://github.com/Owloops/updo/assets/17541283/5edd2eb1-af81-4b88-96e2-643c80d46aca
+
 ## Installation
 
-Make sure you have Go [installed](https://go.dev/doc/install) on your system.
+Make sure your system has Go [installed](https://go.dev/doc/install).
 
-### Download executable binaries
+<details>
+<summary>Download executable binaries</summary>
 
-You can download executable binaries from the latest release page.
+#### You can download executable binaries from the latest release page:
 
 > [![Latest Release](https://img.shields.io/github/v/release/Owloops/updo?style=flat-square)](https://github.com/Owloops/updo/releases/latest)
+</details>
 
-### Build from source
+<details>
+<summary>Build from source</summary>
 
-You can install Updo by cloning the repository and building the binary:
+#### You can install Updo by cloning the repository and building the binary:
 
-```bash
-git clone https://github.com/Owloops/updo.git
-cd updo
-go build
-```
-
-Another way to install it if you have go in your machine just:
+> ```bash
+> git clone https://github.com/Owloops/updo.git
+> cd updo
+> go build
+> ```
+#### Another way to install it if you have go in your machine just:
 
 ```sh
 GOBIN="absolute_path_where_you_want_binaries_to_be_installed" go install github.com/Owloops/updo@latest
 ```
+</details>
+
+> [!NOTE]  
+> You may get a warning message on Windows and MacOS, which is discussed in this issue https://github.com/Owloops/updo/issues/4
 
 ## Usage
 
