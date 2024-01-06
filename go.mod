@@ -1,6 +1,6 @@
 module github.com/Owloops/updo
 
-go 1.21.5
+go 1.21
 
 require (
 	github.com/gen2brain/beeep v0.0.0-20230907135156-1a38885a97fc
