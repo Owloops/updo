@@ -3,6 +3,7 @@ package net
 import (
 	"crypto/tls"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
@@ -50,9 +51,15 @@ func CheckWebsite(url string, config NetworkConfig) WebsiteCheckResult {
 		GotFirstResponseByte: func() { gotFirstByte = time.Now() },
 	}
 
-	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: config.SkipSSL},
+	tlsConfig := &tls.Config{}
+	if config.SkipSSL || isIPAddress(url) {
+		tlsConfig.InsecureSkipVerify = true
 	}
+
+	transport := &http.Transport{
+		TLSClientConfig: tlsConfig,
+	}
+
 	client := &http.Client{
 		Timeout:   config.Timeout,
 		Transport: transport,
@@ -120,4 +127,29 @@ func GetSSLCertExpiry(siteUrl string) int {
 
 	cert := conn.ConnectionState().PeerCertificates[0]
 	return int(cert.NotAfter.Sub(time.Now()).Hours() / 24)
+}
+
+func isIPAddress(host string) bool {
+	u, err := url.Parse(host)
+	if err != nil {
+		return false
+	}
+	hostname := u.Hostname()
+
+	return net.ParseIP(hostname) != nil
+}
+
+func TryHTTPSConnection(url string) (*http.Response, error) {
+	client := http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{},
+		},
+	}
+
+	resp, err := client.Head(url)
+	if err != nil {
+		return nil, err
+	}
+	_ = resp.Body.Close()
+	return resp, nil
 }

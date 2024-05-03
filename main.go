@@ -4,11 +4,13 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
+	"net/url"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/Owloops/updo/net"
+	updo_net "github.com/Owloops/updo/net"
 	"github.com/Owloops/updo/tui"
 	"github.com/gen2brain/beeep"
 	ui "github.com/gizak/termui/v3"
@@ -46,50 +48,105 @@ func main() {
 }
 
 func parseFlags() AppConfig {
-	urlFlag := flag.String("url", "https://example.com", "URL of the website to monitor")
-	refreshFlag := flag.Int("refresh", 5, "Refresh interval in seconds")
-	shouldFailFlag := flag.Bool("should-fail", false, "Invert status code success (200-299 are failures, 400+ are successes)")
-	timeoutFlag := flag.Int("timeout", 10, "HTTP request timeout in seconds")
-	followRedirectsFlag := flag.Bool("follow-redirects", true, "Follow redirects")
-	skipSSLFlag := flag.Bool("skip-ssl", false, "Skip SSL certificate verification")
-	assertTextFlag := flag.String("assert-text", "", "Text to assert in the response body")
-	receiveAlertFlag := flag.Bool("receive-alert", true, "Enable alert notifications")
-	helpFlag := flag.Bool("help", false, "Display this help message")
+	var (
+		urlFlag             string
+		refreshFlag         int
+		timeoutFlag         int
+		shouldFailFlag      bool
+		followRedirectsFlag bool
+		skipSSLFlag         bool
+		assertTextFlag      string
+		receiveAlertFlag    bool
+		helpFlag            bool
+	)
+
+	flag.StringVar(&urlFlag, "url", "", "URL or IP address to monitor")
+	flag.StringVar(&urlFlag, "u", "", "Shorthand for -url")
+	flag.IntVar(&refreshFlag, "refresh", 5, "Refresh interval in seconds")
+	flag.IntVar(&refreshFlag, "r", 5, "Shorthand for -refresh")
+	flag.IntVar(&timeoutFlag, "timeout", 10, "HTTP request timeout in seconds")
+	flag.IntVar(&timeoutFlag, "t", 10, "Shorthand for -timeout")
+	flag.BoolVar(&shouldFailFlag, "should-fail", false, "Invert success code range")
+	flag.BoolVar(&shouldFailFlag, "f", false, "Shorthand for -should-fail")
+	flag.BoolVar(&followRedirectsFlag, "follow-redirects", true, "Follow redirects")
+	flag.BoolVar(&followRedirectsFlag, "l", true, "Shorthand for -follow-redirects")
+	flag.BoolVar(&skipSSLFlag, "skip-ssl", false, "Skip SSL certificate verification")
+	flag.BoolVar(&skipSSLFlag, "s", false, "Shorthand for -skip-ssl")
+	flag.StringVar(&assertTextFlag, "assert-text", "", "Text to assert in response body")
+	flag.StringVar(&assertTextFlag, "a", "", "Shorthand for -assert-text")
+	flag.BoolVar(&receiveAlertFlag, "receive-alert", true, "Enable alert notifications")
+	flag.BoolVar(&receiveAlertFlag, "n", true, "Shorthand for -receive-alert")
+	flag.BoolVar(&helpFlag, "help", false, "Display this help message")
+	flag.BoolVar(&helpFlag, "h", false, "Shorthand for -help")
+
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
+		fmt.Println("  updo [options] <URL/IP>")
+		fmt.Println("Options:")
+		fmt.Println("  -u, --url <URL/IP>             URL of the website or IP address to monitor")
+		fmt.Println("  -r, --refresh <interval>       Refresh interval in seconds (default 5)")
+		fmt.Println("  -t, --timeout <timeout>        HTTP request timeout in seconds (default 10)")
+		fmt.Println("  -f, --should-fail              Invert status code success (200-299 are failures, 400+ are successes)")
+		fmt.Println("  -l, --follow-redirects         Follow redirects (default true)")
+		fmt.Println("  -s, --skip-ssl                 Skip SSL certificate verification")
+		fmt.Println("  -a, --assert-text <text>       Text to assert in the response body")
+		fmt.Println("  -n, --receive-alert            Enable alert notifications (default true)")
+		fmt.Println("\nExamples:")
+		fmt.Println("  updo --url https://example.com --refresh 5 --should-fail false --timeout 10")
+		fmt.Println("  updo -u https://example.com -r 5 -f false -t 10")
+	}
 
 	flag.Parse()
 
-	if *helpFlag {
-		fmt.Println("This program monitors a website and displays various metrics.")
+	if helpFlag || urlFlag == "" && len(flag.Args()) == 0 {
 		flag.Usage()
-		fmt.Println("\nExamples:")
-		fmt.Println("  updo --url https://example.com --refresh=5 --should-fail=false --timeout=10")
-		fmt.Println("  updo --url https://example.com --should-fail=true")
 		os.Exit(0)
 	}
 
-	if !strings.HasPrefix(*urlFlag, "http://") && !strings.HasPrefix(*urlFlag, "https://") {
-		log.Fatalf("Error: URL must start with http:// or https://")
+	urlArg := urlFlag
+	if urlArg == "" && len(flag.Args()) > 0 {
+		urlArg = flag.Args()[0]
 	}
 
+	parsedURL, err := url.Parse(urlArg)
+	if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https" && parsedURL.Scheme != "") {
+		fmt.Printf("Error: Invalid URL provided. Please ensure the URL is correct.\n\n")
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	testedURL := urlArg
+	if parsedURL.Scheme == "" {
+		testedURL = "https://" + urlArg
+	}
+
+	if !IsUrl(testedURL) {
+		fmt.Printf("Error: Invalid URL provided. Please ensure the URL is correct.\n\n")
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	urlArg = autoDetectProtocol(testedURL)
+
 	return AppConfig{
-		URL:             *urlFlag,
-		RefreshInterval: time.Second * time.Duration(*refreshFlag),
-		Timeout:         time.Duration(*timeoutFlag) * time.Second,
-		ShouldFail:      *shouldFailFlag,
-		FollowRedirects: *followRedirectsFlag,
-		SkipSSL:         *skipSSLFlag,
-		AssertText:      *assertTextFlag,
-		ReceiveAlert:    *receiveAlertFlag,
+		URL:             urlArg,
+		RefreshInterval: time.Second * time.Duration(refreshFlag),
+		Timeout:         time.Duration(timeoutFlag) * time.Second,
+		ShouldFail:      shouldFailFlag,
+		FollowRedirects: followRedirectsFlag,
+		SkipSSL:         skipSSLFlag,
+		AssertText:      assertTextFlag,
+		ReceiveAlert:    receiveAlertFlag,
 	}
 }
 
 func startMonitoring(config AppConfig, tuiManager *tui.Manager) {
 	width, height := ui.TerminalDimensions()
-	dataChannel := make(chan net.WebsiteCheckResult)
+	dataChannel := make(chan updo_net.WebsiteCheckResult)
 
 	go func() {
 		for {
-			netConfig := net.NetworkConfig{
+			netConfig := updo_net.NetworkConfig{
 				Timeout:         config.Timeout,
 				ShouldFail:      config.ShouldFail,
 				FollowRedirects: config.FollowRedirects,
@@ -97,7 +154,7 @@ func startMonitoring(config AppConfig, tuiManager *tui.Manager) {
 				AssertText:      config.AssertText,
 				RefreshInterval: config.RefreshInterval,
 			}
-			result := net.CheckWebsite(config.URL, netConfig)
+			result := updo_net.CheckWebsite(config.URL, netConfig)
 			dataChannel <- result
 			time.Sleep(config.RefreshInterval)
 		}
@@ -139,4 +196,25 @@ func handleAlerts(isUp bool, alertSent *bool) {
 		alert("The website is back up!")
 		*alertSent = false
 	}
+}
+
+func IsUrl(str string) bool {
+	url, err := url.ParseRequestURI(str)
+	if err != nil {
+		return false
+	}
+	address := net.ParseIP(url.Host)
+
+	if address == nil {
+		return strings.Contains(url.Host, ".")
+	}
+
+	return true
+}
+
+func autoDetectProtocol(testedURL string) string {
+	if _, err := updo_net.TryHTTPSConnection(testedURL); err != nil {
+		return "http://" + strings.TrimPrefix(testedURL, "https://")
+	}
+	return testedURL
 }
