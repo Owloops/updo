@@ -2,12 +2,15 @@ package net
 
 import (
 	"crypto/tls"
+	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net"
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 )
@@ -158,7 +161,7 @@ func TryHTTPSConnection(urlString string) (*http.Response, error) {
 	return resp, nil
 }
 
-func normalizeAndFormatURL(inputURL string) (string, error) {
+func formatURL(inputURL string) (string, error) {
 	inputURL = strings.TrimSpace(inputURL)
 	if strings.Contains(inputURL, "://") {
 		return inputURL, nil
@@ -166,11 +169,30 @@ func normalizeAndFormatURL(inputURL string) (string, error) {
 	return "https://" + inputURL, nil
 }
 
+func isUrl(str string) bool {
+	url, err := url.ParseRequestURI(str)
+	if err != nil {
+		return false
+	}
+	address := net.ParseIP(url.Host)
+
+	if address == nil {
+		return strings.Contains(url.Host, ".")
+	}
+
+	return true
+}
+
 func AutoDetectProtocol(inputURL string) string {
-	formattedURL, err := normalizeAndFormatURL(inputURL)
+	formattedURL, err := formatURL(inputURL)
 	if err != nil {
 		log.Printf("Error normalizing URL: %v, fallback to input URL\n", err)
 		return inputURL
+	}
+	if !isUrl(formattedURL) {
+		fmt.Printf("Error: Invalid URL provided. Please ensure the URL is correct.\n\n")
+		flag.Usage()
+		os.Exit(1)
 	}
 
 	resp, err := TryHTTPSConnection(formattedURL)
