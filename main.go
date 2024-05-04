@@ -4,13 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net"
-	"net/url"
 	"os"
-	"strings"
 	"time"
 
-	updo_net "github.com/Owloops/updo/net"
+	"github.com/Owloops/updo/net"
 	"github.com/Owloops/updo/tui"
 	"github.com/gen2brain/beeep"
 	ui "github.com/gizak/termui/v3"
@@ -27,23 +24,14 @@ type AppConfig struct {
 	ReceiveAlert    bool
 }
 
-func alert(message string) {
-	err := beeep.Notify("Website Status Alert", message, "assets/information.png")
-	if err != nil {
-	}
-}
-
 func main() {
 	config := parseFlags()
-
 	if err := ui.Init(); err != nil {
 		log.Fatalf("Failed to initialize termui: %v", err)
 	}
 	defer ui.Close()
-
 	tuiManager := tui.NewManager()
 	tuiManager.InitializeWidgets(config.URL, config.RefreshInterval)
-
 	startMonitoring(config, tuiManager)
 }
 
@@ -91,6 +79,7 @@ func parseFlags() AppConfig {
 		fmt.Println("  -s, --skip-ssl                 Skip SSL certificate verification")
 		fmt.Println("  -a, --assert-text <text>       Text to assert in the response body")
 		fmt.Println("  -n, --receive-alert            Enable alert notifications (default true)")
+		fmt.Println("  -h, --help            		  Show this help page")
 		fmt.Println("\nExamples:")
 		fmt.Println("  updo --url https://example.com --refresh 5 --should-fail false --timeout 10")
 		fmt.Println("  updo -u https://example.com -r 5 -f false -t 10")
@@ -108,25 +97,7 @@ func parseFlags() AppConfig {
 		urlArg = flag.Args()[0]
 	}
 
-	parsedURL, err := url.Parse(urlArg)
-	if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https" && parsedURL.Scheme != "") {
-		fmt.Printf("Error: Invalid URL provided. Please ensure the URL is correct.\n\n")
-		flag.Usage()
-		os.Exit(1)
-	}
-
-	testedURL := urlArg
-	if parsedURL.Scheme == "" {
-		testedURL = "https://" + urlArg
-	}
-
-	if !IsUrl(testedURL) {
-		fmt.Printf("Error: Invalid URL provided. Please ensure the URL is correct.\n\n")
-		flag.Usage()
-		os.Exit(1)
-	}
-
-	urlArg = autoDetectProtocol(testedURL)
+	urlArg = net.AutoDetectProtocol(urlArg)
 
 	return AppConfig{
 		URL:             urlArg,
@@ -142,11 +113,11 @@ func parseFlags() AppConfig {
 
 func startMonitoring(config AppConfig, tuiManager *tui.Manager) {
 	width, height := ui.TerminalDimensions()
-	dataChannel := make(chan updo_net.WebsiteCheckResult)
+	dataChannel := make(chan net.WebsiteCheckResult)
 
 	go func() {
 		for {
-			netConfig := updo_net.NetworkConfig{
+			netConfig := net.NetworkConfig{
 				Timeout:         config.Timeout,
 				ShouldFail:      config.ShouldFail,
 				FollowRedirects: config.FollowRedirects,
@@ -154,7 +125,7 @@ func startMonitoring(config AppConfig, tuiManager *tui.Manager) {
 				AssertText:      config.AssertText,
 				RefreshInterval: config.RefreshInterval,
 			}
-			result := updo_net.CheckWebsite(config.URL, netConfig)
+			result := net.CheckWebsite(config.URL, netConfig)
 			dataChannel <- result
 			time.Sleep(config.RefreshInterval)
 		}
@@ -188,6 +159,10 @@ func startMonitoring(config AppConfig, tuiManager *tui.Manager) {
 	}
 }
 
+func alert(message string) {
+	beeep.Notify("Website Status Alert", message, "assets/information.png")
+}
+
 func handleAlerts(isUp bool, alertSent *bool) {
 	if !isUp && !*alertSent {
 		alert("The website is down!")
@@ -196,25 +171,4 @@ func handleAlerts(isUp bool, alertSent *bool) {
 		alert("The website is back up!")
 		*alertSent = false
 	}
-}
-
-func IsUrl(str string) bool {
-	url, err := url.ParseRequestURI(str)
-	if err != nil {
-		return false
-	}
-	address := net.ParseIP(url.Host)
-
-	if address == nil {
-		return strings.Contains(url.Host, ".")
-	}
-
-	return true
-}
-
-func autoDetectProtocol(testedURL string) string {
-	if _, err := updo_net.TryHTTPSConnection(testedURL); err != nil {
-		return "http://" + strings.TrimPrefix(testedURL, "https://")
-	}
-	return testedURL
 }
