@@ -3,6 +3,7 @@ package net
 import (
 	"crypto/tls"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/http/httptrace"
@@ -51,13 +52,8 @@ func CheckWebsite(url string, config NetworkConfig) WebsiteCheckResult {
 		GotFirstResponseByte: func() { gotFirstByte = time.Now() },
 	}
 
-	tlsConfig := &tls.Config{}
-	if config.SkipSSL || isIPAddress(url) {
-		tlsConfig.InsecureSkipVerify = true
-	}
-
 	transport := &http.Transport{
-		TLSClientConfig: tlsConfig,
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: config.SkipSSL || isIPAddress(url)},
 	}
 
 	client := &http.Client{
@@ -119,14 +115,24 @@ func GetSSLCertExpiry(siteUrl string) int {
 		return -1
 	}
 
-	conn, err := tls.Dial("tcp", u.Host+":443", &tls.Config{})
+	host := u.Host
+	if !strings.Contains(host, ":") {
+		host += ":443"
+	}
+
+	conn, err := tls.Dial("tcp", host, &tls.Config{})
 	if err != nil {
 		return -1
 	}
 	defer conn.Close()
 
-	cert := conn.ConnectionState().PeerCertificates[0]
-	return int(cert.NotAfter.Sub(time.Now()).Hours() / 24)
+	if len(conn.ConnectionState().PeerCertificates) > 0 {
+		cert := conn.ConnectionState().PeerCertificates[0]
+		daysUntilExpiry := int(time.Until(cert.NotAfter).Hours() / 24)
+		return daysUntilExpiry
+	}
+
+	return -1
 }
 
 func isIPAddress(host string) bool {
@@ -139,17 +145,47 @@ func isIPAddress(host string) bool {
 	return net.ParseIP(hostname) != nil
 }
 
-func TryHTTPSConnection(url string) (*http.Response, error) {
+func TryHTTPSConnection(urlString string) (*http.Response, error) {
+	const defaultTimeout = 5 * time.Second
 	client := http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{},
-		},
+		Timeout: defaultTimeout,
 	}
-
-	resp, err := client.Head(url)
+	resp, err := client.Head(urlString)
 	if err != nil {
 		return nil, err
 	}
-	_ = resp.Body.Close()
+	defer resp.Body.Close()
 	return resp, nil
+}
+
+func normalizeAndFormatURL(inputURL string) (string, error) {
+	inputURL = strings.TrimSpace(inputURL)
+	if strings.Contains(inputURL, "://") {
+		return inputURL, nil
+	}
+	return "https://" + inputURL, nil
+}
+
+func AutoDetectProtocol(inputURL string) string {
+	formattedURL, err := normalizeAndFormatURL(inputURL)
+	if err != nil {
+		log.Printf("Error normalizing URL: %v, fallback to input URL\n", err)
+		return inputURL
+	}
+
+	resp, err := TryHTTPSConnection(formattedURL)
+	if err == nil && resp.StatusCode < 400 {
+		return formattedURL
+	}
+
+	if strings.HasPrefix(formattedURL, "https://") {
+		fallbackURL := strings.Replace(formattedURL, "https://", "http://", 1)
+		resp, err := TryHTTPSConnection(fallbackURL)
+		if err == nil && resp.StatusCode < 400 {
+			log.Println("Fallback to HTTP successful.")
+			return fallbackURL
+		}
+	}
+
+	return formattedURL
 }
