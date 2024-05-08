@@ -11,4 +11,4 @@ COPY . .
 RUN go build
 
 # Command to run the executable
-CMD ["./updo"]
+ENTRYPOINT ["./updo"]
