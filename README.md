@@ -72,7 +72,7 @@ You can run Updo using Docker:
 
 ```
 docker build -t updo .
-docker run -it updo --url <website-url> [options]
+docker run -it updo [options] --url <website-url>
 ```
 
 ### Options
