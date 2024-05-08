@@ -1,14 +1,9 @@
-# Use the latest version of Golang as the base image
-FROM golang:latest
-
-# Set the working directory inside the container
+FROM golang:1.21-alpine as builder
 WORKDIR /app
-
-# Copy the Go application source code into the container
 COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o updo .
 
-# Build the Go application
-RUN go build
-
-# Command to run the executable
-ENTRYPOINT ["./updo"]
+FROM scratch
+COPY --from=builder /app/updo /updo
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+ENTRYPOINT ["/updo"]
