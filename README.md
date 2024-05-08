@@ -63,7 +63,7 @@ GOBIN="absolute_path_where_you_want_binaries_to_be_installed" go install github.
 Run Updo using the following command:
 
 ```bash
-./updo --url <website-url> [options]
+./updo [options] --url <website-url>
 ```
 
 ### Docker
