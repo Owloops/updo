@@ -90,7 +90,7 @@ docker run -it updo [options] --url <website-url>
 ### Example
 
 ```bash
-./updo --url https://example.com --refresh=10 --should-fail=false
+./updo --refresh=10 --should-fail=false --url https://example.com
 ```
 
 ## Keyboard Shortcuts
