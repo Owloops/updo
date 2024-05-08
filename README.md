@@ -66,6 +66,15 @@ Run Updo using the following command:
 ./updo --url <website-url> [options]
 ```
 
+### Docker
+
+You can run Updo using Docker:
+
+```
+docker build -t updo .
+docker run -it updo ./updo --url <website-url> [options]
+```
+
 ### Options
 
 - `--url`: URL of the website to monitor (required)
