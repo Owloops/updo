@@ -97,6 +97,12 @@ docker run -it updo [options] --url <website-url>
 
 - `q` or `Ctrl+C`: Quit the application
 
+## Mentions
+
+- [awesome-readme](https://github.com/matiassingers/awesome-readme)
+- [termui](https://github.com/gizak/termui)
+- [Terminal Trove](https://terminaltrove.com/updo)
+
 ## Contributing
 
 Contributions to Updo are welcome! Feel free to create issues or submit pull requests.
