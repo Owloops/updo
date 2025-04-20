@@ -70,8 +70,13 @@ Run Updo using the following command:
 
 You can run Updo using Docker:
 
-```
+```console
+# Build Docker image from locally cloned repo
 docker build -t updo .
+# ... or build straight from repo URL (no cloning needed):
+docker build -t updo https://github.com/Owloops/updo.git
+
+# And now you can run Updo from the built image:
 docker run -it updo [options] --url <website-url>
 ```
 
