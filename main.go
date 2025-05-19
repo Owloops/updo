@@ -3,14 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
+	"strings"
 	"time"
 
-	"github.com/Owloops/updo/net"
+	"github.com/Owloops/updo/simple"
 	"github.com/Owloops/updo/tui"
-	"github.com/gen2brain/beeep"
-	ui "github.com/gizak/termui/v3"
+	"golang.org/x/term"
 )
 
 type AppConfig struct {
@@ -22,17 +21,42 @@ type AppConfig struct {
 	SkipSSL         bool
 	AssertText      string
 	ReceiveAlert    bool
+	Simple          bool
+	Count           int
 }
 
 func main() {
 	config := parseFlags()
-	if err := ui.Init(); err != nil {
-		log.Fatalf("Failed to initialize termui: %v", err)
+
+	useSimpleMode := config.Simple || !term.IsTerminal(int(os.Stdout.Fd()))
+
+	if useSimpleMode {
+		simpleConfig := simple.Config{
+			URL:             config.URL,
+			RefreshInterval: config.RefreshInterval,
+			Timeout:         config.Timeout,
+			ShouldFail:      config.ShouldFail,
+			FollowRedirects: config.FollowRedirects,
+			SkipSSL:         config.SkipSSL,
+			AssertText:      config.AssertText,
+			ReceiveAlert:    config.ReceiveAlert,
+			Count:           config.Count,
+		}
+		simple.StartMonitoring(simpleConfig)
+	} else {
+		tuiConfig := tui.Config{
+			URL:             config.URL,
+			RefreshInterval: config.RefreshInterval,
+			Timeout:         config.Timeout,
+			ShouldFail:      config.ShouldFail,
+			FollowRedirects: config.FollowRedirects,
+			SkipSSL:         config.SkipSSL,
+			AssertText:      config.AssertText,
+			ReceiveAlert:    config.ReceiveAlert,
+			Count:           config.Count,
+		}
+		tui.StartMonitoring(tuiConfig)
 	}
-	defer ui.Close()
-	tuiManager := tui.NewManager()
-	tuiManager.InitializeWidgets(config.URL, config.RefreshInterval)
-	startMonitoring(config, tuiManager)
 }
 
 func parseFlags() AppConfig {
@@ -45,6 +69,8 @@ func parseFlags() AppConfig {
 		skipSSLFlag         bool
 		assertTextFlag      string
 		receiveAlertFlag    bool
+		simpleFlag          bool
+		countFlag           int
 		helpFlag            bool
 	)
 
@@ -64,6 +90,9 @@ func parseFlags() AppConfig {
 	flag.StringVar(&assertTextFlag, "a", "", "Shorthand for -assert-text")
 	flag.BoolVar(&receiveAlertFlag, "receive-alert", true, "Enable alert notifications")
 	flag.BoolVar(&receiveAlertFlag, "n", true, "Shorthand for -receive-alert")
+	flag.BoolVar(&simpleFlag, "simple", false, "Use simple output instead of TUI")
+	flag.IntVar(&countFlag, "count", 0, "Number of checks to perform (0 = infinite)")
+	flag.IntVar(&countFlag, "c", 0, "Shorthand for -count")
 	flag.BoolVar(&helpFlag, "help", false, "Display this help message")
 	flag.BoolVar(&helpFlag, "h", false, "Shorthand for -help")
 
@@ -79,96 +108,48 @@ func parseFlags() AppConfig {
 		fmt.Println("  -s, --skip-ssl                 Skip SSL certificate verification")
 		fmt.Println("  -a, --assert-text <text>       Text to assert in the response body")
 		fmt.Println("  -n, --receive-alert            Enable alert notifications (default true)")
-		fmt.Println("  -h, --help            		  Show this help page")
+		fmt.Println("     --simple                    Use simple output instead of TUI")
+		fmt.Println("                                 (TUI mode will auto-fallback to simple mode when terminal is not supported)")
+		fmt.Println("  -c, --count <count>            Number of checks to perform (0 = infinite)")
+		fmt.Println("  -h, --help                     Show this help message")
 		fmt.Println("\nExamples:")
-		fmt.Println("  updo --url https://example.com --refresh 5 --should-fail false --timeout 10")
-		fmt.Println("  updo -u https://example.com -r 5 -f false -t 10")
+		fmt.Println("  updo https://example.com")
+		fmt.Println("  updo -r 10 -t 5 https://example.com")
+		fmt.Println("  updo --simple -c 10 https://example.com")
+		fmt.Println("  updo -a \"Welcome\" https://example.com")
 	}
 
 	flag.Parse()
 
-	if helpFlag || urlFlag == "" && len(flag.Args()) == 0 {
+	if helpFlag {
 		flag.Usage()
 		os.Exit(0)
 	}
 
-	urlArg := urlFlag
-	if urlArg == "" && len(flag.Args()) > 0 {
-		urlArg = flag.Args()[0]
+	if urlFlag == "" && flag.NArg() > 0 {
+		urlFlag = flag.Arg(0)
 	}
 
-	urlArg = net.AutoDetectProtocol(urlArg)
+	if urlFlag == "" {
+		fmt.Println("Error: URL is required")
+		fmt.Println("Use -h or --help for usage information")
+		os.Exit(1)
+	}
+
+	if !strings.HasPrefix(urlFlag, "http://") && !strings.HasPrefix(urlFlag, "https://") {
+		urlFlag = "https://" + urlFlag
+	}
 
 	return AppConfig{
-		URL:             urlArg,
-		RefreshInterval: time.Second * time.Duration(refreshFlag),
+		URL:             urlFlag,
+		RefreshInterval: time.Duration(refreshFlag) * time.Second,
 		Timeout:         time.Duration(timeoutFlag) * time.Second,
 		ShouldFail:      shouldFailFlag,
 		FollowRedirects: followRedirectsFlag,
 		SkipSSL:         skipSSLFlag,
 		AssertText:      assertTextFlag,
 		ReceiveAlert:    receiveAlertFlag,
-	}
-}
-
-func startMonitoring(config AppConfig, tuiManager *tui.Manager) {
-	width, height := ui.TerminalDimensions()
-	dataChannel := make(chan net.WebsiteCheckResult)
-
-	go func() {
-		for {
-			netConfig := net.NetworkConfig{
-				Timeout:         config.Timeout,
-				ShouldFail:      config.ShouldFail,
-				FollowRedirects: config.FollowRedirects,
-				SkipSSL:         config.SkipSSL,
-				AssertText:      config.AssertText,
-				RefreshInterval: config.RefreshInterval,
-			}
-			result := net.CheckWebsite(config.URL, netConfig)
-			dataChannel <- result
-			time.Sleep(config.RefreshInterval)
-		}
-	}()
-
-	uiRefreshTicker := time.NewTicker(1 * time.Second)
-	defer uiRefreshTicker.Stop()
-
-	uiEvents := ui.PollEvents()
-	alertSent := false
-
-	for {
-		select {
-		case e := <-uiEvents:
-			switch e.ID {
-			case "q", "<C-c>":
-				return
-			case "<Resize>":
-				width, height = e.Payload.(ui.Resize).Width, e.Payload.(ui.Resize).Height
-			}
-
-		case data := <-dataChannel:
-			tuiManager.UpdateWidgets(data, width, height)
-			if config.ReceiveAlert {
-				handleAlerts(data.IsUp, &alertSent)
-			}
-
-		case <-uiRefreshTicker.C:
-			tuiManager.UpdateDurationWidgets(width, height)
-		}
-	}
-}
-
-func alert(message string) {
-	beeep.Notify("Website Status Alert", message, "assets/information.png")
-}
-
-func handleAlerts(isUp bool, alertSent *bool) {
-	if !isUp && !*alertSent {
-		alert("The website is down!")
-		*alertSent = true
-	} else if isUp && *alertSent {
-		alert("The website is back up!")
-		*alertSent = false
+		Simple:          simpleFlag,
+		Count:           countFlag,
 	}
 }

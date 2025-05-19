@@ -2,28 +2,19 @@ package tui
 
 import (
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/Owloops/updo/net"
+	"github.com/Owloops/updo/stats"
 	"github.com/Owloops/updo/utils"
 	uw "github.com/Owloops/updo/widgets"
 
-	"github.com/caio/go-tdigest/v4"
 	ui "github.com/gizak/termui/v3"
 	"github.com/gizak/termui/v3/widgets"
 )
 
 type Manager struct {
-	ChecksCount       int
-	TotalResponseTime time.Duration
-	TotalUptime       time.Duration
-	StartTime         time.Time
-	LastCheckTime     time.Time
-	IsUp              bool
-	MinResponseTime   float64
-	MaxResponseTime   float64
-	TDigest           *tdigest.TDigest
+	Monitor *stats.Monitor
 
 	QuitWidget            *widgets.Paragraph
 	UptimeWidget          *widgets.Paragraph
@@ -42,16 +33,14 @@ type Manager struct {
 	Grid                  *ui.Grid
 }
 
-func NewManager() *Manager {
-	td, err := tdigest.New(tdigest.Compression(100))
+func NewManager() (*Manager, error) {
+	monitor, err := stats.NewMonitor()
 	if err != nil {
+		return nil, err
 	}
 	return &Manager{
-		StartTime:       time.Now(),
-		MinResponseTime: math.MaxFloat64,
-		MaxResponseTime: 0,
-		TDigest:         td,
-	}
+		Monitor: monitor,
+	}, nil
 }
 
 func (m *Manager) InitializeWidgets(url string, refreshInterval time.Duration) {
@@ -167,34 +156,18 @@ func (m *Manager) InitializeWidgets(url string, refreshInterval time.Duration) {
 }
 
 func (m *Manager) UpdateWidgets(result net.WebsiteCheckResult, width int, height int) {
-	m.ChecksCount++
-	uptimePercentage := m.calculateUptimePercentage(result.IsUp)
+	m.Monitor.AddResult(result)
+	stats := m.Monitor.GetStats()
 
-	m.UptimeWidget.Text = fmt.Sprintf("%.2f%%", uptimePercentage)
+	m.UptimeWidget.Text = fmt.Sprintf("%.2f%%", stats.UptimePercent)
+	m.UpForWidget.Text = utils.FormatDurationMinute(stats.TotalDuration)
+	m.AvgResponseTimeWidget.Text = utils.FormatDurationMillisecond(stats.AvgResponseTime)
+	m.MinResponseTimeWidget.Text = utils.FormatDurationMillisecond(stats.MinResponseTime)
+	m.MaxResponseTimeWidget.Text = utils.FormatDurationMillisecond(stats.MaxResponseTime)
 
-	totalMonitoringTime := time.Since(m.StartTime)
-	m.UpForWidget.Text = utils.FormatDurationMinute(totalMonitoringTime)
-
-	m.TotalResponseTime += result.ResponseTime
-	avgResponseTime := m.TotalResponseTime / time.Duration(m.ChecksCount)
-	m.AvgResponseTimeWidget.Text = utils.FormatDurationMillisecond(avgResponseTime)
-
-	if m.ChecksCount == 1 || result.ResponseTime < time.Duration(m.MinResponseTime) {
-		m.MinResponseTime = float64(result.ResponseTime)
+	if stats.ChecksCount >= 2 {
+		m.P95ResponseTimeWidget.Text = fmt.Sprintf("%d ms", stats.P95.Milliseconds())
 	}
-	if result.ResponseTime > time.Duration(m.MaxResponseTime) {
-		m.MaxResponseTime = float64(result.ResponseTime)
-	}
-
-	m.MinResponseTimeWidget.Text = utils.FormatDurationMillisecond(time.Duration(m.MinResponseTime))
-	m.MaxResponseTimeWidget.Text = utils.FormatDurationMillisecond(time.Duration(m.MaxResponseTime))
-
-	err := m.TDigest.Add(result.ResponseTime.Seconds())
-	if err != nil {
-	}
-
-	p95 := int(m.TDigest.Quantile(0.95) * 1000)
-	m.P95ResponseTimeWidget.Text = fmt.Sprintf("%d ms", p95)
 
 	sslExpiry := net.GetSSLCertExpiry(result.URL)
 	m.SSLOkWidget.Text = fmt.Sprintf("%d days remaining", sslExpiry)
@@ -239,32 +212,13 @@ func (m *Manager) updatePlotsData(result net.WebsiteCheckResult, width int) {
 }
 
 func (m *Manager) UpdateDurationWidgets(width int, height int) {
-	totalMonitoringTime := time.Since(m.StartTime)
-	m.UpForWidget.Text = utils.FormatDurationMinute(totalMonitoringTime)
+	stats := m.Monitor.GetStats()
+	m.UpForWidget.Text = utils.FormatDurationMinute(stats.TotalDuration)
 
 	m.Grid.SetRect(0, 0, width, height)
 	ui.Render(m.Grid)
 }
 
-func (m *Manager) calculateUptimePercentage(isUp bool) float64 {
-	now := time.Now()
-	totalMonitoredTime := now.Sub(m.StartTime)
-	if m.ChecksCount == 1 {
-		m.LastCheckTime = now
-		if isUp {
-			m.TotalUptime = now.Sub(m.StartTime)
-		}
-	} else {
-		timeElapsedSinceLastCheck := now.Sub(m.LastCheckTime)
-		m.LastCheckTime = now
-
-		if isUp {
-			m.TotalUptime += timeElapsedSinceLastCheck
-		}
-	}
-	m.IsUp = isUp
-	if totalMonitoredTime == 0 {
-		return 0
-	}
-	return (float64(m.TotalUptime) / float64(totalMonitoredTime)) * 100
+func (m *Manager) ChecksCount() int {
+	return m.Monitor.ChecksCount
 }

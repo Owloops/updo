@@ -17,7 +17,9 @@ import (
 
 type WebsiteCheckResult struct {
 	URL             string
+	ResolvedIP      string
 	IsUp            bool
+	StatusCode      int
 	ResponseTime    time.Duration
 	TraceInfo       *HttpTraceInfo
 	AssertionPassed bool
@@ -41,10 +43,17 @@ type NetworkConfig struct {
 	RefreshInterval time.Duration
 }
 
-func CheckWebsite(url string, config NetworkConfig) WebsiteCheckResult {
+func CheckWebsite(urlStr string, config NetworkConfig) WebsiteCheckResult {
 	result := WebsiteCheckResult{
-		URL:           url,
+		URL:           urlStr,
 		LastCheckTime: time.Now(),
+	}
+
+	parsedURL, parseErr := url.Parse(urlStr)
+	if parseErr == nil {
+		if ips, lookupErr := net.LookupIP(parsedURL.Hostname()); lookupErr == nil && len(ips) > 0 {
+			result.ResolvedIP = ips[0].String()
+		}
 	}
 
 	var start, connect, dnsStart, dnsDone, gotFirstByte time.Time
@@ -56,7 +65,7 @@ func CheckWebsite(url string, config NetworkConfig) WebsiteCheckResult {
 	}
 
 	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: config.SkipSSL || isIPAddress(url)},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: config.SkipSSL || isIPAddress(urlStr)},
 	}
 
 	client := &http.Client{
@@ -69,7 +78,7 @@ func CheckWebsite(url string, config NetworkConfig) WebsiteCheckResult {
 		}
 	}
 
-	req, _ := http.NewRequest("GET", url, nil)
+	req, _ := http.NewRequest("GET", urlStr, nil)
 	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
 	start = time.Now()
 	resp, err := client.Do(req)
@@ -84,6 +93,7 @@ func CheckWebsite(url string, config NetworkConfig) WebsiteCheckResult {
 	if err != nil {
 		return result
 	}
+	result.StatusCode = resp.StatusCode
 	success := resp.StatusCode >= 200 && resp.StatusCode < 300
 	if config.ShouldFail {
 		success = !success
@@ -174,7 +184,7 @@ func isUrl(str string) bool {
 	if err != nil {
 		return false
 	}
-	
+
 	hostname := u.Hostname()
 	address := net.ParseIP(hostname)
 

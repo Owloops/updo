@@ -42,7 +42,7 @@ func TestIsUrl(t *testing.T) {
 		},
 		{
 			name:  "localhost with port",
-			input: "https://localhost:3000",  
+			input: "https://localhost:3000",
 			want:  true,
 		},
 		{
