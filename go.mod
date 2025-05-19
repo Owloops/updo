@@ -1,12 +1,12 @@
 module github.com/Owloops/updo
 
-go 1.21
+go 1.24.0
 
 require (
+	github.com/caio/go-tdigest/v4 v4.0.1
 	github.com/gen2brain/beeep v0.0.0-20230907135156-1a38885a97fc
 	github.com/gizak/termui/v3 v3.1.0
 	github.com/mattn/go-runewidth v0.0.15
-	github.com/caio/go-tdigest/v4 v4.0.1
 )
 
 require (
