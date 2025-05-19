@@ -52,7 +52,6 @@ func StartMonitoring(config Config) {
 					FollowRedirects: config.FollowRedirects,
 					SkipSSL:         config.SkipSSL,
 					AssertText:      config.AssertText,
-					RefreshInterval: config.RefreshInterval,
 				}
 
 				result := net.CheckWebsite(config.URL, netConfig)
@@ -71,10 +70,9 @@ func StartMonitoring(config Config) {
 		close(doneChan)
 	}()
 
-	if config.Count > 0 {
-		<-doneChan
-	} else {
-		<-sigChan
+	select {
+	case <-doneChan:
+	case <-sigChan:
 		close(doneChan)
 	}
 

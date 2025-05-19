@@ -40,7 +40,6 @@ type NetworkConfig struct {
 	FollowRedirects bool
 	SkipSSL         bool
 	AssertText      string
-	RefreshInterval time.Duration
 }
 
 func CheckWebsite(urlStr string, config NetworkConfig) WebsiteCheckResult {

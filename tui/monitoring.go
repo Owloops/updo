@@ -45,7 +45,6 @@ func StartMonitoring(config Config) {
 				FollowRedirects: config.FollowRedirects,
 				SkipSSL:         config.SkipSSL,
 				AssertText:      config.AssertText,
-				RefreshInterval: config.RefreshInterval,
 			}
 			result := net.CheckWebsite(config.URL, netConfig)
 			dataChannel <- result

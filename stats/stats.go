@@ -98,7 +98,6 @@ type Stats struct {
 	TotalDuration   time.Duration
 	LastIP          string
 	LastStatusCode  int
-	SSLDaysLeft     int
 }
 
 func (m *Monitor) GetStats() Stats {
@@ -112,9 +111,8 @@ func (m *Monitor) GetStats() Stats {
 		LastStatusCode:  m.LastStatusCode,
 	}
 
-	totalMonitoredTime := time.Since(m.StartTime)
-	if totalMonitoredTime > 0 {
-		stats.UptimePercent = (float64(m.TotalUptime) / float64(totalMonitoredTime)) * 100
+	if m.ChecksCount > 0 {
+		stats.UptimePercent = (float64(m.SuccessCount) / float64(m.ChecksCount)) * 100
 	}
 
 	if m.ChecksCount > 0 {

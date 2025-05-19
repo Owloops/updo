@@ -4,9 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
+	"github.com/Owloops/updo/net"
 	"github.com/Owloops/updo/simple"
 	"github.com/Owloops/updo/tui"
 	"golang.org/x/term"
@@ -136,9 +136,7 @@ func parseFlags() AppConfig {
 		os.Exit(1)
 	}
 
-	if !strings.HasPrefix(urlFlag, "http://") && !strings.HasPrefix(urlFlag, "https://") {
-		urlFlag = "https://" + urlFlag
-	}
+	urlFlag = net.AutoDetectProtocol(urlFlag)
 
 	return AppConfig{
 		URL:             urlFlag,
