@@ -170,17 +170,15 @@ func formatURL(inputURL string) (string, error) {
 }
 
 func isUrl(str string) bool {
-	url, err := url.ParseRequestURI(str)
+	u, err := url.ParseRequestURI(str)
 	if err != nil {
 		return false
 	}
-	address := net.ParseIP(url.Host)
+	
+	hostname := u.Hostname()
+	address := net.ParseIP(hostname)
 
-	if address == nil {
-		return strings.Contains(url.Host, ".")
-	}
-
-	return true
+	return address != nil || hostname != ""
 }
 
 func AutoDetectProtocol(inputURL string) string {
