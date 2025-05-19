@@ -25,8 +25,6 @@ type Monitor struct {
 
 	mean float64
 	m2   float64
-
-	TimingHistory []net.HttpTraceInfo
 }
 
 func NewMonitor() (*Monitor, error) {
@@ -39,7 +37,6 @@ func NewMonitor() (*Monitor, error) {
 		StartTime:       time.Now(),
 		MinResponseTime: time.Duration(math.MaxInt64),
 		TDigest:         td,
-		TimingHistory:   make([]net.HttpTraceInfo, 0),
 	}, nil
 }
 
@@ -87,9 +84,6 @@ func (m *Monitor) AddResult(result net.WebsiteCheckResult) {
 	delta2 := responseMs - m.mean
 	m.m2 += delta * delta2
 
-	if result.TraceInfo != nil {
-		m.TimingHistory = append(m.TimingHistory, *result.TraceInfo)
-	}
 }
 
 type Stats struct {
@@ -138,11 +132,4 @@ func (m *Monitor) GetStats() Stats {
 	}
 
 	return stats
-}
-
-func (m *Monitor) GetLatestTiming() *net.HttpTraceInfo {
-	if len(m.TimingHistory) == 0 {
-		return nil
-	}
-	return &m.TimingHistory[len(m.TimingHistory)-1]
 }
