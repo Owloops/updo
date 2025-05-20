@@ -21,17 +21,20 @@ Updo is a command-line tool for monitoring website uptime and performance. It pr
 - Customizable refresh intervals and request timeouts
 - Supports HTTP and HTTPS, with options to skip SSL verification
 - Assertion on response body content
+- Command-line interface with subcommand support
+- Simple mode with fancy or plain text output
+- Automatic terminal capability detection
 
 ## Demo
 
-https://github.com/Owloops/updo/assets/17541283/5edd2eb1-af81-4b88-96e2-643c80d46aca
+<https://github.com/Owloops/updo/assets/17541283/5edd2eb1-af81-4b88-96e2-643c80d46aca>
 
 ## Installation
 
 <details>
 <summary>Download executable binaries</summary>
 
-#### You can download executable binaries from the latest release page:
+#### You can download executable binaries from the latest release page
 
 > [![Latest Release](https://img.shields.io/github/v/release/Owloops/updo?style=flat-square)](https://github.com/Owloops/updo/releases/latest)
 </details>
@@ -39,7 +42,7 @@ https://github.com/Owloops/updo/assets/17541283/5edd2eb1-af81-4b88-96e2-643c80d4
 <details>
 <summary>Build from source</summary>
 
-#### You can install Updo by cloning the repository and building the binary:
+#### You can install Updo by cloning the repository and building the binary
 
 Make sure your system has Go [installed](https://go.dev/doc/install).
 
@@ -48,22 +51,31 @@ Make sure your system has Go [installed](https://go.dev/doc/install).
 > cd updo
 > go build
 > ```
-#### Another way to install it if you have go in your machine just:
+>
+#### Another way to install it if you have go in your machine just
 
 ```sh
 GOBIN="absolute_path_where_you_want_binaries_to_be_installed" go install github.com/Owloops/updo@latest
 ```
+
 </details>
 
 > [!NOTE]  
-> You may get a warning message on Windows and MacOS, which is discussed in this issue https://github.com/Owloops/updo/issues/4
+> You may get a warning message on Windows and MacOS, which is discussed in this issue <https://github.com/Owloops/updo/issues/4>
 
 ## Usage
 
 Run Updo using the following command:
 
 ```bash
-./updo [options] --url <website-url>
+# Basic usage
+./updo [options] <website-url>
+
+# Explicit monitor command
+./updo monitor [options] <website-url>
+
+# Generate shell completions
+./updo completion bash > updo_completion.bash
 ```
 
 ### Docker
@@ -82,20 +94,36 @@ docker run -it updo [options] --url <website-url>
 
 ### Options
 
-- `--url`: URL of the website to monitor (required)
-- `--refresh`: Refresh interval in seconds (default: 5)
-- `--should-fail`: Invert status code success (default: false)
-- `--timeout`: HTTP request timeout in seconds (default: 10)
-- `--follow-redirects`: Follow redirects (default: true)
-- `--skip-ssl`: Skip SSL certificate verification (default: false)
-- `--assert-text`: Text to assert in the response body
-- `--receive-alert`: Enable alert notifications (default: true)
-- `--help`: Display help message
+- `-u, --url`: URL of the website to monitor
+- `-r, --refresh`: Refresh interval in seconds (default: 5)
+- `-f, --should-fail`: Invert status code success (default: false)
+- `-t, --timeout`: HTTP request timeout in seconds (default: 10)
+- `-l, --follow-redirects`: Follow redirects (default: true)
+- `-s, --skip-ssl`: Skip SSL certificate verification (default: false)
+- `-a, --assert-text`: Text to assert in the response body
+- `-n, --receive-alert`: Enable alert notifications (default: true)
+- `--simple`: Use simple output instead of TUI
+- `--no-fancy`: Disable fancy terminal formatting in simple mode
+- `-c, --count`: Number of checks to perform (0 = infinite)
+- `-h, --help`: Display help message
 
-### Example
+### Examples
 
 ```bash
-./updo --refresh=10 --should-fail=false --url https://example.com
+# Basic monitoring with defaults
+./updo https://example.com
+
+# Set custom refresh and timeout
+./updo -r 10 -t 5 https://example.com
+
+# Use simple mode with a set number of checks
+./updo --simple -c 10 https://example.com
+
+# Simple mode with plain text output
+./updo --simple --no-fancy https://example.com
+
+# Assert text in the response
+./updo -a "Welcome" https://example.com
 ```
 
 ## Keyboard Shortcuts
@@ -107,6 +135,8 @@ docker run -it updo [options] --url <website-url>
 - [awesome-readme](https://github.com/matiassingers/awesome-readme)
 - [termui](https://github.com/gizak/termui)
 - [Terminal Trove](https://terminaltrove.com/updo)
+- [cobra](https://github.com/spf13/cobra)
+- [bubbletea](https://github.com/charmbracelet/bubbletea)
 
 ## Contributing
 
