@@ -111,8 +111,11 @@ func (m *Monitor) GetStats() Stats {
 		LastStatusCode:  m.LastStatusCode,
 	}
 
-	if m.ChecksCount > 0 {
-		stats.UptimePercent = (float64(m.SuccessCount) / float64(m.ChecksCount)) * 100
+	totalMonitoredTime := time.Since(m.StartTime)
+	if totalMonitoredTime > 0 {
+		stats.UptimePercent = (float64(m.TotalUptime) / float64(totalMonitoredTime)) * 100
+	} else {
+		stats.UptimePercent = 0
 	}
 
 	if m.ChecksCount > 0 {
