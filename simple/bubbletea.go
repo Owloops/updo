@@ -2,8 +2,11 @@ package simple
 
 import (
 	"fmt"
+	"log"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/Owloops/updo/net"
@@ -14,37 +17,38 @@ import (
 )
 
 type Model struct {
-	config        Config
-	monitor       *stats.Monitor
-	checkResult   net.WebsiteCheckResult
-	outputLines   []string
-	done          bool
-	checks        int
-	lastCheck     time.Time
-	quitRequested bool
-	alertSent     bool
+	config      Config
+	monitor     *stats.Monitor
+	checkResult net.WebsiteCheckResult
+	outputLines []string
+	done        bool
+	checks      int
+	lastCheck   time.Time
+	alertSent   bool
 }
 
+type quitMsg struct{}
+
 func initialModel(config Config) Model {
-	monitor, _ := stats.NewMonitor()
+	monitor, err := stats.NewMonitor()
+	if err != nil {
+		log.Fatalf("Failed to initialize stats monitor: %v", err)
+	}
 	return Model{
-		config:        config,
-		monitor:       monitor,
-		outputLines:   make([]string, 0, 100),
-		done:          false,
-		lastCheck:     time.Time{},
-		quitRequested: false,
+		config:      config,
+		monitor:     monitor,
+		outputLines: make([]string, 0, 100),
+		done:        false,
+		lastCheck:   time.Time{},
 	}
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(
-		createCheckWebsiteCmd(m.config),
-		tickCmd(m.config.RefreshInterval),
-	)
+	return tickCmd(time.Millisecond)
 }
 
 type tickMsg time.Time
+type resultMsg net.WebsiteCheckResult
 
 func tickCmd(d time.Duration) tea.Cmd {
 	return tea.Tick(d, func(t time.Time) tea.Msg {
@@ -53,39 +57,34 @@ func tickCmd(d time.Duration) tea.Cmd {
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-
-	if keyMsg, ok := msg.(tea.KeyMsg); ok {
-		if keyMsg.String() == "q" || keyMsg.String() == "ctrl+c" {
-			m.done = true
-			return m, tea.Quit
-		}
-	}
-
 	switch msg := msg.(type) {
-	case tickMsg:
-		if m.quitRequested {
+	case tea.KeyMsg:
+		if msg.String() == "q" || msg.String() == "ctrl+c" {
 			m.done = true
 			return m, tea.Quit
 		}
 
-		m.lastCheck = time.Time(msg)
-		return m, tea.Batch(
-			tickCmd(m.config.RefreshInterval),
-			createCheckWebsiteCmd(m.config),
-		)
+	case quitMsg:
+		m.done = true
+		return m, tea.Quit
 
-	case net.WebsiteCheckResult:
-		m.checkResult = msg
-		m.monitor.AddResult(msg)
+	case tickMsg:
+		return m, checkWebsiteCmd(m.config)
+
+	case resultMsg:
+		result := net.WebsiteCheckResult(msg)
+		m.checkResult = result
+		m.monitor.AddResult(result)
 		m.checks++
 
 		stats := m.monitor.GetStats()
-		pingLine := formatPingLine(msg, stats, m.checks-1, m.config)
+		pingLine := formatPingLine(result, stats, m.checks-1, m.config)
 		m.outputLines = append(m.outputLines, pingLine)
 
 		if len(m.outputLines) > 500 {
-			m.outputLines = m.outputLines[len(m.outputLines)-400:]
+
+			copy(m.outputLines, m.outputLines[len(m.outputLines)-400:])
+			m.outputLines = m.outputLines[:400]
 		}
 
 		if m.config.Count > 0 && m.checks >= m.config.Count {
@@ -94,26 +93,34 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if m.config.ReceiveAlert {
-			utils.HandleAlerts(msg.IsUp, &m.alertSent)
+			utils.HandleAlerts(result.IsUp, &m.alertSent)
 		}
 
-		if m.quitRequested {
-			m.done = true
-			return m, tea.Quit
-		}
-
-		return m, nil
+		return m, tickCmd(m.config.RefreshInterval)
 	}
 
-	return m, cmd
+	return m, nil
 }
 
-func formatPingLine(result net.WebsiteCheckResult, stats stats.Stats, seq int, config Config) string {
-	successStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#A6E3A1"))
-	errorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F38BA8"))
-	valueStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F5E0DC"))
-	highlightStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#FAB387"))
+var (
+	successStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#A6E3A1"))
+	errorStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#F38BA8"))
+	valueStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#F5E0DC"))
+	highlightStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FAB387"))
+	titleStyle     = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#89B4FA"))
+	urlStyle       = lipgloss.NewStyle().Foreground(lipgloss.Color("#A6E3A1")).Bold(true)
+	infoStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("#CDD6F4"))
+	sslStyle       = lipgloss.NewStyle().Foreground(lipgloss.Color("#F9E2AF"))
+	headerBox      = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#CBA6F7")).
+			Padding(0, 1).
+			MarginBottom(1).
+			Align(lipgloss.Left).
+			Width(40)
+)
 
+func formatPingLine(result net.WebsiteCheckResult, stats stats.Stats, seq int, config Config) string {
 	var statusIndicator string
 	if result.IsUp {
 		statusIndicator = successStyle.Render("●")
@@ -150,21 +157,24 @@ func formatPingLine(result net.WebsiteCheckResult, stats stats.Stats, seq int, c
 }
 
 func (m Model) View() string {
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#89B4FA"))
-	urlStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#A6E3A1")).Bold(true)
-	infoStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#CDD6F4"))
-	sslStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F9E2AF"))
-
-	headerBox := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("#CBA6F7")).
-		Padding(0, 1).
-		MarginBottom(1).
-		Align(lipgloss.Left).
-		Width(40)
-
 	var sb strings.Builder
 
+	sb.WriteString(m.renderHeader())
+
+	if m.monitor.ChecksCount == 0 {
+		sb.WriteString(infoStyle.Render("Initializing connection..."))
+	} else {
+		sb.WriteString(m.renderOutputLines())
+
+		if m.done {
+			sb.WriteString(m.renderStatistics())
+		}
+	}
+
+	return sb.String()
+}
+
+func (m Model) renderHeader() string {
 	header := titleStyle.Render("🐤 UPDO") + " " +
 		urlStyle.Render(m.config.URL)
 
@@ -176,49 +186,45 @@ func (m Model) View() string {
 		}
 	}
 
-	sb.WriteString(headerBox.Render(headerContent) + "\n")
+	return headerBox.Render(headerContent) + "\n"
+}
 
-	if m.monitor.ChecksCount == 0 {
-		sb.WriteString(infoStyle.Render("Initializing connection..."))
-	} else {
-		for _, line := range m.outputLines {
-			sb.WriteString(line + "\n")
-		}
-
-		if m.done {
-			titleStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#89B4FA")).PaddingLeft(0)
-			stats := m.monitor.GetStats()
-
-			sb.WriteString("\n")
-			sb.WriteString(titleStyle.Render(fmt.Sprintf("--- %s statistics ---", m.config.URL)) + "\n")
-			sb.WriteString(fmt.Sprintf("%d checks, %d successful (%.1f%%)",
-				stats.ChecksCount, stats.SuccessCount, stats.UptimePercent) + "\n")
-
-			if stats.ChecksCount > 0 {
-				rtStats := fmt.Sprintf("response time min/avg/max/stddev = %d/%d/%d/%.1f ms",
-					stats.MinResponseTime.Milliseconds(),
-					stats.AvgResponseTime.Milliseconds(),
-					stats.MaxResponseTime.Milliseconds(),
-					stats.StdDev)
-
-				if stats.ChecksCount >= 2 && stats.P95 > 0 {
-					rtStats += fmt.Sprintf(", 95th percentile: %d ms", stats.P95.Milliseconds())
-				}
-
-				sb.WriteString(rtStats + "\n")
-			}
-		}
+func (m Model) renderOutputLines() string {
+	var sb strings.Builder
+	for _, line := range m.outputLines {
+		sb.WriteString(line + "\n")
 	}
+	return sb.String()
+}
 
-	if !m.done {
-		sb.WriteString("\n")
-		sb.WriteString(infoStyle.Render("Press q to quit"))
+func (m Model) renderStatistics() string {
+	var sb strings.Builder
+	statsTitle := lipgloss.NewStyle().Foreground(lipgloss.Color("#89B4FA")).PaddingLeft(0)
+	stats := m.monitor.GetStats()
+
+	sb.WriteString("\n")
+	sb.WriteString(statsTitle.Render(fmt.Sprintf("--- %s statistics ---", m.config.URL)) + "\n")
+	sb.WriteString(fmt.Sprintf("%d checks, %d successful (%.1f%%)",
+		stats.ChecksCount, stats.SuccessCount, stats.UptimePercent) + "\n")
+
+	if stats.ChecksCount > 0 {
+		rtStats := fmt.Sprintf("response time min/avg/max/stddev = %d/%d/%d/%.1f ms",
+			stats.MinResponseTime.Milliseconds(),
+			stats.AvgResponseTime.Milliseconds(),
+			stats.MaxResponseTime.Milliseconds(),
+			stats.StdDev)
+
+		if stats.ChecksCount >= 2 && stats.P95 > 0 {
+			rtStats += fmt.Sprintf(", 95th percentile: %d ms", stats.P95.Milliseconds())
+		}
+
+		sb.WriteString(rtStats + "\n")
 	}
 
 	return sb.String()
 }
 
-func createCheckWebsiteCmd(config Config) tea.Cmd {
+func checkWebsiteCmd(config Config) tea.Cmd {
 	return func() tea.Msg {
 		netConfig := net.NetworkConfig{
 			Timeout:         config.Timeout,
@@ -229,17 +235,34 @@ func createCheckWebsiteCmd(config Config) tea.Cmd {
 		}
 
 		result := net.CheckWebsite(config.URL, netConfig)
-		return result
+		return resultMsg(result)
 	}
 }
 
 func StartBubbleTeaMonitoring(config Config) {
-	model := initialModel(config)
 
-	p := tea.NewProgram(model)
+	p := tea.NewProgram(initialModel(config))
 
-	_, err := p.Run()
-	if err != nil {
+	go func() {
+
+		c := make(chan os.Signal, 1)
+
+		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+
+		<-c
+
+		signal.Stop(c)
+		close(c)
+
+		p.Send(quitMsg{})
+
+		select {
+		case <-time.After(150 * time.Millisecond):
+			os.Exit(0)
+		}
+	}()
+
+	if _, err := p.Run(); err != nil {
 		fmt.Printf("Error running program: %v\n", err)
 		os.Exit(1)
 	}
