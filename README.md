@@ -62,6 +62,15 @@ GOBIN="absolute_path_where_you_want_binaries_to_be_installed" go install github.
 
 > [!NOTE]  
 > You may get a warning message on Windows and MacOS, which is discussed in this issue <https://github.com/Owloops/updo/issues/4>
+>
+> ### macOS Security
+> macOS may prevent running downloaded binaries due to security measures. If you get a warning message like "cannot be opened because the developer cannot be verified", you can remove the quarantine attribute with this command:
+>
+> ```bash
+> xattr -d com.apple.quarantine /path/to/updo
+> ```
+> 
+> Replace `/path/to/updo` with the actual path to the downloaded binary (e.g. `~/Downloads/updo_Darwin_arm64/updo`)
 
 ## Usage
 
