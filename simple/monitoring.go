@@ -10,6 +10,7 @@ import (
 	"github.com/Owloops/updo/net"
 	"github.com/Owloops/updo/stats"
 	"github.com/Owloops/updo/utils"
+	"golang.org/x/term"
 )
 
 type Config struct {
@@ -22,9 +23,17 @@ type Config struct {
 	AssertText      string
 	ReceiveAlert    bool
 	Count           int
+	NoFancy         bool
 }
 
 func StartMonitoring(config Config) {
+	isTerminal := term.IsTerminal(int(os.Stdout.Fd()))
+
+	if isTerminal && !config.NoFancy {
+		StartBubbleTeaMonitoring(config)
+		return
+	}
+
 	outputManager := NewOutputManager(config.URL)
 	outputManager.PrintHeader()
 
