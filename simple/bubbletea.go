@@ -22,6 +22,7 @@ type Model struct {
 	checks        int
 	lastCheck     time.Time
 	quitRequested bool
+	alertSent     bool
 }
 
 func initialModel(config Config) Model {
@@ -92,9 +93,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 
-		alertSent := false
 		if m.config.ReceiveAlert {
-			utils.HandleAlerts(msg.IsUp, &alertSent)
+			utils.HandleAlerts(msg.IsUp, &m.alertSent)
 		}
 
 		if m.quitRequested {
