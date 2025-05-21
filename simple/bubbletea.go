@@ -202,10 +202,16 @@ func (m Model) renderStatistics() string {
 	statsTitle := lipgloss.NewStyle().Foreground(lipgloss.Color("#89B4FA")).PaddingLeft(0)
 	stats := m.monitor.GetStats()
 
+	successPercent := 0.0
+	if stats.ChecksCount > 0 {
+		successPercent = float64(stats.SuccessCount) / float64(stats.ChecksCount) * 100
+	}
+
 	sb.WriteString("\n")
 	sb.WriteString(statsTitle.Render(fmt.Sprintf("--- %s statistics ---", m.config.URL)) + "\n")
 	sb.WriteString(fmt.Sprintf("%d checks, %d successful (%.1f%%)",
-		stats.ChecksCount, stats.SuccessCount, stats.UptimePercent) + "\n")
+		stats.ChecksCount, stats.SuccessCount, successPercent) + "\n")
+	sb.WriteString(fmt.Sprintf("uptime: %.1f%%", stats.UptimePercent) + "\n")
 
 	if stats.ChecksCount > 0 {
 		rtStats := fmt.Sprintf("response time min/avg/max/stddev = %d/%d/%d/%.1f ms",

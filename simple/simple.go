@@ -56,10 +56,18 @@ func (o *OutputManager) PrintResult(result net.WebsiteCheckResult, monitor *stat
 
 func (o *OutputManager) PrintStatistics(stats *stats.Stats) {
 	fmt.Printf("\n--- %s statistics ---\n", o.URL)
+
+	successPercent := 0.0
+	if stats.ChecksCount > 0 {
+		successPercent = float64(stats.SuccessCount) / float64(stats.ChecksCount) * 100
+	}
+
 	fmt.Printf("%d checks, %d successful (%.1f%%)\n",
 		stats.ChecksCount,
 		stats.SuccessCount,
-		stats.UptimePercent)
+		successPercent)
+
+	fmt.Printf("uptime: %.1f%%\n", stats.UptimePercent)
 
 	if stats.ChecksCount > 0 {
 		responseTimeStr := fmt.Sprintf("response time min/avg/max/stddev = %d/%d/%d/%.1f ms",

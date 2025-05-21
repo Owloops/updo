@@ -55,10 +55,11 @@ func (m *Monitor) AddResult(result net.WebsiteCheckResult) {
 		timeElapsedSinceLastCheck := now.Sub(m.LastCheckTime)
 		m.LastCheckTime = now
 
-		if result.IsUp {
+		if m.IsUp {
 			m.TotalUptime += timeElapsedSinceLastCheck
 		}
 	}
+
 	m.IsUp = result.IsUp
 
 	if result.IsUp {
@@ -83,7 +84,6 @@ func (m *Monitor) AddResult(result net.WebsiteCheckResult) {
 	m.mean += delta / float64(m.ChecksCount)
 	delta2 := responseMs - m.mean
 	m.m2 += delta * delta2
-
 }
 
 type Stats struct {
@@ -101,6 +101,13 @@ type Stats struct {
 }
 
 func (m *Monitor) GetStats() Stats {
+	now := time.Now()
+
+	currentUptime := m.TotalUptime
+	if m.ChecksCount > 0 && m.IsUp {
+		currentUptime += now.Sub(m.LastCheckTime)
+	}
+
 	stats := Stats{
 		ChecksCount:     m.ChecksCount,
 		SuccessCount:    m.SuccessCount,
@@ -113,7 +120,7 @@ func (m *Monitor) GetStats() Stats {
 
 	totalMonitoredTime := time.Since(m.StartTime)
 	if totalMonitoredTime > 0 {
-		stats.UptimePercent = (float64(m.TotalUptime) / float64(totalMonitoredTime)) * 100
+		stats.UptimePercent = (float64(currentUptime) / float64(totalMonitoredTime)) * 100
 	} else {
 		stats.UptimePercent = 0
 	}
