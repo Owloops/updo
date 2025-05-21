@@ -164,11 +164,7 @@ verify_installation() {
     fi
 
     echo
-    if [[ "${SYSTEM}" = "Windows" ]]; then
-        echo "You can run updo from the command line."
-    else
-        echo "You can now run updo from the command line."
-    fi
+    echo "You can now run updo from the command line."
 
     echo -e "\n${BLUE}Usage examples:${RESET}"
     echo "  updo https://example.com               # Monitor with default settings"
