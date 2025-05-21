@@ -9,7 +9,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	version = "dev"
+	commit  = "unknown"
+	date    = "unknown"
+)
+
 func main() {
+	versionStr := fmt.Sprintf("%s (commit: %s, built: %s)", version, commit, date)
+	root.RootCmd.Version = versionStr
+
+	root.RootCmd.SetVersionTemplate("updo version {{.Version}}\n")
+
 	root.RootCmd.AddCommand(monitor.MonitorCmd)
 
 	root.RootCmd.Run = func(cmd *cobra.Command, args []string) {

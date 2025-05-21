@@ -38,6 +38,27 @@ Updo uses GitHub Actions with GoReleaser to automatically create releases when a
 - Windows (amd64, 386)  
 - macOS (amd64, arm64)
 
+## Version Information
+
+Updo now includes version information accessible via the `--version` flag:
+
+```bash
+$ updo --version
+updo version v0.1.5 (commit: abcdef123456, built: 2023-05-21T12:00:00Z)
+```
+
+The version information is automatically injected during the build process using ldflags:
+
+- `version`: The git tag (e.g., v0.1.5)
+- `commit`: The git commit SHA
+- `date`: The build timestamp
+
+For local builds, use:
+
+```bash
+go build -ldflags="-X 'main.version=v1.0.0' -X 'main.commit=$(git rev-parse HEAD)' -X 'main.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
+```
+
 ## Pre-release Checklist
 
 - [ ] All tests pass

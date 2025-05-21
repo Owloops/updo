@@ -32,6 +32,25 @@ Updo is a command-line tool for monitoring website uptime and performance. It pr
 ## Installation
 
 <details>
+<summary>Quick install script (Linux, macOS, Windows/MSYS)</summary>
+
+#### One-line install command
+
+```bash
+curl -sSL https://raw.githubusercontent.com/Owloops/updo/main/install.sh | bash
+```
+
+This script automatically:
+
+- Detects your OS and architecture
+- Downloads the latest release
+- Makes the binary executable
+- Installs to /usr/local/bin (or ~/.local/bin if permission denied)
+- Removes quarantine attribute on macOS
+
+</details>
+
+<details>
 <summary>Download executable binaries</summary>
 
 #### You can download executable binaries from the latest release page
@@ -52,6 +71,20 @@ Make sure your system has Go [installed](https://go.dev/doc/install).
 > go build
 > ```
 >
+#### Build with version information
+
+To include version information in the binary, use ldflags:
+
+```bash
+go build -ldflags="-X 'main.version=v1.0.0' -X 'main.commit=$(git rev-parse HEAD)' -X 'main.date=$(date)'"
+```
+
+Check the version with:
+
+```bash
+./updo --version
+```
+
 #### Another way to install it if you have go in your machine just
 
 ```sh
@@ -64,12 +97,13 @@ GOBIN="absolute_path_where_you_want_binaries_to_be_installed" go install github.
 > You may get a warning message on Windows and MacOS, which is discussed in this issue <https://github.com/Owloops/updo/issues/4>
 >
 > ### macOS Security
+>
 > macOS may prevent running downloaded binaries due to security measures. If you get a warning message like "cannot be opened because the developer cannot be verified", you can remove the quarantine attribute with this command:
 >
 > ```bash
 > xattr -d com.apple.quarantine /path/to/updo
 > ```
-> 
+>
 > Replace `/path/to/updo` with the actual path to the downloaded binary (e.g. `~/Downloads/updo_Darwin_arm64/updo`)
 
 ## Usage
