@@ -262,10 +262,8 @@ func StartBubbleTeaMonitoring(config Config) {
 
 		p.Send(quitMsg{})
 
-		select {
-		case <-time.After(150 * time.Millisecond):
-			os.Exit(0)
-		}
+		<-time.After(150 * time.Millisecond)
+		os.Exit(0)
 	}()
 
 	if _, err := p.Run(); err != nil {

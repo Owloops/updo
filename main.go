@@ -28,7 +28,11 @@ func main() {
 			monitor.MonitorCmd.Run(cmd, args)
 			return
 		}
-		cmd.Help()
+
+		if err := cmd.Help(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error displaying help: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	if err := root.Execute(); err != nil {

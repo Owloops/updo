@@ -31,47 +31,47 @@ func NewTimingBreakdown() *TimingBreakdown {
 	}
 }
 
-func (self *TimingBreakdown) Draw(buf *ui.Buffer) {
-	self.Block.Draw(buf)
+func (tb *TimingBreakdown) Draw(buf *ui.Buffer) {
+	tb.Block.Draw(buf)
 
-	totalDuration := self.calculateTotalDuration()
+	totalDuration := tb.calculateTotalDuration()
 	if totalDuration == 0 {
 		return
 	}
 
-	y := self.Inner.Min.Y
-	longestLabel := self.longestLabel()
+	y := tb.Inner.Min.Y
+	longestLabel := tb.longestLabel()
 
 	for _, stage := range stagesOrder {
-		duration, ok := self.Timings[stage]
+		duration, ok := tb.Timings[stage]
 		if !ok {
 			continue
 		}
 
 		percentage := float64(duration) / float64(totalDuration)
-		barWidth := int(percentage * float64(self.Inner.Dx()-longestLabel-rw.StringWidth(" 9999ms")))
+		barWidth := int(percentage * float64(tb.Inner.Dx()-longestLabel-rw.StringWidth(" 9999ms")))
 
 		label := fmt.Sprintf("%-9s", stage)
 		roundedDuration := fmt.Sprintf("%4dms", int64(duration.Seconds()*1000))
 		labelStyle := ui.NewStyle(ui.ColorWhite)
 
 		for i, rune := range label {
-			buf.SetCell(ui.NewCell(rune, labelStyle), image.Pt(self.Inner.Min.X+i, y))
+			buf.SetCell(ui.NewCell(rune, labelStyle), image.Pt(tb.Inner.Min.X+i, y))
 		}
 
 		for i, rune := range roundedDuration {
-			buf.SetCell(ui.NewCell(rune, labelStyle), image.Pt(self.Inner.Min.X+longestLabel+i, y))
+			buf.SetCell(ui.NewCell(rune, labelStyle), image.Pt(tb.Inner.Min.X+longestLabel+i, y))
 		}
 
-		xStart := self.Inner.Min.X + longestLabel + rw.StringWidth(roundedDuration) + 1
+		xStart := tb.Inner.Min.X + longestLabel + rw.StringWidth(roundedDuration) + 1
 		for i := 0; i < barWidth; i++ {
-			buf.SetCell(ui.NewCell(' ', ui.NewStyle(ui.ColorClear, self.Colors[stage])), image.Pt(xStart+i, y))
+			buf.SetCell(ui.NewCell(' ', ui.NewStyle(ui.ColorClear, tb.Colors[stage])), image.Pt(xStart+i, y))
 		}
 		y++
 	}
 }
 
-func (self *TimingBreakdown) longestLabel() int {
+func (tb *TimingBreakdown) longestLabel() int {
 	longest := 0
 	for _, stage := range stagesOrder {
 		if len(stage) > longest {
@@ -81,14 +81,14 @@ func (self *TimingBreakdown) longestLabel() int {
 	return longest + 1
 }
 
-func (self *TimingBreakdown) calculateTotalDuration() time.Duration {
+func (tb *TimingBreakdown) calculateTotalDuration() time.Duration {
 	var total time.Duration
-	for _, duration := range self.Timings {
+	for _, duration := range tb.Timings {
 		total += duration
 	}
 	return total
 }
 
-func (self *TimingBreakdown) SetTimings(newTimings map[string]time.Duration) {
-	self.Timings = newTimings
+func (tb *TimingBreakdown) SetTimings(newTimings map[string]time.Duration) {
+	tb.Timings = newTimings
 }

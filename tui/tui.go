@@ -13,6 +13,8 @@ import (
 	"github.com/gizak/termui/v3/widgets"
 )
 
+const notAvailable = "N/A"
+
 type Manager struct {
 	Monitor *stats.Monitor
 
@@ -61,27 +63,27 @@ func (m *Manager) InitializeWidgets(url string, refreshInterval time.Duration) {
 
 	m.AvgResponseTimeWidget = widgets.NewParagraph()
 	m.AvgResponseTimeWidget.Title = "Average"
-	m.AvgResponseTimeWidget.Text = "N/A"
+	m.AvgResponseTimeWidget.Text = notAvailable
 	m.AvgResponseTimeWidget.BorderStyle.Fg = ui.ColorCyan
 
 	m.MinResponseTimeWidget = widgets.NewParagraph()
 	m.MinResponseTimeWidget.Title = "Min"
-	m.MinResponseTimeWidget.Text = "N/A"
+	m.MinResponseTimeWidget.Text = notAvailable
 	m.MinResponseTimeWidget.BorderStyle.Fg = ui.ColorCyan
 
 	m.MaxResponseTimeWidget = widgets.NewParagraph()
 	m.MaxResponseTimeWidget.Title = "Max"
-	m.MaxResponseTimeWidget.Text = "N/A"
+	m.MaxResponseTimeWidget.Text = notAvailable
 	m.MaxResponseTimeWidget.BorderStyle.Fg = ui.ColorCyan
 
 	m.P95ResponseTimeWidget = widgets.NewParagraph()
 	m.P95ResponseTimeWidget.Title = "95p"
-	m.P95ResponseTimeWidget.Text = "N/A"
+	m.P95ResponseTimeWidget.Text = notAvailable
 	m.P95ResponseTimeWidget.BorderStyle.Fg = ui.ColorCyan
 
 	m.SSLOkWidget = widgets.NewParagraph()
 	m.SSLOkWidget.Title = "SSL Certificate"
-	m.SSLOkWidget.Text = "N/A"
+	m.SSLOkWidget.Text = notAvailable
 	m.SSLOkWidget.BorderStyle.Fg = ui.ColorGreen
 
 	m.UptimePlot = widgets.NewPlot()
@@ -112,7 +114,7 @@ func (m *Manager) InitializeWidgets(url string, refreshInterval time.Duration) {
 
 	m.AssertionWidget = widgets.NewParagraph()
 	m.AssertionWidget.Title = "Assertion Result"
-	m.AssertionWidget.Text = "N/A"
+	m.AssertionWidget.Text = notAvailable
 	m.AssertionWidget.BorderStyle.Fg = ui.ColorCyan
 
 	m.TimingBreakdownWidget = uw.NewTimingBreakdown()
@@ -172,11 +174,12 @@ func (m *Manager) UpdateWidgets(result net.WebsiteCheckResult, width int, height
 	sslExpiry := net.GetSSLCertExpiry(result.URL)
 	m.SSLOkWidget.Text = fmt.Sprintf("%d days remaining", sslExpiry)
 
-	if result.AssertText == "" {
-		m.AssertionWidget.Text = "N/A"
-	} else if result.AssertionPassed {
+	switch {
+	case result.AssertText == "":
+		m.AssertionWidget.Text = notAvailable
+	case result.AssertionPassed:
 		m.AssertionWidget.Text = "Passing"
-	} else {
+	default:
 		m.AssertionWidget.Text = "Failing"
 	}
 

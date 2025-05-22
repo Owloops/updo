@@ -1,0 +1,40 @@
+version: "2"
+
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+  tests: true
+
+output:
+  path-mode: "abs"
+
+linters:
+  settings:
+    revive:
+      severity: error
+      rules:
+        - name: unreachable-code
+        - name: error-return
+        - name: unchecked-type-assertion
+        - name: range-val-in-closure
+        - name: context-as-argument
+        - name: defer
+  enable:
+    - errcheck
+    - staticcheck
+    - unused
+    - goconst
+    - misspell
+    - revive
+    - gosec
+    - gocritic
+    - nolintlint
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

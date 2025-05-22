@@ -25,10 +25,6 @@ go.work.sum
 # Dependencies
 vendor/
 
-# IDE files  
-.vscode/
-.idea/
-
 # OS files
 .DS_Store
 

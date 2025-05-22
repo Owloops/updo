@@ -64,6 +64,7 @@ func CheckWebsite(urlStr string, config NetworkConfig) WebsiteCheckResult {
 	}
 
 	transport := &http.Transport{
+		// #nosec G402 - InsecureSkipVerify is intentionally configurable
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: config.SkipSSL || isIPAddress(urlStr)},
 	}
 
@@ -86,7 +87,11 @@ func CheckWebsite(urlStr string, config NetworkConfig) WebsiteCheckResult {
 	if err != nil {
 		return result
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Printf("Warning: failed to close response body: %v\n", err)
+		}
+	}()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -132,11 +137,17 @@ func GetSSLCertExpiry(siteUrl string) int {
 		host += ":443"
 	}
 
-	conn, err := tls.Dial("tcp", host, &tls.Config{})
+	conn, err := tls.Dial("tcp", host, &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	})
 	if err != nil {
 		return -1
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			fmt.Printf("Warning: failed to close TLS connection: %v\n", err)
+		}
+	}()
 
 	if len(conn.ConnectionState().PeerCertificates) > 0 {
 		cert := conn.ConnectionState().PeerCertificates[0]
@@ -166,7 +177,11 @@ func TryHTTPSConnection(urlString string) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Printf("Warning: failed to close response body: %v\n", err)
+		}
+	}()
 	return resp, nil
 }
 

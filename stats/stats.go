@@ -76,7 +76,7 @@ func (m *Monitor) AddResult(result net.WebsiteCheckResult) {
 	}
 
 	if m.TDigest != nil {
-		m.TDigest.Add(result.ResponseTime.Seconds())
+		_ = m.TDigest.Add(result.ResponseTime.Seconds())
 	}
 
 	responseMs := float64(result.ResponseTime.Milliseconds())
