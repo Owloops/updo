@@ -153,20 +153,27 @@ docker run -it updo [options] --url <website-url>
 ### Examples
 
 ```bash
-# Basic monitoring with defaults
-./updo https://example.com
+# Basic monitoring with defaults (using --url flag)
+./updo --url https://example.com
+
+# Or use the monitor subcommand (URL as argument)
+./updo monitor https://example.com
 
 # Set custom refresh and timeout
-./updo -r 10 -t 5 https://example.com
+./updo monitor -r 10 -t 5 https://example.com
 
 # Use simple mode with a set number of checks
-./updo --simple -c 10 https://example.com
+./updo monitor --simple -c 10 https://example.com
 
 # Simple mode with plain text output
-./updo --simple --no-fancy https://example.com
+./updo monitor --simple --no-fancy https://example.com
 
 # Assert text in the response
-./updo -a "Welcome" https://example.com
+./updo monitor -a "Welcome" https://example.com
+
+# Inspect a single request
+./updo inspect https://example.com
+./updo inspect -X POST -d '{"key":"value"}' https://api.example.com
 ```
 
 ## Keyboard Shortcuts
