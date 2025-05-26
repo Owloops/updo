@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Owloops/updo/net"
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -176,8 +177,23 @@ func formatResponseBody(body, contentType string) string {
 	if strings.Contains(contentType, "application/json") {
 		var jsonObj interface{}
 		if err := json.Unmarshal([]byte(body), &jsonObj); err == nil {
-			if formatted, err := json.MarshalIndent(jsonObj, "", "  "); err == nil {
-				return string(formatted)
+			var buf strings.Builder
+			encoder := json.NewEncoder(&buf)
+			encoder.SetEscapeHTML(false)
+			encoder.SetIndent("", "  ")
+
+			if err := encoder.Encode(jsonObj); err == nil {
+				body = strings.TrimSpace(buf.String())
+			}
+		}
+
+		renderer, err := glamour.NewTermRenderer(
+			glamour.WithAutoStyle(),
+			glamour.WithWordWrap(70),
+		)
+		if err == nil {
+			if highlighted, err := renderer.Render("```json\n" + body + "\n```"); err == nil {
+				return strings.TrimSpace(highlighted)
 			}
 		}
 	}
