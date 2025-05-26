@@ -254,6 +254,7 @@ func makeHTTPRequest(urlStr string, options HTTPRequestOptions, config NetworkCo
 	}
 
 	transport := &http.Transport{
+		// #nosec G402 - InsecureSkipVerify is intentionally configurable for testing and IP addresses
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: config.SkipSSL || isIPAddress(urlStr)},
 	}
 

@@ -190,13 +190,14 @@ func formatResponseBody(body, contentType string) string {
 }
 
 func formatDuration(d time.Duration) string {
-	if d < time.Microsecond {
+	switch {
+	case d < time.Microsecond:
 		return fmt.Sprintf("%.0fns", float64(d.Nanoseconds()))
-	} else if d < time.Millisecond {
+	case d < time.Millisecond:
 		return fmt.Sprintf("%.1fμs", float64(d.Nanoseconds())/1000.0)
-	} else if d < time.Second {
+	case d < time.Second:
 		return fmt.Sprintf("%.1fms", float64(d.Nanoseconds())/1000000.0)
-	} else {
+	default:
 		return fmt.Sprintf("%.2fs", d.Seconds())
 	}
 }
