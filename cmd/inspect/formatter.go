@@ -58,9 +58,7 @@ func formatStatusLine(result *net.InspectionResult) string {
 
 	statusText := result.StatusText
 	prefix := fmt.Sprintf("%d ", result.StatusCode)
-	if strings.HasPrefix(statusText, prefix) {
-		statusText = strings.TrimPrefix(statusText, prefix)
-	}
+	statusText = strings.TrimPrefix(statusText, prefix)
 
 	return style.Render(fmt.Sprintf("HTTP/%s %d %s", result.HTTPVersion, result.StatusCode, statusText))
 }
