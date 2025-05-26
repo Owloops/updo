@@ -12,18 +12,21 @@ import (
 )
 
 type Config struct {
-	URL             string
-	Timeout         time.Duration
-	ShouldFail      bool
-	FollowRedirects bool
-	SkipSSL         bool
-	AssertText      string
-	Method          string
-	Headers         map[string]string
-	Body            string
-	PrintHeaders    bool
-	PrintBody       bool
-	Verbose         bool
+	URL                 string
+	Timeout             time.Duration
+	ShouldFail          bool
+	FollowRedirects     bool
+	SkipSSL             bool
+	AssertText          string
+	Method              string
+	Headers             map[string]string
+	Body                string
+	PrintHeaders        bool
+	PrintBody           bool
+	PrintRequestHeaders bool
+	PrintRequestBody    bool
+	Verbose             bool
+	MaxOutput           int
 }
 
 var InspectCmd = &cobra.Command{
@@ -56,14 +59,17 @@ func buildInspectConfig(cmd *cobra.Command, args []string) Config {
 	rootConfig := root.AppConfig
 
 	config := Config{
-		Timeout:         rootConfig.Timeout,
-		ShouldFail:      rootConfig.ShouldFail,
-		FollowRedirects: rootConfig.FollowRedirects,
-		SkipSSL:         rootConfig.SkipSSL,
-		AssertText:      rootConfig.AssertText,
-		Headers:         make(map[string]string),
-		PrintHeaders:    true,
-		PrintBody:       true,
+		Timeout:             rootConfig.Timeout,
+		ShouldFail:          rootConfig.ShouldFail,
+		FollowRedirects:     rootConfig.FollowRedirects,
+		SkipSSL:             rootConfig.SkipSSL,
+		AssertText:          rootConfig.AssertText,
+		Headers:             make(map[string]string),
+		PrintHeaders:        true,
+		PrintBody:           true,
+		PrintRequestHeaders: true,
+		PrintRequestBody:    true,
+		MaxOutput:           2000,
 	}
 
 	if len(args) > 0 && rootConfig.URL == "" {
@@ -89,10 +95,15 @@ func buildInspectConfig(cmd *cobra.Command, args []string) Config {
 	verbose, _ := cmd.Flags().GetBool("verbose")
 	config.Verbose = verbose
 
+	maxOutput, _ := cmd.Flags().GetInt("max-output")
+	config.MaxOutput = maxOutput
+
 	print, _ := cmd.Flags().GetString("print")
 	if print != "" {
-		config.PrintHeaders = strings.Contains(print, "H") || strings.Contains(print, "h")
-		config.PrintBody = strings.Contains(print, "B") || strings.Contains(print, "b")
+		config.PrintRequestHeaders = strings.Contains(print, "H")
+		config.PrintRequestBody = strings.Contains(print, "B")
+		config.PrintHeaders = strings.Contains(print, "h")
+		config.PrintBody = strings.Contains(print, "b")
 	}
 
 	return config
@@ -104,6 +115,7 @@ func init() {
 	InspectCmd.Flags().StringP("data", "d", "", "Request body data")
 	InspectCmd.Flags().StringP("print", "p", "HhBb", "What to print: (H)request headers, (B)request body, (h)response headers, (b)response body")
 	InspectCmd.Flags().BoolP("verbose", "v", false, "Show detailed timing information")
+	InspectCmd.Flags().Int("max-output", 2000, "Maximum characters to display in response body (0 = no limit)")
 }
 
 func performInspection(config Config) *net.InspectionResult {
