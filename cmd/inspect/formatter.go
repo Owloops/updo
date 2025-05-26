@@ -83,16 +83,21 @@ func formatHeaders(headers map[string][]string) string {
 }
 
 func formatBody(body, contentType string, maxOutput int) string {
-	if strings.Contains(contentType, "application/json") {
-		formatted := formatJSON(body)
-		if maxOutput > 0 && len(formatted) > maxOutput {
-			return formatted[:maxOutput] + "\n\n" + headerNameStyle.Render("... (truncated)")
+	if maxOutput > 0 && len(body) > maxOutput {
+		body = body[:maxOutput]
+		truncated := true
+
+		if strings.Contains(contentType, "application/json") {
+			return formatJSON(body) + "\n\n" + headerNameStyle.Render("... (truncated)")
 		}
-		return formatted
+
+		if truncated {
+			return body + "\n\n" + headerNameStyle.Render("... (truncated)")
+		}
 	}
 
-	if maxOutput > 0 && len(body) > maxOutput {
-		return body[:maxOutput] + "\n\n" + headerNameStyle.Render("... (truncated)")
+	if strings.Contains(contentType, "application/json") {
+		return formatJSON(body)
 	}
 
 	return body
