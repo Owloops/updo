@@ -21,7 +21,7 @@ Updo is a command-line tool for monitoring website uptime and performance. It pr
 - Customizable refresh intervals and request timeouts
 - Supports HTTP and HTTPS, with options to skip SSL verification
 - Assertion on response body content
-- Command-line interface with subcommand support
+- Command-line interface with simple usage
 - Simple mode with fancy or plain text output
 - Automatic terminal capability detection
 
@@ -114,7 +114,7 @@ Run Updo using the following command:
 # Basic usage
 ./updo [options] <website-url>
 
-# Explicit monitor command
+# Explicit monitor command  
 ./updo monitor [options] <website-url>
 
 # Generate shell completions
@@ -171,9 +171,6 @@ docker run -it updo [options] --url <website-url>
 # Assert text in the response
 ./updo monitor -a "Welcome" https://example.com
 
-# Inspect a single request
-./updo inspect https://example.com
-./updo inspect -X POST -d '{"key":"value"}' https://api.example.com
 ```
 
 ## Keyboard Shortcuts
