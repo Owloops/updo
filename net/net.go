@@ -35,7 +35,6 @@ type HttpTraceInfo struct {
 	DownloadDuration time.Duration
 }
 
-
 type NetworkConfig struct {
 	Timeout         time.Duration
 	ShouldFail      bool
@@ -312,4 +311,3 @@ func makeHTTPRequest(urlStr string, options HTTPRequestOptions, config NetworkCo
 
 	return result
 }
-
