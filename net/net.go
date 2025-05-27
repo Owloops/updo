@@ -35,21 +35,6 @@ type HttpTraceInfo struct {
 	DownloadDuration time.Duration
 }
 
-type InspectionResult struct {
-	URL             string
-	ResolvedIP      string
-	StatusCode      int
-	StatusText      string
-	HTTPVersion     string
-	ResponseHeaders http.Header
-	ResponseBody    string
-	RequestHeaders  http.Header
-	RequestBody     string
-	Method          string
-	ResponseTime    time.Duration
-	TraceInfo       *HttpTraceInfo
-	LastCheckTime   time.Time
-}
 
 type NetworkConfig struct {
 	Timeout         time.Duration
@@ -328,37 +313,3 @@ func makeHTTPRequest(urlStr string, options HTTPRequestOptions, config NetworkCo
 	return result
 }
 
-func InspectRequest(urlStr, method string, headers map[string]string, body string, config NetworkConfig) *InspectionResult {
-	options := HTTPRequestOptions{
-		Method:  method,
-		Headers: headers,
-		Body:    body,
-	}
-
-	httpResp := makeHTTPRequest(urlStr, options, config)
-
-	if httpResp.Error != nil {
-		return &InspectionResult{
-			URL:           urlStr,
-			Method:        method,
-			RequestBody:   body,
-			LastCheckTime: time.Now(),
-		}
-	}
-
-	return &InspectionResult{
-		URL:             httpResp.URL,
-		ResolvedIP:      httpResp.ResolvedIP,
-		StatusCode:      httpResp.StatusCode,
-		StatusText:      httpResp.StatusText,
-		HTTPVersion:     httpResp.HTTPVersion,
-		ResponseHeaders: httpResp.ResponseHeaders,
-		ResponseBody:    httpResp.ResponseBody,
-		RequestHeaders:  httpResp.RequestHeaders,
-		RequestBody:     httpResp.RequestBody,
-		Method:          httpResp.Method,
-		ResponseTime:    httpResp.ResponseTime,
-		TraceInfo:       httpResp.TraceInfo,
-		LastCheckTime:   httpResp.LastCheckTime,
-	}
-}
