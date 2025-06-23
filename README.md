@@ -149,6 +149,7 @@ docker run -it updo monitor --url <website-url> [options]
 - `-n, --receive-alert`: Enable alert notifications (default: true)
 - `--simple`: Use simple output instead of TUI
 - `--no-fancy`: Disable fancy terminal formatting in simple mode
+- `-H, --header`: HTTP header to send (can be used multiple times, format: 'Header-Name: value')
 - `-c, --count`: Number of checks to perform (0 = infinite)
 - `-h, --help`: Display help message
 
@@ -175,6 +176,12 @@ docker run -it updo monitor --url <website-url> [options]
 
 # Assert text in the response
 ./updo monitor -a "Welcome" https://example.com
+
+# Monitoring with custom HTTP headers (long form)
+./updo monitor --header "Authorization: Bearer token123" --header "User-Agent: updo-test" https://example.com
+
+# Monitoring with custom HTTP headers (short form)
+./updo monitor -H "Authorization: Bearer token123" -H "Content-Type: application/json" https://example.com
 ```
 
 ## Keyboard Shortcuts

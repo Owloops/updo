@@ -41,6 +41,7 @@ type NetworkConfig struct {
 	FollowRedirects bool
 	SkipSSL         bool
 	AssertText      string
+	Headers         []string
 }
 
 type HTTPRequestOptions struct {
@@ -71,6 +72,17 @@ func CheckWebsite(urlStr string, config NetworkConfig) WebsiteCheckResult {
 		Method:  "GET",
 		Headers: make(map[string]string),
 		Body:    "",
+	}
+
+	if len(config.Headers) > 0 {
+		for _, header := range config.Headers {
+			parts := strings.SplitN(header, ":", 2)
+			if len(parts) == 2 {
+				key := strings.TrimSpace(parts[0])
+				value := strings.TrimSpace(parts[1])
+				options.Headers[key] = value
+			}
+		}
 	}
 
 	httpResp := makeHTTPRequest(urlStr, options, config)

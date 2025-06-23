@@ -18,6 +18,7 @@ type Config struct {
 	Simple          bool
 	NoFancy         bool
 	Count           int
+	Headers         []string
 }
 
 var AppConfig Config
@@ -33,7 +34,8 @@ and a simple text-based output mode.`,
   updo monitor -r 10 -t 5 https://example.com
   updo monitor --simple -c 10 https://example.com
   updo monitor --simple --no-fancy https://example.com
-  updo monitor -a "Welcome" https://example.com`,
+  updo monitor -a "Welcome" https://example.com
+  updo --url https://example.com -H "Authorization: Bearer token123"`,
 }
 
 func Execute() error {
@@ -52,6 +54,7 @@ func init() {
 	RootCmd.PersistentFlags().BoolVar(&AppConfig.Simple, "simple", false, "Use simple output instead of TUI")
 	RootCmd.PersistentFlags().BoolVar(&AppConfig.NoFancy, "no-fancy", false, "Disable fancy terminal formatting in simple mode")
 	RootCmd.PersistentFlags().IntVarP(&AppConfig.Count, "count", "c", 0, "Number of checks to perform (0 = infinite)")
+	RootCmd.PersistentFlags().StringArrayVarP(&AppConfig.Headers, "header", "H", nil, "HTTP header to send (can be used multiple times, format: 'Header-Name: value')")
 
 	RootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		refresh, _ := cmd.Flags().GetInt("refresh")

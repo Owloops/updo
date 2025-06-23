@@ -22,7 +22,8 @@ with a visual interface or in simple mode with text output.`,
   updo monitor -r 10 -t 5 https://example.com
   updo monitor --simple -c 10 https://example.com
   updo monitor --simple --no-fancy https://example.com
-  updo monitor -a "Welcome" https://example.com`,
+  updo monitor -a "Welcome" https://example.com
+  updo monitor -H "Authorization: Bearer token123" https://example.com`,
 	Run: func(cmd *cobra.Command, args []string) {
 		config := root.AppConfig
 
@@ -52,6 +53,7 @@ with a visual interface or in simple mode with text output.`,
 				ReceiveAlert:    config.ReceiveAlert,
 				Count:           config.Count,
 				NoFancy:         config.NoFancy,
+				Headers:         config.Headers,
 			}
 
 			simple.StartMonitoring(simpleConfig)
@@ -66,6 +68,7 @@ with a visual interface or in simple mode with text output.`,
 				AssertText:      config.AssertText,
 				ReceiveAlert:    config.ReceiveAlert,
 				Count:           config.Count,
+				Headers:         config.Headers,
 			}
 			tui.StartMonitoring(tuiConfig)
 		}

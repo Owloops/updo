@@ -18,6 +18,7 @@ type Config struct {
 	AssertText      string
 	ReceiveAlert    bool
 	Count           int
+	Headers         []string
 }
 
 func StartMonitoring(config Config) {
@@ -45,6 +46,7 @@ func StartMonitoring(config Config) {
 				FollowRedirects: config.FollowRedirects,
 				SkipSSL:         config.SkipSSL,
 				AssertText:      config.AssertText,
+				Headers:         config.Headers,
 			}
 			result := net.CheckWebsite(config.URL, netConfig)
 			dataChannel <- result
