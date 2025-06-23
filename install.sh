@@ -165,12 +165,12 @@ verify_installation() {
 
     echo
     echo "You can now run updo from the command line."
-
-    echo -e "\n${BLUE}Usage examples:${RESET}"
-    echo "  updo https://example.com               # Monitor with default settings"
-    echo "  updo -r 10 -t 5 https://example.com    # Set refresh to 10s and timeout to 5s"
-    echo "  updo --simple https://example.com      # Use simple output mode"
-    echo "  updo --version                         # Show version information"
+    echo
+    echo -e "${BLUE}Get started:${RESET}"
+    echo "  updo --help                  # Show help and usage information"
+    echo "  updo --version               # Show version information"
+    echo
+    echo -e "For full documentation, visit: ${GREEN}https://github.com/Owloops/updo#usage${RESET}"
 
     log INFO "Thank you for installing updo!"
 }
