@@ -25,7 +25,9 @@ with a visual interface or in simple mode with text output.`,
   updo monitor -a "Welcome" https://example.com
   updo monitor -H "Authorization: Bearer token123" https://example.com
   updo monitor -X POST -H "Content-Type: application/json" https://api.example.com/endpoint
-  updo monitor -X POST -d '{"name":"test"}' -H "Content-Type: application/json" https://api.example.com/data`,
+  updo monitor -X POST -d '{"name":"test"}' -H "Content-Type: application/json" https://api.example.com/data
+  updo monitor --log https://example.com
+  updo monitor --log --count=10 https://example.com > output.json`,
 	Run: func(cmd *cobra.Command, args []string) {
 		config := root.AppConfig
 
@@ -58,6 +60,7 @@ with a visual interface or in simple mode with text output.`,
 				Headers:         config.Headers,
 				Method:          config.Method,
 				Body:            config.Body,
+				Log:             config.Log,
 			}
 
 			simple.StartMonitoring(simpleConfig)
@@ -75,6 +78,7 @@ with a visual interface or in simple mode with text output.`,
 				Headers:         config.Headers,
 				Method:          config.Method,
 				Body:            config.Body,
+				Log:             config.Log,
 			}
 			tui.StartMonitoring(tuiConfig)
 		}

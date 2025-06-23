@@ -1,0 +1,156 @@
+package utils
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/Owloops/updo/net"
+	"github.com/Owloops/updo/stats"
+)
+
+type MetricsData struct {
+	Type           string    `json:"type"`
+	Timestamp      time.Time `json:"timestamp"`
+	URL            string    `json:"url"`
+	Uptime         float64   `json:"uptime"`
+	AvgResponseMS  int64     `json:"avg_response_time_ms"`
+	MinResponseMS  int64     `json:"min_response_time_ms"`
+	MaxResponseMS  int64     `json:"max_response_time_ms"`
+	P95ResponseMS  int64     `json:"p95_response_time_ms,omitempty"`
+	ChecksCount    int       `json:"checks_count"`
+	SuccessCount   int       `json:"success_count"`
+	SuccessPercent float64   `json:"success_percent"`
+}
+
+type ErrorData struct {
+	Type      string    `json:"type"`
+	Timestamp time.Time `json:"timestamp"`
+	URL       string    `json:"url"`
+	Level     string    `json:"level"`
+	Message   string    `json:"message"`
+	Error     string    `json:"error,omitempty"`
+}
+
+type CheckData struct {
+	Type            string              `json:"type"`
+	Timestamp       time.Time           `json:"timestamp"`
+	URL             string              `json:"url"`
+	ResolvedIP      string              `json:"resolved_ip,omitempty"`
+	StatusCode      int                 `json:"status_code"`
+	ResponseTimeMS  int64               `json:"response_time_ms"`
+	Success         bool                `json:"success"`
+	Method          string              `json:"method"`
+	SequenceNum     int                 `json:"sequence_num"`
+	RequestHeaders  map[string][]string `json:"request_headers,omitempty"`
+	ResponseHeaders map[string][]string `json:"response_headers,omitempty"`
+	RequestBody     string              `json:"request_body,omitempty"`
+	ResponseBody    string              `json:"response_body,omitempty"`
+	AssertionPassed bool                `json:"assertion_passed,omitempty"`
+	AssertionText   string              `json:"assertion_text,omitempty"`
+}
+
+func LogMetrics(stats *stats.Stats, url string) {
+	if stats == nil {
+		return
+	}
+
+	data := MetricsData{
+		Type:           "metrics",
+		Timestamp:      time.Now(),
+		URL:            url,
+		Uptime:         stats.UptimePercent,
+		AvgResponseMS:  stats.AvgResponseTime.Milliseconds(),
+		MinResponseMS:  stats.MinResponseTime.Milliseconds(),
+		MaxResponseMS:  stats.MaxResponseTime.Milliseconds(),
+		ChecksCount:    stats.ChecksCount,
+		SuccessCount:   stats.SuccessCount,
+		SuccessPercent: 0,
+	}
+
+	if stats.ChecksCount > 0 {
+		data.SuccessPercent = float64(stats.SuccessCount) / float64(stats.ChecksCount) * 100
+	}
+
+	if stats.ChecksCount >= 2 && stats.P95 > 0 {
+		data.P95ResponseMS = stats.P95.Milliseconds()
+	}
+
+	var buf strings.Builder
+	encoder := json.NewEncoder(&buf)
+	encoder.SetEscapeHTML(false)
+
+	if err := encoder.Encode(data); err == nil {
+		fmt.Print(buf.String())
+	}
+}
+
+func LogCheck(result net.WebsiteCheckResult, seq int, jsonFormat string) {
+	data := CheckData{
+		Type:            "check",
+		Timestamp:       result.LastCheckTime,
+		URL:             result.URL,
+		ResolvedIP:      result.ResolvedIP,
+		StatusCode:      result.StatusCode,
+		ResponseTimeMS:  result.ResponseTime.Milliseconds(),
+		Success:         result.IsUp,
+		Method:          result.Method,
+		SequenceNum:     seq,
+		AssertionPassed: result.AssertionPassed,
+		AssertionText:   result.AssertText,
+		RequestHeaders:  result.RequestHeaders,
+		ResponseHeaders: result.ResponseHeaders,
+		RequestBody:     result.RequestBody,
+		ResponseBody:    result.ResponseBody,
+	}
+
+	var buf strings.Builder
+	encoder := json.NewEncoder(&buf)
+	encoder.SetEscapeHTML(false)
+
+	if err := encoder.Encode(data); err == nil {
+		fmt.Print(buf.String())
+	}
+}
+
+func LogError(url string, msg string, err error) {
+	data := ErrorData{
+		Type:      "error",
+		Timestamp: time.Now(),
+		URL:       url,
+		Level:     "error",
+		Message:   msg,
+	}
+
+	if err != nil {
+		data.Error = err.Error()
+	}
+
+	var buf strings.Builder
+	encoder := json.NewEncoder(&buf)
+	encoder.SetEscapeHTML(false)
+
+	if err := encoder.Encode(data); err == nil {
+		fmt.Fprint(os.Stderr, buf.String())
+	}
+}
+
+func LogWarning(url string, msg string) {
+	data := ErrorData{
+		Type:      "warning",
+		Timestamp: time.Now(),
+		URL:       url,
+		Level:     "warning",
+		Message:   msg,
+	}
+
+	var buf strings.Builder
+	encoder := json.NewEncoder(&buf)
+	encoder.SetEscapeHTML(false)
+
+	if err := encoder.Encode(data); err == nil {
+		fmt.Fprint(os.Stderr, buf.String())
+	}
+}

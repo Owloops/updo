@@ -21,6 +21,7 @@ type Config struct {
 	Headers         []string
 	Method          string
 	Body            string
+	Log             string
 }
 
 var AppConfig Config
@@ -62,11 +63,21 @@ func init() {
 	RootCmd.PersistentFlags().StringVarP(&AppConfig.Method, "request", "X", "GET", "HTTP request method to use")
 	RootCmd.PersistentFlags().StringVarP(&AppConfig.Body, "data", "d", "", "HTTP request body data")
 
+	var logEnabled bool
+	RootCmd.PersistentFlags().BoolVar(&logEnabled, "log", false, "Output structured logs in JSON format (includes requests, responses, and metrics)")
+
 	RootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		refresh, _ := cmd.Flags().GetInt("refresh")
 		timeout, _ := cmd.Flags().GetInt("timeout")
 
 		AppConfig.RefreshInterval = time.Duration(refresh) * time.Second
 		AppConfig.Timeout = time.Duration(timeout) * time.Second
+
+		logEnabled, _ := cmd.Flags().GetBool("log")
+		if logEnabled {
+			AppConfig.Log = "all"
+		} else {
+			AppConfig.Log = ""
+		}
 	}
 }

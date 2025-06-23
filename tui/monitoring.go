@@ -21,6 +21,7 @@ type Config struct {
 	Headers         []string
 	Method          string
 	Body            string
+	Log             string
 }
 
 func StartMonitoring(config Config) {

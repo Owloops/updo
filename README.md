@@ -152,6 +152,7 @@ docker run -it updo monitor --url <website-url> [options]
 - `-H, --header`: HTTP header to send (can be used multiple times, format: 'Header-Name: value')
 - `-X, --request`: HTTP request method to use (default: GET)
 - `-d, --data`: HTTP request body data
+- `--log`: Output structured logs in JSON format (includes requests, responses, and metrics)
 - `-c, --count`: Number of checks to perform (0 = infinite)
 - `-h, --help`: Display help message
 
@@ -179,6 +180,12 @@ docker run -it updo monitor --url <website-url> [options]
 # Assert text in the response
 ./updo monitor -a "Welcome" https://example.com
 
+# Output structured logs in JSON format
+./updo monitor --log https://example.com
+
+# Run 10 checks with structured logging and save to a file
+./updo monitor --log --count=10 https://example.com > output.json
+
 # Monitoring with custom HTTP headers (long form)
 ./updo monitor --header "Authorization: Bearer token123" --header "User-Agent: updo-test" https://example.com
 
@@ -190,6 +197,29 @@ docker run -it updo monitor --url <website-url> [options]
 
 # Sending a request with body data
 ./updo monitor -X POST -H "Content-Type: application/json" -d '{"name":"test"}' https://api.example.com/data
+
+# Sending requests with body data and viewing structured logs
+./updo monitor --log -X POST -H "Content-Type: application/json" -d '{"name":"test"}' https://api.example.com/data
+```
+
+## Structured Logging
+
+The `--log` flag outputs JSON-formatted logs for programmatic consumption:
+
+- **Check logs** (stdout): HTTP requests, responses, and timing information
+- **Metrics logs** (stdout): Uptime, response time stats, success rate
+- **Error logs** (stderr): Failures, warnings, and assertion results
+
+Usage examples:
+```bash
+# All logs to one file
+./updo monitor --log https://example.com > all.json 2>&1
+
+# Metrics to one file, errors to another
+./updo monitor --log https://example.com > metrics.json 2> errors.json
+
+# Processing with jq
+./updo monitor --log https://example.com | jq 'select(.type=="check") | .response_time_ms'
 ```
 
 ## Keyboard Shortcuts

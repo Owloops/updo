@@ -26,6 +26,11 @@ type WebsiteCheckResult struct {
 	AssertionPassed bool
 	LastCheckTime   time.Time
 	AssertText      string
+	Method          string
+	RequestHeaders  http.Header
+	ResponseHeaders http.Header
+	RequestBody     string
+	ResponseBody    string
 }
 type HttpTraceInfo struct {
 	Wait             time.Duration
@@ -95,16 +100,22 @@ func CheckWebsite(urlStr string, config NetworkConfig) WebsiteCheckResult {
 	httpResp := makeHTTPRequest(urlStr, options, config)
 
 	result := WebsiteCheckResult{
-		URL:           urlStr,
-		ResolvedIP:    httpResp.ResolvedIP,
-		StatusCode:    httpResp.StatusCode,
-		ResponseTime:  httpResp.ResponseTime,
-		TraceInfo:     httpResp.TraceInfo,
-		LastCheckTime: httpResp.LastCheckTime,
-		AssertText:    config.AssertText,
+		URL:             urlStr,
+		ResolvedIP:      httpResp.ResolvedIP,
+		StatusCode:      httpResp.StatusCode,
+		ResponseTime:    httpResp.ResponseTime,
+		TraceInfo:       httpResp.TraceInfo,
+		LastCheckTime:   httpResp.LastCheckTime,
+		AssertText:      config.AssertText,
+		Method:          options.Method,
+		RequestHeaders:  httpResp.RequestHeaders,
+		ResponseHeaders: httpResp.ResponseHeaders,
+		RequestBody:     httpResp.RequestBody,
+		ResponseBody:    httpResp.ResponseBody,
 	}
 
 	if httpResp.Error != nil {
+		result.Method = options.Method
 		return result
 	}
 

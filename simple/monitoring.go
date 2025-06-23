@@ -1,6 +1,7 @@
 package simple
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -27,9 +28,12 @@ type Config struct {
 	Headers         []string
 	Method          string
 	Body            string
+	Log             string
 }
 
 func StartMonitoring(config Config) {
+	logMode := config.Log != ""
+
 	isTerminal := term.IsTerminal(int(os.Stdout.Fd()))
 
 	if isTerminal && !config.NoFancy {
@@ -38,7 +42,10 @@ func StartMonitoring(config Config) {
 	}
 
 	outputManager := NewOutputManager(config.URL)
-	outputManager.PrintHeader()
+
+	if !logMode {
+		outputManager.PrintHeader()
+	}
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
@@ -72,7 +79,21 @@ func StartMonitoring(config Config) {
 				result := net.CheckWebsite(config.URL, netConfig)
 				monitor.AddResult(result)
 
-				outputManager.PrintResult(result, monitor)
+				if !logMode {
+					outputManager.PrintResult(result, monitor)
+				} else {
+					utils.LogCheck(result, monitor.ChecksCount-1, config.Log)
+
+					if !result.IsUp {
+						errorMsg := "Request failed"
+						if result.StatusCode > 0 {
+							errorMsg = fmt.Sprintf("Non-success status code: %d", result.StatusCode)
+						} else if result.AssertText != "" && !result.AssertionPassed {
+							errorMsg = "Assertion failed"
+						}
+						utils.LogWarning(config.URL, errorMsg)
+					}
+				}
 
 				if config.ReceiveAlert {
 					utils.HandleAlerts(result.IsUp, &alertSent)
@@ -92,5 +113,10 @@ func StartMonitoring(config Config) {
 	}
 
 	stats := monitor.GetStats()
-	outputManager.PrintStatistics(&stats)
+
+	if !logMode {
+		outputManager.PrintStatistics(&stats)
+	} else {
+		utils.LogMetrics(&stats, config.URL)
+	}
 }
