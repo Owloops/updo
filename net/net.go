@@ -42,6 +42,8 @@ type NetworkConfig struct {
 	SkipSSL         bool
 	AssertText      string
 	Headers         []string
+	Method          string
+	Body            string
 }
 
 type HTTPRequestOptions struct {
@@ -68,10 +70,15 @@ type HTTPResponse struct {
 }
 
 func CheckWebsite(urlStr string, config NetworkConfig) WebsiteCheckResult {
+	method := "GET"
+	if config.Method != "" {
+		method = config.Method
+	}
+
 	options := HTTPRequestOptions{
-		Method:  "GET",
+		Method:  method,
 		Headers: make(map[string]string),
-		Body:    "",
+		Body:    config.Body,
 	}
 
 	if len(config.Headers) > 0 {

@@ -25,6 +25,8 @@ type Config struct {
 	Count           int
 	NoFancy         bool
 	Headers         []string
+	Method          string
+	Body            string
 }
 
 func StartMonitoring(config Config) {
@@ -63,6 +65,8 @@ func StartMonitoring(config Config) {
 					SkipSSL:         config.SkipSSL,
 					AssertText:      config.AssertText,
 					Headers:         config.Headers,
+					Method:          config.Method,
+					Body:            config.Body,
 				}
 
 				result := net.CheckWebsite(config.URL, netConfig)

@@ -19,6 +19,8 @@ type Config struct {
 	NoFancy         bool
 	Count           int
 	Headers         []string
+	Method          string
+	Body            string
 }
 
 var AppConfig Config
@@ -35,7 +37,9 @@ and a simple text-based output mode.`,
   updo monitor --simple -c 10 https://example.com
   updo monitor --simple --no-fancy https://example.com
   updo monitor -a "Welcome" https://example.com
-  updo --url https://example.com -H "Authorization: Bearer token123"`,
+  updo --url https://example.com -H "Authorization: Bearer token123"
+  updo monitor -X POST -H "Content-Type: application/json" https://api.example.com/endpoint
+  updo monitor -X POST -d '{"name":"test"}' -H "Content-Type: application/json" https://api.example.com/data`,
 }
 
 func Execute() error {
@@ -55,6 +59,8 @@ func init() {
 	RootCmd.PersistentFlags().BoolVar(&AppConfig.NoFancy, "no-fancy", false, "Disable fancy terminal formatting in simple mode")
 	RootCmd.PersistentFlags().IntVarP(&AppConfig.Count, "count", "c", 0, "Number of checks to perform (0 = infinite)")
 	RootCmd.PersistentFlags().StringArrayVarP(&AppConfig.Headers, "header", "H", nil, "HTTP header to send (can be used multiple times, format: 'Header-Name: value')")
+	RootCmd.PersistentFlags().StringVarP(&AppConfig.Method, "request", "X", "GET", "HTTP request method to use")
+	RootCmd.PersistentFlags().StringVarP(&AppConfig.Body, "data", "d", "", "HTTP request body data")
 
 	RootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		refresh, _ := cmd.Flags().GetInt("refresh")

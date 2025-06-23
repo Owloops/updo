@@ -150,6 +150,8 @@ docker run -it updo monitor --url <website-url> [options]
 - `--simple`: Use simple output instead of TUI
 - `--no-fancy`: Disable fancy terminal formatting in simple mode
 - `-H, --header`: HTTP header to send (can be used multiple times, format: 'Header-Name: value')
+- `-X, --request`: HTTP request method to use (default: GET)
+- `-d, --data`: HTTP request body data
 - `-c, --count`: Number of checks to perform (0 = infinite)
 - `-h, --help`: Display help message
 
@@ -182,6 +184,12 @@ docker run -it updo monitor --url <website-url> [options]
 
 # Monitoring with custom HTTP headers (short form)
 ./updo monitor -H "Authorization: Bearer token123" -H "Content-Type: application/json" https://example.com
+
+# Using a different HTTP method (POST, PUT, DELETE, etc.)
+./updo monitor -X POST -H "Content-Type: application/json" https://api.example.com/endpoint
+
+# Sending a request with body data
+./updo monitor -X POST -H "Content-Type: application/json" -d '{"name":"test"}' https://api.example.com/data
 ```
 
 ## Keyboard Shortcuts

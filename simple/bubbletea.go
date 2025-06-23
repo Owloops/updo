@@ -239,6 +239,8 @@ func checkWebsiteCmd(config Config) tea.Cmd {
 			SkipSSL:         config.SkipSSL,
 			AssertText:      config.AssertText,
 			Headers:         config.Headers,
+			Method:          config.Method,
+			Body:            config.Body,
 		}
 
 		result := net.CheckWebsite(config.URL, netConfig)
