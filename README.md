@@ -112,10 +112,10 @@ Run Updo using the following command:
 
 ```bash
 # Basic usage
-./updo [options] <website-url>
-
-# Explicit monitor command  
 ./updo monitor [options] <website-url>
+
+# Alternative syntax using --url flag
+./updo monitor --url <website-url> [options]
 
 # Generate shell completions
 ./updo completion bash > updo_completion.bash
@@ -132,7 +132,9 @@ docker build -t updo .
 docker build -t updo https://github.com/Owloops/updo.git
 
 # And now you can run Updo from the built image:
-docker run -it updo [options] --url <website-url>
+docker run -it updo monitor [options] <website-url>
+# Or with the --url flag:
+docker run -it updo monitor --url <website-url> [options]
 ```
 
 ### Options
@@ -153,11 +155,14 @@ docker run -it updo [options] --url <website-url>
 ### Examples
 
 ```bash
-# Basic monitoring with defaults (using --url flag)
-./updo --url https://example.com
-
-# Or use the monitor subcommand (URL as argument)
+# Basic monitoring with defaults (URL as argument)
 ./updo monitor https://example.com
+
+# Alternative syntax using --url flag
+./updo monitor --url https://example.com
+
+# Root command with --url flag (implicit monitor command)
+./updo --url https://example.com
 
 # Set custom refresh and timeout
 ./updo monitor -r 10 -t 5 https://example.com
@@ -170,7 +175,6 @@ docker run -it updo [options] --url <website-url>
 
 # Assert text in the response
 ./updo monitor -a "Welcome" https://example.com
-
 ```
 
 ## Keyboard Shortcuts

@@ -28,11 +28,12 @@ var RootCmd = &cobra.Command{
 	Long: `Updo is a lightweight, easy-to-use website monitoring tool that checks
 website availability and response time. It provides both a terminal UI
 and a simple text-based output mode.`,
-	Example: `  updo --url https://example.com
-  updo --url https://example.com -r 10 -t 5
-  updo --url https://example.com --simple -c 10
-  updo --url https://example.com --simple --no-fancy
-  updo --url https://example.com -a "Welcome"`,
+	Example: `  updo monitor https://example.com
+  updo --url https://example.com
+  updo monitor -r 10 -t 5 https://example.com
+  updo monitor --simple -c 10 https://example.com
+  updo monitor --simple --no-fancy https://example.com
+  updo monitor -a "Welcome" https://example.com`,
 }
 
 func Execute() error {
