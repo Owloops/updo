@@ -3,43 +3,72 @@ package simple
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/Owloops/updo/config"
 	"github.com/Owloops/updo/net"
 	"github.com/Owloops/updo/stats"
+	"github.com/Owloops/updo/utils"
 )
 
 type OutputManager struct {
-	targets  []config.Target
-	isSingle bool
+	targets      []config.Target
+	isSingle     bool
+	sslExpiry    map[string]int
+	sslExpiryMu  sync.RWMutex
+	sslCollected map[string]bool
 }
 
 func NewOutputManager(targets []config.Target) *OutputManager {
 	return &OutputManager{
-		targets:  targets,
-		isSingle: len(targets) == 1,
+		targets:      targets,
+		isSingle:     len(targets) == 1,
+		sslExpiry:    make(map[string]int),
+		sslCollected: make(map[string]bool),
 	}
 }
 
 func (m *OutputManager) PrintHeader() {
 	if m.isSingle {
 		fmt.Printf("UPDO %s:\n", m.targets[0].URL)
-		m.printSSLInfo(m.targets[0].URL, "")
 	} else {
 		fmt.Println("UPDO monitoring:")
 		for _, target := range m.targets {
 			fmt.Printf("%s: %s\n", target.Name, target.URL)
-			m.printSSLInfo(target.URL, "  ")
 		}
 	}
+
+	m.startSSLCollection()
 }
 
-func (m *OutputManager) printSSLInfo(url, indent string) {
-	if strings.HasPrefix(url, "https://") {
-		sslDaysRemaining := net.GetSSLCertExpiry(url)
-		if sslDaysRemaining > 0 {
-			fmt.Printf("%sSSL certificate expires in %d days\n", indent, sslDaysRemaining)
-		}
+func (m *OutputManager) startSSLCollection() {
+	for _, target := range m.targets {
+		go func(url string) {
+			if strings.HasPrefix(url, "https://") {
+				sslDaysRemaining := net.GetSSLCertExpiry(url)
+				m.sslExpiryMu.Lock()
+				m.sslExpiry[url] = sslDaysRemaining
+				m.sslCollected[url] = true
+				m.sslExpiryMu.Unlock()
+
+				if sslDaysRemaining > 0 {
+					if m.isSingle {
+						fmt.Printf("  SSL certificate expires in %d days\n", sslDaysRemaining)
+					} else {
+						targetName := ""
+						for _, t := range m.targets {
+							if t.URL == url {
+								targetName = t.Name
+								break
+							}
+						}
+						if targetName != "" {
+							fmt.Printf("  SSL certificate for %s expires in %d days\n", targetName, sslDaysRemaining)
+						}
+					}
+				}
+			}
+		}(target.URL)
 	}
 }
 
@@ -73,6 +102,17 @@ func (m *OutputManager) PrintResult(result TargetResult) {
 			result.Result.ResponseTime.Milliseconds(),
 			statusInfo,
 			result.Stats.UptimePercent)
+	}
+}
+
+func (m *OutputManager) PrintFinalStatistics(monitors map[string]*stats.Monitor, targets []config.Target, logMode bool) {
+	if !logMode {
+		m.PrintStatistics(monitors)
+	} else {
+		for _, target := range targets {
+			stats := monitors[target.Name].GetStats()
+			utils.LogMetrics(&stats, target.URL)
+		}
 	}
 }
 

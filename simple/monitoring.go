@@ -83,14 +83,6 @@ func StartMultiTargetMonitoring(targets []config.Target, options MonitoringOptio
 		select {
 		case result, ok := <-resultsChan:
 			if !ok {
-				if !logMode {
-					outputManager.PrintStatistics(monitors)
-				} else {
-					for _, target := range targets {
-						stats := monitors[target.Name].GetStats()
-						utils.LogMetrics(&stats, target.URL)
-					}
-				}
 				return
 			}
 
@@ -111,11 +103,15 @@ func StartMultiTargetMonitoring(targets []config.Target, options MonitoringOptio
 			}
 
 			if options.Count > 0 && totalChecks >= options.Count*len(targets) {
+				outputManager.PrintFinalStatistics(monitors, targets, logMode)
 				cancel()
+				return
 			}
 
 		case <-sigChan:
+			outputManager.PrintFinalStatistics(monitors, targets, logMode)
 			cancel()
+			return
 		}
 	}
 }
