@@ -16,7 +16,6 @@ type Config struct {
 	AssertText      string
 	ReceiveAlert    bool
 	Simple          bool
-	NoFancy         bool
 	Count           int
 	Headers         []string
 	Method          string
@@ -36,7 +35,7 @@ and a simple text-based output mode.`,
   updo --url https://example.com
   updo monitor -r 10 -t 5 https://example.com
   updo monitor --simple -c 10 https://example.com
-  updo monitor --simple --no-fancy https://example.com
+  updo monitor --simple https://example.com
   updo monitor -a "Welcome" https://example.com
   updo --url https://example.com -H "Authorization: Bearer token123"
   updo monitor -X POST -H "Content-Type: application/json" https://api.example.com/endpoint
@@ -57,7 +56,6 @@ func init() {
 	RootCmd.PersistentFlags().StringVarP(&AppConfig.AssertText, "assert-text", "a", "", "Text to assert in the response body")
 	RootCmd.PersistentFlags().BoolVarP(&AppConfig.ReceiveAlert, "receive-alert", "n", true, "Enable alert notifications")
 	RootCmd.PersistentFlags().BoolVar(&AppConfig.Simple, "simple", false, "Use simple output instead of TUI")
-	RootCmd.PersistentFlags().BoolVar(&AppConfig.NoFancy, "no-fancy", false, "Disable fancy terminal formatting in simple mode")
 	RootCmd.PersistentFlags().IntVarP(&AppConfig.Count, "count", "c", 0, "Number of checks to perform (0 = infinite)")
 	RootCmd.PersistentFlags().StringArrayVarP(&AppConfig.Headers, "header", "H", nil, "HTTP header to send (can be used multiple times, format: 'Header-Name: value')")
 	RootCmd.PersistentFlags().StringVarP(&AppConfig.Method, "request", "X", "GET", "HTTP request method to use")

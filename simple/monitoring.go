@@ -11,7 +11,6 @@ import (
 	"github.com/Owloops/updo/net"
 	"github.com/Owloops/updo/stats"
 	"github.com/Owloops/updo/utils"
-	"golang.org/x/term"
 )
 
 type Config struct {
@@ -24,7 +23,6 @@ type Config struct {
 	AssertText      string
 	ReceiveAlert    bool
 	Count           int
-	NoFancy         bool
 	Headers         []string
 	Method          string
 	Body            string
@@ -33,13 +31,6 @@ type Config struct {
 
 func StartMonitoring(config Config) {
 	logMode := config.Log != ""
-
-	isTerminal := term.IsTerminal(int(os.Stdout.Fd()))
-
-	if isTerminal && !config.NoFancy {
-		StartBubbleTeaMonitoring(config)
-		return
-	}
 
 	outputManager := NewOutputManager(config.URL)
 
@@ -80,7 +71,8 @@ func StartMonitoring(config Config) {
 				monitor.AddResult(result)
 
 				if !logMode {
-					outputManager.PrintResult(result, monitor)
+					stats := monitor.GetStats()
+					outputManager.PrintResult(result, stats, monitor.ChecksCount-1)
 				} else {
 					utils.LogCheck(result, monitor.ChecksCount-1, config.Log)
 

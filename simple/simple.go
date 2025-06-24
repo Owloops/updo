@@ -29,8 +29,7 @@ func (o *OutputManager) PrintHeader() {
 	}
 }
 
-func (o *OutputManager) PrintResult(result net.WebsiteCheckResult, monitor *stats.Monitor) {
-	stats := monitor.GetStats()
+func (o *OutputManager) PrintResult(result net.WebsiteCheckResult, stats stats.Stats, sequence int) {
 
 	statusInfo := fmt.Sprintf("status=%d", result.StatusCode)
 	if !result.IsUp {
@@ -48,7 +47,7 @@ func (o *OutputManager) PrintResult(result net.WebsiteCheckResult, monitor *stat
 
 	fmt.Printf("Response%s: seq=%d time=%dms %s uptime=%.1f%%\n",
 		ipInfo,
-		monitor.ChecksCount-1,
+		sequence,
 		result.ResponseTime.Milliseconds(),
 		statusInfo,
 		stats.UptimePercent)

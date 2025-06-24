@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/Owloops/updo/net"
+	"github.com/Owloops/updo/stats"
 	"github.com/Owloops/updo/utils"
 	ui "github.com/gizak/termui/v3"
 )
@@ -30,19 +31,19 @@ func StartMonitoring(config Config) {
 	}
 	defer ui.Close()
 
-	manager, err := NewManager()
+	monitor, err := stats.NewMonitor()
 	if err != nil {
 		panic(err)
 	}
 
+	manager := NewManager()
 	manager.InitializeWidgets(config.URL, config.RefreshInterval)
 
 	width, height := ui.TerminalDimensions()
 	dataChannel := make(chan net.WebsiteCheckResult)
 
-	checksCount := 0
 	go func() {
-		for {
+		for monitor.ChecksCount < config.Count || config.Count == 0 {
 			netConfig := net.NetworkConfig{
 				Timeout:         config.Timeout,
 				ShouldFail:      config.ShouldFail,
@@ -54,16 +55,12 @@ func StartMonitoring(config Config) {
 				Body:            config.Body,
 			}
 			result := net.CheckWebsite(config.URL, netConfig)
+			monitor.AddResult(result)
 			dataChannel <- result
-			checksCount++
-
-			if config.Count > 0 && checksCount >= config.Count {
-				close(dataChannel)
-				return
-			}
 
 			time.Sleep(config.RefreshInterval)
 		}
+		close(dataChannel)
 	}()
 
 	uiRefreshTicker := time.NewTicker(1 * time.Second)
@@ -86,13 +83,15 @@ func StartMonitoring(config Config) {
 			if !ok {
 				return
 			}
-			manager.UpdateWidgets(data, width, height)
+			stats := monitor.GetStats()
+			manager.UpdateWidgets(data, stats, width, height)
 			if config.ReceiveAlert {
 				utils.HandleAlerts(data.IsUp, &alertSent)
 			}
 
 		case <-uiRefreshTicker.C:
-			manager.UpdateDurationWidgets(width, height)
+			stats := monitor.GetStats()
+			manager.UpdateDurationWidgets(stats, width, height)
 		}
 	}
 }

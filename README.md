@@ -22,7 +22,7 @@ Updo is a command-line tool for monitoring website uptime and performance. It pr
 - Supports HTTP and HTTPS, with options to skip SSL verification
 - Assertion on response body content
 - Command-line interface with simple usage
-- Simple mode with fancy or plain text output
+- Simple mode with text output
 - Automatic terminal capability detection
 
 ## Demo
@@ -148,7 +148,6 @@ docker run -it updo monitor --url <website-url> [options]
 - `-a, --assert-text`: Text to assert in the response body
 - `-n, --receive-alert`: Enable alert notifications (default: true)
 - `--simple`: Use simple output instead of TUI
-- `--no-fancy`: Disable fancy terminal formatting in simple mode
 - `-H, --header`: HTTP header to send (can be used multiple times, format: 'Header-Name: value')
 - `-X, --request`: HTTP request method to use (default: GET)
 - `-d, --data`: HTTP request body data
@@ -174,8 +173,8 @@ docker run -it updo monitor --url <website-url> [options]
 # Use simple mode with a set number of checks
 ./updo monitor --simple -c 10 https://example.com
 
-# Simple mode with plain text output
-./updo monitor --simple --no-fancy https://example.com
+# Simple mode 
+./updo monitor --simple https://example.com
 
 # Assert text in the response
 ./updo monitor -a "Welcome" https://example.com

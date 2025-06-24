@@ -21,7 +21,7 @@ with a visual interface or in simple mode with text output.`,
 	Example: `  updo monitor https://example.com
   updo monitor -r 10 -t 5 https://example.com
   updo monitor --simple -c 10 https://example.com
-  updo monitor --simple --no-fancy https://example.com
+  updo monitor --simple https://example.com
   updo monitor -a "Welcome" https://example.com
   updo monitor -H "Authorization: Bearer token123" https://example.com
   updo monitor -X POST -H "Content-Type: application/json" https://api.example.com/endpoint
@@ -56,7 +56,6 @@ with a visual interface or in simple mode with text output.`,
 				AssertText:      config.AssertText,
 				ReceiveAlert:    config.ReceiveAlert,
 				Count:           config.Count,
-				NoFancy:         config.NoFancy,
 				Headers:         config.Headers,
 				Method:          config.Method,
 				Body:            config.Body,

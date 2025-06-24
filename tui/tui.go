@@ -16,8 +16,6 @@ import (
 const notAvailable = "N/A"
 
 type Manager struct {
-	Monitor *stats.Monitor
-
 	QuitWidget            *widgets.Paragraph
 	UptimeWidget          *widgets.Paragraph
 	UpForWidget           *widgets.Paragraph
@@ -35,14 +33,8 @@ type Manager struct {
 	Grid                  *ui.Grid
 }
 
-func NewManager() (*Manager, error) {
-	monitor, err := stats.NewMonitor()
-	if err != nil {
-		return nil, err
-	}
-	return &Manager{
-		Monitor: monitor,
-	}, nil
+func NewManager() *Manager {
+	return &Manager{}
 }
 
 func (m *Manager) InitializeWidgets(url string, refreshInterval time.Duration) {
@@ -157,9 +149,7 @@ func (m *Manager) InitializeWidgets(url string, refreshInterval time.Duration) {
 	)
 }
 
-func (m *Manager) UpdateWidgets(result net.WebsiteCheckResult, width int, height int) {
-	m.Monitor.AddResult(result)
-	stats := m.Monitor.GetStats()
+func (m *Manager) UpdateWidgets(result net.WebsiteCheckResult, stats stats.Stats, width int, height int) {
 
 	m.UptimeWidget.Text = fmt.Sprintf("%.2f%%", stats.UptimePercent)
 	m.UpForWidget.Text = utils.FormatDurationMinute(stats.TotalDuration)
@@ -214,14 +204,9 @@ func (m *Manager) updatePlotsData(result net.WebsiteCheckResult, width int) {
 	}
 }
 
-func (m *Manager) UpdateDurationWidgets(width int, height int) {
-	stats := m.Monitor.GetStats()
+func (m *Manager) UpdateDurationWidgets(stats stats.Stats, width int, height int) {
 	m.UpForWidget.Text = utils.FormatDurationMinute(stats.TotalDuration)
 
 	m.Grid.SetRect(0, 0, width, height)
 	ui.Render(m.Grid)
-}
-
-func (m *Manager) ChecksCount() int {
-	return m.Monitor.ChecksCount
 }
