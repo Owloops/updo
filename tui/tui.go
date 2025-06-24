@@ -387,11 +387,11 @@ func (m *Manager) SetActiveTarget(index int) {
 		m.updateTargetList()
 
 		width, height := ui.TerminalDimensions()
-		
+
 		if data, exists := m.targetData[target.Name]; exists {
 			m.updateCurrentTargetWidgets(data.Result, data.Stats)
 		}
-		
+
 		m.setupGrid(width, height)
 	}
 }
