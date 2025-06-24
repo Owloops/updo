@@ -94,12 +94,12 @@ func StartMonitoring(targets []config.Target, options Options) {
 			case "<Down>", "j":
 				if len(targets) > 1 {
 					currentTargetIndex = (currentTargetIndex + 1) % len(targets)
-					manager.SetActiveTarget(currentTargetIndex)
+					manager.SetActiveTarget(currentTargetIndex, monitors)
 				}
 			case "<Up>", "k":
 				if len(targets) > 1 {
 					currentTargetIndex = (currentTargetIndex - 1 + len(targets)) % len(targets)
-					manager.SetActiveTarget(currentTargetIndex)
+					manager.SetActiveTarget(currentTargetIndex, monitors)
 				}
 			}
 
@@ -110,7 +110,7 @@ func StartMonitoring(targets []config.Target, options Options) {
 			manager.UpdateTarget(data)
 
 		case <-uiRefreshTicker.C:
-			manager.RefreshDuration(monitors)
+			manager.RefreshStats(monitors)
 		}
 	}
 }

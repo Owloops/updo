@@ -19,6 +19,9 @@ import (
 const (
 	notAvailable = "N/A"
 	statusIcon   = "●"
+	checking     = "Checking..."
+	passing      = "Passing"
+	failing      = "Failing"
 )
 
 type DetailsManager struct {
@@ -171,16 +174,16 @@ func (m *DetailsManager) UpdateWidgets(result net.WebsiteCheckResult, stats stat
 	if sslExpiry > 0 {
 		m.SSLOkWidget.Text = fmt.Sprintf("%d days remaining", sslExpiry)
 	} else {
-		m.SSLOkWidget.Text = "Checking..."
+		m.SSLOkWidget.Text = checking
 	}
 
 	switch {
 	case result.AssertText == "":
 		m.AssertionWidget.Text = notAvailable
 	case result.AssertionPassed:
-		m.AssertionWidget.Text = "Passing"
+		m.AssertionWidget.Text = passing
 	default:
-		m.AssertionWidget.Text = "Failing"
+		m.AssertionWidget.Text = failing
 	}
 
 	if result.TraceInfo != nil {
@@ -373,7 +376,7 @@ func (m *Manager) setupGrid(width, height int) {
 	ui.Render(m.grid)
 }
 
-func (m *Manager) SetActiveTarget(index int) {
+func (m *Manager) SetActiveTarget(index int, monitors map[string]*stats.Monitor) {
 	if index >= 0 && index < len(m.targets) {
 		m.currentTarget = index
 		target := m.targets[index]
@@ -388,8 +391,47 @@ func (m *Manager) SetActiveTarget(index int) {
 
 		width, height := ui.TerminalDimensions()
 
+		if monitor, exists := monitors[target.Name]; exists {
+			freshStats := monitor.GetStats()
+			m.detailsManager.UptimeWidget.Text = fmt.Sprintf("%.2f%%", freshStats.UptimePercent)
+			m.detailsManager.UpForWidget.Text = utils.FormatDurationMinute(freshStats.TotalDuration)
+			m.detailsManager.AvgResponseTimeWidget.Text = utils.FormatDurationMillisecond(freshStats.AvgResponseTime)
+			m.detailsManager.MinResponseTimeWidget.Text = utils.FormatDurationMillisecond(freshStats.MinResponseTime)
+			m.detailsManager.MaxResponseTimeWidget.Text = utils.FormatDurationMillisecond(freshStats.MaxResponseTime)
+
+			if freshStats.ChecksCount >= 2 {
+				m.detailsManager.P95ResponseTimeWidget.Text = fmt.Sprintf("%d ms", freshStats.P95.Milliseconds())
+			} else {
+				m.detailsManager.P95ResponseTimeWidget.Text = notAvailable
+			}
+		}
+
 		if data, exists := m.targetData[target.Name]; exists {
-			m.updateCurrentTargetWidgets(data.Result, data.Stats)
+			sslExpiry := m.getSSLExpiry(data.Result.URL)
+			if sslExpiry > 0 {
+				m.detailsManager.SSLOkWidget.Text = fmt.Sprintf("%d days remaining", sslExpiry)
+			} else {
+				m.detailsManager.SSLOkWidget.Text = checking
+			}
+
+			switch {
+			case data.Result.AssertText == "":
+				m.detailsManager.AssertionWidget.Text = notAvailable
+			case data.Result.AssertionPassed:
+				m.detailsManager.AssertionWidget.Text = passing
+			default:
+				m.detailsManager.AssertionWidget.Text = failing
+			}
+
+			if data.Result.TraceInfo != nil {
+				m.detailsManager.TimingBreakdownWidget.SetTimings(map[string]time.Duration{
+					"Wait":     data.Result.TraceInfo.Wait,
+					"DNS":      data.Result.TraceInfo.DNSLookup,
+					"TCP":      data.Result.TraceInfo.TCPConnection,
+					"TTFB":     data.Result.TraceInfo.TimeToFirstByte,
+					"Download": data.Result.TraceInfo.DownloadDuration,
+				})
+			}
 		}
 
 		m.setupGrid(width, height)
@@ -415,11 +457,23 @@ func (m *Manager) UpdateTarget(data TargetData) {
 	}
 }
 
-func (m *Manager) RefreshDuration(monitors map[string]*stats.Monitor) {
+func (m *Manager) RefreshStats(monitors map[string]*stats.Monitor) {
 	currentTargetName := m.targets[m.currentTarget].Name
 	if monitor, exists := monitors[currentTargetName]; exists {
 		freshStats := monitor.GetStats()
+
+		m.detailsManager.UptimeWidget.Text = fmt.Sprintf("%.2f%%", freshStats.UptimePercent)
 		m.detailsManager.UpForWidget.Text = utils.FormatDurationMinute(freshStats.TotalDuration)
+		m.detailsManager.AvgResponseTimeWidget.Text = utils.FormatDurationMillisecond(freshStats.AvgResponseTime)
+		m.detailsManager.MinResponseTimeWidget.Text = utils.FormatDurationMillisecond(freshStats.MinResponseTime)
+		m.detailsManager.MaxResponseTimeWidget.Text = utils.FormatDurationMillisecond(freshStats.MaxResponseTime)
+
+		if freshStats.ChecksCount >= 2 {
+			m.detailsManager.P95ResponseTimeWidget.Text = fmt.Sprintf("%d ms", freshStats.P95.Milliseconds())
+		} else {
+			m.detailsManager.P95ResponseTimeWidget.Text = notAvailable
+		}
+
 		if !m.isSingle {
 			m.updateTargetList()
 		}
@@ -436,22 +490,24 @@ func (m *Manager) updateCurrentTargetWidgets(result net.WebsiteCheckResult, stat
 
 	if stats.ChecksCount >= 2 {
 		m.detailsManager.P95ResponseTimeWidget.Text = fmt.Sprintf("%d ms", stats.P95.Milliseconds())
+	} else {
+		m.detailsManager.P95ResponseTimeWidget.Text = notAvailable
 	}
 
 	sslExpiry := m.getSSLExpiry(result.URL)
 	if sslExpiry > 0 {
 		m.detailsManager.SSLOkWidget.Text = fmt.Sprintf("%d days remaining", sslExpiry)
 	} else {
-		m.detailsManager.SSLOkWidget.Text = "Checking..."
+		m.detailsManager.SSLOkWidget.Text = checking
 	}
 
 	switch {
 	case result.AssertText == "":
-		m.detailsManager.AssertionWidget.Text = "N/A"
+		m.detailsManager.AssertionWidget.Text = notAvailable
 	case result.AssertionPassed:
-		m.detailsManager.AssertionWidget.Text = "Passing"
+		m.detailsManager.AssertionWidget.Text = passing
 	default:
-		m.detailsManager.AssertionWidget.Text = "Failing"
+		m.detailsManager.AssertionWidget.Text = failing
 	}
 
 	if result.TraceInfo != nil {
