@@ -50,26 +50,18 @@ func (m *OutputManager) startSSLCollection() {
 				m.sslExpiry[url] = sslDaysRemaining
 				m.sslCollected[url] = true
 				m.sslExpiryMu.Unlock()
-
-				if sslDaysRemaining > 0 {
-					if m.isSingle {
-						fmt.Printf("  SSL certificate expires in %d days\n", sslDaysRemaining)
-					} else {
-						targetName := ""
-						for _, t := range m.targets {
-							if t.URL == url {
-								targetName = t.Name
-								break
-							}
-						}
-						if targetName != "" {
-							fmt.Printf("  SSL certificate for %s expires in %d days\n", targetName, sslDaysRemaining)
-						}
-					}
-				}
 			}
 		}(target.URL)
 	}
+}
+
+func (m *OutputManager) getSSLExpiry(url string) int {
+	m.sslExpiryMu.RLock()
+	defer m.sslExpiryMu.RUnlock()
+	if days, exists := m.sslExpiry[url]; exists {
+		return days
+	}
+	return 0
 }
 
 func (m *OutputManager) PrintResult(result TargetResult) {
@@ -149,6 +141,10 @@ func (m *OutputManager) PrintStatistics(monitors map[string]*stats.Monitor) {
 
 			fmt.Println(responseTimeStr)
 		}
+
+		if sslDays := m.getSSLExpiry(target.URL); sslDays > 0 {
+			fmt.Printf("SSL certificate expires in %d days\n", sslDays)
+		}
 	} else {
 		fmt.Println("\n--- statistics ---")
 		for _, target := range m.targets {
@@ -175,6 +171,10 @@ func (m *OutputManager) PrintStatistics(monitors map[string]*stats.Monitor) {
 					fmt.Printf(", 95p: %d ms", stats.P95.Milliseconds())
 				}
 				fmt.Println()
+			}
+
+			if sslDays := m.getSSLExpiry(target.URL); sslDays > 0 {
+				fmt.Printf("  SSL certificate expires in %d days\n", sslDays)
 			}
 		}
 	}

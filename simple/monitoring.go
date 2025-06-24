@@ -120,37 +120,47 @@ func monitorTarget(ctx context.Context, target config.Target, monitor *stats.Mon
 	ticker := time.NewTicker(target.GetRefreshInterval())
 	defer ticker.Stop()
 
+	makeRequest := func() {
+		netConfig := net.NetworkConfig{
+			Timeout:         target.GetTimeout(),
+			ShouldFail:      target.ShouldFail,
+			FollowRedirects: target.FollowRedirects,
+			SkipSSL:         target.SkipSSL,
+			AssertText:      target.AssertText,
+			Headers:         target.Headers,
+			Method:          target.Method,
+			Body:            target.Body,
+		}
+
+		result := net.CheckWebsite(target.URL, netConfig)
+		monitor.AddResult(result)
+		*sequence++
+
+		if target.ReceiveAlert {
+			utils.HandleAlerts(result.IsUp, alertSent)
+		}
+
+		stats := monitor.GetStats()
+		resultsChan <- TargetResult{
+			Target:   target,
+			Result:   result,
+			Stats:    stats,
+			Sequence: *sequence - 1,
+		}
+	}
+
+	makeRequest()
+
+	if options.Count > 0 && monitor.ChecksCount >= options.Count {
+		return
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			netConfig := net.NetworkConfig{
-				Timeout:         target.GetTimeout(),
-				ShouldFail:      target.ShouldFail,
-				FollowRedirects: target.FollowRedirects,
-				SkipSSL:         target.SkipSSL,
-				AssertText:      target.AssertText,
-				Headers:         target.Headers,
-				Method:          target.Method,
-				Body:            target.Body,
-			}
-
-			result := net.CheckWebsite(target.URL, netConfig)
-			monitor.AddResult(result)
-			*sequence++
-
-			if target.ReceiveAlert {
-				utils.HandleAlerts(result.IsUp, alertSent)
-			}
-
-			stats := monitor.GetStats()
-			resultsChan <- TargetResult{
-				Target:   target,
-				Result:   result,
-				Stats:    stats,
-				Sequence: *sequence - 1,
-			}
+			makeRequest()
 
 			if options.Count > 0 && monitor.ChecksCount >= options.Count {
 				return
