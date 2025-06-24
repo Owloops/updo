@@ -1,97 +1,166 @@
 package tui
 
 import (
+	"context"
+	"fmt"
+	"sync"
 	"time"
 
+	"github.com/Owloops/updo/config"
 	"github.com/Owloops/updo/net"
 	"github.com/Owloops/updo/stats"
 	"github.com/Owloops/updo/utils"
 	ui "github.com/gizak/termui/v3"
 )
 
-type Config struct {
-	URL             string
-	RefreshInterval time.Duration
-	Timeout         time.Duration
-	ShouldFail      bool
-	FollowRedirects bool
-	SkipSSL         bool
-	AssertText      string
-	ReceiveAlert    bool
-	Count           int
-	Headers         []string
-	Method          string
-	Body            string
-	Log             string
+type TargetData struct {
+	Target config.Target
+	Result net.WebsiteCheckResult
+	Stats  stats.Stats
 }
 
-func StartMonitoring(config Config) {
+type Options struct {
+	Count int
+	Log   string
+}
+
+func StartMonitoring(targets []config.Target, options Options) {
+	if len(targets) == 0 {
+		panic("No targets provided")
+	}
+
 	if err := ui.Init(); err != nil {
 		panic(err)
 	}
 	defer ui.Close()
 
-	monitor, err := stats.NewMonitor()
-	if err != nil {
-		panic(err)
+	monitors := make(map[string]*stats.Monitor)
+	sequences := make(map[string]*int)
+	alertStates := make(map[string]*bool)
+
+	for _, target := range targets {
+		monitor, err := stats.NewMonitor()
+		if err != nil {
+			panic(fmt.Sprintf("Failed to initialize stats monitor for %s: %v", target.Name, err))
+		}
+		monitors[target.Name] = monitor
+		seq := 0
+		alert := false
+		sequences[target.Name] = &seq
+		alertStates[target.Name] = &alert
 	}
 
-	manager := NewManager()
-	manager.InitializeWidgets(config.URL, config.RefreshInterval)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	width, height := ui.TerminalDimensions()
-	dataChannel := make(chan net.WebsiteCheckResult)
+	dataChannel := make(chan TargetData, len(targets)*2)
+	var wg sync.WaitGroup
+
+	for _, target := range targets {
+		wg.Add(1)
+		go func(t config.Target) {
+			defer wg.Done()
+			monitorTargetTUI(ctx, t, monitors[t.Name], sequences[t.Name], alertStates[t.Name], dataChannel, options)
+		}(target)
+	}
 
 	go func() {
-		for monitor.ChecksCount < config.Count || config.Count == 0 {
-			netConfig := net.NetworkConfig{
-				Timeout:         config.Timeout,
-				ShouldFail:      config.ShouldFail,
-				FollowRedirects: config.FollowRedirects,
-				SkipSSL:         config.SkipSSL,
-				AssertText:      config.AssertText,
-				Headers:         config.Headers,
-				Method:          config.Method,
-				Body:            config.Body,
-			}
-			result := net.CheckWebsite(config.URL, netConfig)
-			monitor.AddResult(result)
-			dataChannel <- result
-
-			time.Sleep(config.RefreshInterval)
-		}
+		wg.Wait()
 		close(dataChannel)
 	}()
+
+	manager := NewManager(targets)
+	width, height := ui.TerminalDimensions()
+	manager.InitializeLayout(width, height)
 
 	uiRefreshTicker := time.NewTicker(1 * time.Second)
 	defer uiRefreshTicker.Stop()
 
 	uiEvents := ui.PollEvents()
-	alertSent := false
+	currentTargetIndex := 0
 
 	for {
 		select {
 		case e := <-uiEvents:
 			switch e.ID {
 			case "q", "<C-c>":
+				cancel()
 				return
 			case "<Resize>":
-				width, height = e.Payload.(ui.Resize).Width, e.Payload.(ui.Resize).Height
+				if payload, ok := e.Payload.(ui.Resize); ok {
+					width, height = payload.Width, payload.Height
+					manager.Resize(width, height)
+				}
+			case "<Down>", "j":
+				if len(targets) > 1 {
+					currentTargetIndex = (currentTargetIndex + 1) % len(targets)
+					manager.SetActiveTarget(currentTargetIndex)
+				}
+			case "<Up>", "k":
+				if len(targets) > 1 {
+					currentTargetIndex = (currentTargetIndex - 1 + len(targets)) % len(targets)
+					manager.SetActiveTarget(currentTargetIndex)
+				}
 			}
 
 		case data, ok := <-dataChannel:
 			if !ok {
 				return
 			}
-			stats := monitor.GetStats()
-			manager.UpdateWidgets(data, stats, width, height)
-			if config.ReceiveAlert {
-				utils.HandleAlerts(data.IsUp, &alertSent)
-			}
+			manager.UpdateTarget(data)
 
 		case <-uiRefreshTicker.C:
-			stats := monitor.GetStats()
-			manager.UpdateDurationWidgets(stats, width, height)
+			manager.RefreshDuration(monitors)
+		}
+	}
+}
+
+func monitorTargetTUI(ctx context.Context, target config.Target, monitor *stats.Monitor, sequence *int, alertSent *bool, dataChannel chan<- TargetData, options Options) {
+	ticker := time.NewTicker(target.GetRefreshInterval())
+	defer ticker.Stop()
+
+	makeRequest := func() {
+		netConfig := net.NetworkConfig{
+			Timeout:         target.GetTimeout(),
+			ShouldFail:      target.ShouldFail,
+			FollowRedirects: target.FollowRedirects,
+			SkipSSL:         target.SkipSSL,
+			AssertText:      target.AssertText,
+			Headers:         target.Headers,
+			Method:          target.Method,
+			Body:            target.Body,
+		}
+
+		result := net.CheckWebsite(target.URL, netConfig)
+		monitor.AddResult(result)
+		*sequence++
+
+		if target.ReceiveAlert {
+			utils.HandleAlerts(result.IsUp, alertSent)
+		}
+
+		stats := monitor.GetStats()
+		dataChannel <- TargetData{
+			Target: target,
+			Result: result,
+			Stats:  stats,
+		}
+	}
+
+	makeRequest()
+	if options.Count > 0 && monitor.ChecksCount >= options.Count {
+		return
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			makeRequest()
+			if options.Count > 0 && monitor.ChecksCount >= options.Count {
+				return
+			}
 		}
 	}
 }

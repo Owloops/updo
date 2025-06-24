@@ -2,8 +2,10 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/Owloops/updo/config"
 	"github.com/Owloops/updo/net"
 	"github.com/Owloops/updo/stats"
 	"github.com/Owloops/updo/utils"
@@ -13,9 +15,12 @@ import (
 	"github.com/gizak/termui/v3/widgets"
 )
 
-const notAvailable = "N/A"
+const (
+	notAvailable = "N/A"
+	statusIcon   = "●"
+)
 
-type Manager struct {
+type DetailsManager struct {
 	QuitWidget            *widgets.Paragraph
 	UptimeWidget          *widgets.Paragraph
 	UpForWidget           *widgets.Paragraph
@@ -33,11 +38,11 @@ type Manager struct {
 	Grid                  *ui.Grid
 }
 
-func NewManager() *Manager {
-	return &Manager{}
+func NewDetailsManager() *DetailsManager {
+	return &DetailsManager{}
 }
 
-func (m *Manager) InitializeWidgets(url string, refreshInterval time.Duration) {
+func (m *DetailsManager) InitializeWidgets(url string, refreshInterval time.Duration) {
 	m.QuitWidget = widgets.NewParagraph()
 	m.QuitWidget.Title = "Information"
 	m.QuitWidget.Text = "Press q or <C-c> to quit"
@@ -149,7 +154,7 @@ func (m *Manager) InitializeWidgets(url string, refreshInterval time.Duration) {
 	)
 }
 
-func (m *Manager) UpdateWidgets(result net.WebsiteCheckResult, stats stats.Stats, width int, height int) {
+func (m *DetailsManager) UpdateWidgets(result net.WebsiteCheckResult, stats stats.Stats, width int, height int) {
 
 	m.UptimeWidget.Text = fmt.Sprintf("%.2f%%", stats.UptimePercent)
 	m.UpForWidget.Text = utils.FormatDurationMinute(stats.TotalDuration)
@@ -189,7 +194,7 @@ func (m *Manager) UpdateWidgets(result net.WebsiteCheckResult, stats stats.Stats
 	ui.Render(m.Grid)
 }
 
-func (m *Manager) updatePlotsData(result net.WebsiteCheckResult, width int) {
+func (m *DetailsManager) updatePlotsData(result net.WebsiteCheckResult, width int) {
 	m.UptimePlot.Data[0] = append(m.UptimePlot.Data[0], utils.BoolToFloat64(result.IsUp))
 	m.ResponseTimePlot.Data[0] = append(m.ResponseTimePlot.Data[0], result.ResponseTime.Seconds())
 
@@ -204,9 +209,264 @@ func (m *Manager) updatePlotsData(result net.WebsiteCheckResult, width int) {
 	}
 }
 
-func (m *Manager) UpdateDurationWidgets(stats stats.Stats, width int, height int) {
+func (m *DetailsManager) UpdateDurationWidgets(stats stats.Stats, width int, height int) {
 	m.UpForWidget.Text = utils.FormatDurationMinute(stats.TotalDuration)
 
 	m.Grid.SetRect(0, 0, width, height)
 	ui.Render(m.Grid)
+}
+
+type Manager struct {
+	targets        []config.Target
+	targetData     map[string]TargetData
+	plotData       map[string]PlotHistory
+	currentTarget  int
+	isSingle       bool
+	listWidget     *widgets.List
+	detailsManager *DetailsManager
+	grid           *ui.Grid
+}
+
+type PlotHistory struct {
+	UptimeData       []float64
+	ResponseTimeData []float64
+}
+
+func NewManager(targets []config.Target) *Manager {
+	return &Manager{
+		targets:        targets,
+		targetData:     make(map[string]TargetData),
+		plotData:       make(map[string]PlotHistory),
+		currentTarget:  0,
+		isSingle:       len(targets) == 1,
+		detailsManager: NewDetailsManager(),
+	}
+}
+
+func (m *Manager) InitializeLayout(width, height int) {
+	if len(m.targets) > 0 {
+		m.detailsManager.InitializeWidgets(m.targets[0].URL, m.targets[0].GetRefreshInterval())
+	}
+
+	if !m.isSingle {
+		m.listWidget = widgets.NewList()
+		if len(m.targets) > 0 {
+			m.listWidget.Title = fmt.Sprintf("Targets (↑↓) → %s", m.targets[0].Name)
+		} else {
+			m.listWidget.Title = "Targets"
+		}
+		m.listWidget.BorderStyle.Fg = ui.ColorCyan
+		m.listWidget.TitleStyle.Fg = ui.ColorWhite
+		m.listWidget.TitleStyle.Modifier = ui.ModifierBold
+
+		m.updateTargetList()
+	}
+
+	m.setupGrid(width, height)
+}
+
+func (m *Manager) updateTargetList() {
+	items := make([]string, len(m.targets))
+
+	for i, target := range m.targets {
+		icon := statusIcon
+		statusColor := ""
+
+		if data, exists := m.targetData[target.Name]; exists {
+			if data.Result.IsUp {
+				statusColor = " UP  "
+			} else {
+				statusColor = "DOWN "
+			}
+		} else {
+			statusColor = "WAIT "
+		}
+
+		displayName := target.Name
+		if displayName == "" || displayName == fmt.Sprintf("Target-%d", i+1) {
+			displayName = target.URL
+			if strings.HasPrefix(displayName, "https://") {
+				displayName = displayName[8:]
+			} else if strings.HasPrefix(displayName, "http://") {
+				displayName = displayName[7:]
+			}
+		}
+
+		if len(displayName) > 16 {
+			displayName = displayName[:13] + "..."
+		}
+
+		if i == m.currentTarget {
+			items[i] = fmt.Sprintf("▶ %s %s %s", icon, statusColor, displayName)
+		} else {
+			items[i] = fmt.Sprintf("  %s %s %s", icon, statusColor, displayName)
+		}
+	}
+
+	m.listWidget.Rows = items
+	m.listWidget.SelectedRow = m.currentTarget
+
+	if m.currentTarget < len(m.targets) {
+		if data, exists := m.targetData[m.targets[m.currentTarget].Name]; exists {
+			if data.Result.IsUp {
+				m.listWidget.SelectedRowStyle.Fg = ui.ColorGreen
+			} else {
+				m.listWidget.SelectedRowStyle.Fg = ui.ColorRed
+			}
+		} else {
+			m.listWidget.SelectedRowStyle.Fg = ui.ColorYellow
+		}
+		m.listWidget.SelectedRowStyle.Modifier = ui.ModifierBold
+	}
+}
+
+func (m *Manager) setupGrid(width, height int) {
+	m.grid = ui.NewGrid()
+	m.grid.SetRect(0, 0, width, height)
+
+	if m.isSingle {
+		m.grid.Set(
+			ui.NewRow(1.0, m.detailsManager.Grid),
+		)
+	} else {
+		m.grid.Set(
+			ui.NewRow(1.0,
+				ui.NewCol(0.22, m.listWidget),
+				ui.NewCol(0.78, m.detailsManager.Grid),
+			),
+		)
+	}
+
+	ui.Render(m.grid)
+}
+
+func (m *Manager) SetActiveTarget(index int) {
+	if index >= 0 && index < len(m.targets) {
+		m.currentTarget = index
+		target := m.targets[index]
+
+		m.listWidget.Title = fmt.Sprintf("Targets (↑↓) → %s", target.Name)
+
+		m.detailsManager.URLWidget.Text = target.URL
+		m.detailsManager.RefreshWidget.Text = fmt.Sprintf("%v seconds", target.GetRefreshInterval().Seconds())
+
+		m.restorePlotData(target.Name)
+
+		if data, exists := m.targetData[target.Name]; exists {
+			width, height := ui.TerminalDimensions()
+			m.detailsManager.UpdateWidgets(data.Result, data.Stats, width, height)
+		}
+
+		m.updateTargetList()
+		width, height := ui.TerminalDimensions()
+		m.setupGrid(width, height)
+	}
+}
+
+func (m *Manager) UpdateTarget(data TargetData) {
+	m.targetData[data.Target.Name] = data
+
+	m.updatePlotDataForTarget(data.Target.Name, data.Result)
+
+	if m.targets[m.currentTarget].Name == data.Target.Name {
+		m.restorePlotData(data.Target.Name)
+
+		m.updateCurrentTargetWidgets(data.Result, data.Stats)
+
+		if !m.isSingle {
+			m.updateTargetList()
+		}
+		ui.Render(m.grid)
+	} else if !m.isSingle {
+		m.updateTargetList()
+	}
+}
+
+func (m *Manager) RefreshDuration(monitors map[string]*stats.Monitor) {
+	currentTargetName := m.targets[m.currentTarget].Name
+	if monitor, exists := monitors[currentTargetName]; exists {
+		freshStats := monitor.GetStats()
+		m.detailsManager.UpForWidget.Text = utils.FormatDurationMinute(freshStats.TotalDuration)
+		if !m.isSingle {
+			m.updateTargetList()
+		}
+		ui.Render(m.grid)
+	}
+}
+
+func (m *Manager) updateCurrentTargetWidgets(result net.WebsiteCheckResult, stats stats.Stats) {
+	m.detailsManager.UptimeWidget.Text = fmt.Sprintf("%.2f%%", stats.UptimePercent)
+	m.detailsManager.UpForWidget.Text = utils.FormatDurationMinute(stats.TotalDuration)
+	m.detailsManager.AvgResponseTimeWidget.Text = utils.FormatDurationMillisecond(stats.AvgResponseTime)
+	m.detailsManager.MinResponseTimeWidget.Text = utils.FormatDurationMillisecond(stats.MinResponseTime)
+	m.detailsManager.MaxResponseTimeWidget.Text = utils.FormatDurationMillisecond(stats.MaxResponseTime)
+
+	if stats.ChecksCount >= 2 {
+		m.detailsManager.P95ResponseTimeWidget.Text = fmt.Sprintf("%d ms", stats.P95.Milliseconds())
+	}
+
+	sslExpiry := net.GetSSLCertExpiry(result.URL)
+	m.detailsManager.SSLOkWidget.Text = fmt.Sprintf("%d days remaining", sslExpiry)
+
+	switch {
+	case result.AssertText == "":
+		m.detailsManager.AssertionWidget.Text = "N/A"
+	case result.AssertionPassed:
+		m.detailsManager.AssertionWidget.Text = "Passing"
+	default:
+		m.detailsManager.AssertionWidget.Text = "Failing"
+	}
+
+	if result.TraceInfo != nil {
+		m.detailsManager.TimingBreakdownWidget.SetTimings(map[string]time.Duration{
+			"Wait":     result.TraceInfo.Wait,
+			"DNS":      result.TraceInfo.DNSLookup,
+			"TCP":      result.TraceInfo.TCPConnection,
+			"TTFB":     result.TraceInfo.TimeToFirstByte,
+			"Download": result.TraceInfo.DownloadDuration,
+		})
+	}
+
+	width, _ := ui.TerminalDimensions()
+	m.detailsManager.updatePlotsData(result, width)
+}
+
+func (m *Manager) Resize(width, height int) {
+	m.setupGrid(width, height)
+}
+
+func (m *Manager) restorePlotData(targetName string) {
+	if history, exists := m.plotData[targetName]; exists {
+		m.detailsManager.UptimePlot.Data[0] = append([]float64{}, history.UptimeData...)
+		m.detailsManager.ResponseTimePlot.Data[0] = append([]float64{}, history.ResponseTimeData...)
+	} else {
+		m.detailsManager.UptimePlot.Data[0] = make([]float64, 0)
+		m.detailsManager.ResponseTimePlot.Data[0] = []float64{0.0, 0.0}
+	}
+}
+
+func (m *Manager) updatePlotDataForTarget(targetName string, result net.WebsiteCheckResult) {
+	history, exists := m.plotData[targetName]
+	if !exists {
+		history = PlotHistory{
+			UptimeData:       make([]float64, 0),
+			ResponseTimeData: []float64{0.0, 0.0},
+		}
+	}
+
+	history.UptimeData = append(history.UptimeData, utils.BoolToFloat64(result.IsUp))
+	history.ResponseTimeData = append(history.ResponseTimeData, result.ResponseTime.Seconds())
+
+	width, _ := ui.TerminalDimensions()
+	maxLength := width / 2
+
+	if len(history.UptimeData) > maxLength {
+		history.UptimeData = history.UptimeData[len(history.UptimeData)-maxLength:]
+	}
+
+	if len(history.ResponseTimeData) > maxLength {
+		history.ResponseTimeData = history.ResponseTimeData[len(history.ResponseTimeData)-maxLength:]
+	}
+
+	m.plotData[targetName] = history
 }

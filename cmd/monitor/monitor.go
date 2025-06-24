@@ -94,32 +94,12 @@ You can monitor multiple targets by:
 			}
 			simple.StartMultiTargetMonitoring(targets, options)
 		} else {
-			if len(targets) > 1 {
-				fmt.Println("TUI mode with multiple targets not yet implemented. Using simple mode.")
-				options := simple.MonitoringOptions{
-					Count: appConfig.Count,
-					Log:   appConfig.Log,
-				}
-				simple.StartMultiTargetMonitoring(targets, options)
-			} else {
-				target := targets[0]
-				tuiConfig := tui.Config{
-					URL:             target.URL,
-					RefreshInterval: target.GetRefreshInterval(),
-					Timeout:         target.GetTimeout(),
-					ShouldFail:      target.ShouldFail,
-					FollowRedirects: target.FollowRedirects,
-					SkipSSL:         target.SkipSSL,
-					AssertText:      target.AssertText,
-					ReceiveAlert:    target.ReceiveAlert,
-					Count:           appConfig.Count,
-					Headers:         target.Headers,
-					Method:          target.Method,
-					Body:            target.Body,
-					Log:             appConfig.Log,
-				}
-				tui.StartMonitoring(tuiConfig)
+			// Unified TUI mode - handles both single and multi-target
+			options := tui.Options{
+				Count: appConfig.Count,
+				Log:   appConfig.Log,
 			}
+			tui.StartMonitoring(targets, options)
 		}
 	},
 }
