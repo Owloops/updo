@@ -163,6 +163,8 @@ docker run -it updo monitor --url <website-url> [options]
 - `-d, --data`: HTTP request body data
 - `--log`: Output structured logs in JSON format (includes requests, responses, and metrics)
 - `-c, --count`: Number of checks to perform (0 = infinite, applies per target)
+- `--only`: Only monitor specific targets (by name or URL, comma-separated)
+- `--skip`: Skip specific targets (by name or URL, comma-separated)
 - `-h, --help`: Display help message
 
 ### Examples
@@ -222,6 +224,16 @@ docker run -it updo monitor --url <website-url> [options]
 
 # Multi-target with custom count
 ./updo monitor --count=5 https://google.com https://github.com
+
+# Target filtering examples
+# Only monitor specific targets from config file
+./updo monitor --config example-config.toml --only Google,GitHub
+
+# Skip specific targets 
+./updo monitor --config example-config.toml --skip "slow-api,maintenance-site"
+
+# Combine filtering with other options
+./updo monitor --config example-config.toml --only Google --simple --count=5
 ```
 
 ## Configuration File
@@ -237,6 +249,9 @@ timeout = 10
 follow_redirects = true
 receive_alert = true
 count = 0  # 0 means infinite
+# Target filtering (optional)
+only = ["Google", "GitHub"]  # Only monitor these targets
+skip = ["slow-api"]          # Skip these targets
 
 [[targets]]
 url = "https://www.google.com"
@@ -261,7 +276,17 @@ receive_alert = false  # Disable alerts for this target
 
 ### Configuration Options
 
+**Global settings:**
+
+- `only`: Array of target names/URLs to monitor exclusively
+- `skip`: Array of target names/URLs to skip
+- Other global settings apply to all targets unless overridden
+
+> **Note:** Command line `--only` and `--skip` flags override config file settings.
+
+**Target settings:**
 Each target can override global settings and supports:
+
 - `url`: Target URL (required)
 - `name`: Display name for the target
 - `refresh_interval`: Check interval in seconds
@@ -284,6 +309,7 @@ The `--log` flag outputs JSON-formatted logs for programmatic consumption:
 - **Error logs** (stderr): Failures, warnings, and assertion results
 
 Usage examples:
+
 ```bash
 # All logs to one file
 ./updo monitor --log https://example.com > all.json 2>&1

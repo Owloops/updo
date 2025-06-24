@@ -43,7 +43,7 @@ You can monitor multiple targets by:
 				fmt.Printf("Error loading config file: %v\n", err)
 				os.Exit(1)
 			}
-			targets = cfg.Targets
+			targets = cfg.FilterTargets(appConfig.Only, appConfig.Skip)
 			if appConfig.Count == 0 && cfg.Global.Count > 0 {
 				appConfig.Count = cfg.Global.Count
 			}
@@ -83,6 +83,12 @@ You can monitor multiple targets by:
 					Body:            appConfig.Body,
 				}
 			}
+		}
+
+		if len(targets) == 0 {
+			fmt.Println("Error: No targets to monitor after filtering")
+			fmt.Println("Check your --only/--skip flags or config file settings")
+			os.Exit(1)
 		}
 
 		useSimpleMode := appConfig.Simple || !term.IsTerminal(int(os.Stdout.Fd()))

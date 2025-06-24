@@ -12,6 +12,18 @@ refresh_interval = 3
 assert_text = "Google"
 
 [[targets]]
+url = "https://www.github.com"
+name = "GitHub"
+refresh_interval = 5
+assert_text = "GitHub"
+
+[[targets]]
+url = "https://stackoverflow.com"
+name = "StackOverflow"
+refresh_interval = 10
+assert_text = "Stack Overflow"
+
+[[targets]]
 url = "https://api.github.com/repos/octocat/Hello-World"
 name = "GitHub-API"
 timeout = 15
@@ -19,8 +31,52 @@ method = "GET"
 headers = ["User-Agent: updo-monitor/1.0", "Accept: application/vnd.github.v3+json"]
 
 [[targets]]
+url = "https://httpbin.org/status/200"
+name = "HTTPBin-OK"
+refresh_interval = 30
+
+[[targets]]
+url = "https://httpbin.org/delay/2"
+name = "HTTPBin-Slow"
+refresh_interval = 60
+timeout = 15
+
+[[targets]]
+url = "https://jsonplaceholder.typicode.com/posts/1"
+name = "JSONPlaceholder"
+refresh_interval = 20
+headers = ["Accept: application/json"]
+assert_text = "userId"
+
+[[targets]]
 url = "https://www.cloudflare.com"
 name = "Cloudflare"
 refresh_interval = 5
 follow_redirects = false
 receive_alert = false
+
+[[targets]]
+url = "https://httpbin.org/post"
+name = "POST-Test"
+refresh_interval = 90
+method = "POST"
+headers = ["Content-Type: application/json"]
+body = '{"test": "data", "timestamp": "2024-01-01"}'
+
+[[targets]]
+url = "https://httpbin.org/redirect/1"
+name = "No-Redirects"
+refresh_interval = 45
+follow_redirects = false
+
+[[targets]]
+url = "https://www.reddit.com"
+name = "Reddit"
+refresh_interval = 12
+assert_text = "reddit"
+
+[[targets]]
+url = "https://news.ycombinator.com"
+name = "Hacker News"
+refresh_interval = 15
+assert_text = "Hacker News"

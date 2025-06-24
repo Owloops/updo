@@ -22,15 +22,17 @@ type Target struct {
 }
 
 type Global struct {
-	RefreshInterval int  `mapstructure:"refresh_interval"`
-	Timeout         int  `mapstructure:"timeout"`
-	ShouldFail      bool `mapstructure:"should_fail"`
-	FollowRedirects bool `mapstructure:"follow_redirects"`
-	SkipSSL         bool `mapstructure:"skip_ssl"`
-	ReceiveAlert    bool `mapstructure:"receive_alert"`
-	Count           int  `mapstructure:"count"`
-	Simple          bool `mapstructure:"simple"`
-	Log             bool `mapstructure:"log"`
+	RefreshInterval int      `mapstructure:"refresh_interval"`
+	Timeout         int      `mapstructure:"timeout"`
+	ShouldFail      bool     `mapstructure:"should_fail"`
+	FollowRedirects bool     `mapstructure:"follow_redirects"`
+	SkipSSL         bool     `mapstructure:"skip_ssl"`
+	ReceiveAlert    bool     `mapstructure:"receive_alert"`
+	Count           int      `mapstructure:"count"`
+	Simple          bool     `mapstructure:"simple"`
+	Log             bool     `mapstructure:"log"`
+	Only            []string `mapstructure:"only"`
+	Skip            []string `mapstructure:"skip"`
 }
 
 type Config struct {
@@ -94,4 +96,59 @@ func (g *Global) GetRefreshInterval() time.Duration {
 
 func (g *Global) GetTimeout() time.Duration {
 	return time.Duration(g.Timeout) * time.Second
+}
+
+func (c *Config) FilterTargets(onlyFlags, skipFlags []string) []Target {
+	only := onlyFlags
+	skip := skipFlags
+
+	if len(only) == 0 {
+		only = c.Global.Only
+	}
+	if len(skip) == 0 {
+		skip = c.Global.Skip
+	}
+
+	if len(only) == 0 && len(skip) == 0 {
+		return c.Targets
+	}
+
+	var filtered []Target
+
+	for _, target := range c.Targets {
+		targetName := target.Name
+		if targetName == "" {
+			targetName = target.URL
+		}
+
+		if len(only) > 0 {
+			found := false
+			for _, name := range only {
+				if name == targetName || name == target.URL {
+					found = true
+					break
+				}
+			}
+			if !found {
+				continue
+			}
+		}
+
+		if len(skip) > 0 {
+			shouldSkip := false
+			for _, name := range skip {
+				if name == targetName || name == target.URL {
+					shouldSkip = true
+					break
+				}
+			}
+			if shouldSkip {
+				continue
+			}
+		}
+
+		filtered = append(filtered, target)
+	}
+
+	return filtered
 }

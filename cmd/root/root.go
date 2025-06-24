@@ -23,6 +23,8 @@ type Config struct {
 	Method          string
 	Body            string
 	Log             string
+	Only            []string
+	Skip            []string
 }
 
 var AppConfig Config
@@ -64,6 +66,8 @@ func init() {
 	RootCmd.PersistentFlags().StringArrayVarP(&AppConfig.Headers, "header", "H", nil, "HTTP header to send (can be used multiple times, format: 'Header-Name: value')")
 	RootCmd.PersistentFlags().StringVarP(&AppConfig.Method, "request", "X", "GET", "HTTP request method to use")
 	RootCmd.PersistentFlags().StringVarP(&AppConfig.Body, "data", "d", "", "HTTP request body data")
+	RootCmd.PersistentFlags().StringSliceVar(&AppConfig.Only, "only", nil, "Only monitor specific targets (by name or URL)")
+	RootCmd.PersistentFlags().StringSliceVar(&AppConfig.Skip, "skip", nil, "Skip specific targets (by name or URL)")
 
 	var logEnabled bool
 	RootCmd.PersistentFlags().BoolVar(&logEnabled, "log", false, "Output structured logs in JSON format (includes requests, responses, and metrics)")
