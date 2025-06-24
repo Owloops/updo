@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Owloops/updo/config"
@@ -154,7 +155,7 @@ func (m *DetailsManager) InitializeWidgets(url string, refreshInterval time.Dura
 	)
 }
 
-func (m *DetailsManager) UpdateWidgets(result net.WebsiteCheckResult, stats stats.Stats, width int, height int) {
+func (m *DetailsManager) UpdateWidgets(result net.WebsiteCheckResult, stats stats.Stats, width int, height int, manager *Manager) {
 
 	m.UptimeWidget.Text = fmt.Sprintf("%.2f%%", stats.UptimePercent)
 	m.UpForWidget.Text = utils.FormatDurationMinute(stats.TotalDuration)
@@ -166,8 +167,12 @@ func (m *DetailsManager) UpdateWidgets(result net.WebsiteCheckResult, stats stat
 		m.P95ResponseTimeWidget.Text = fmt.Sprintf("%d ms", stats.P95.Milliseconds())
 	}
 
-	sslExpiry := net.GetSSLCertExpiry(result.URL)
-	m.SSLOkWidget.Text = fmt.Sprintf("%d days remaining", sslExpiry)
+	sslExpiry := manager.getSSLExpiry(result.URL)
+	if sslExpiry > 0 {
+		m.SSLOkWidget.Text = fmt.Sprintf("%d days remaining", sslExpiry)
+	} else {
+		m.SSLOkWidget.Text = "Checking..."
+	}
 
 	switch {
 	case result.AssertText == "":
@@ -220,6 +225,8 @@ type Manager struct {
 	targets        []config.Target
 	targetData     map[string]TargetData
 	plotData       map[string]PlotHistory
+	sslExpiry      map[string]int
+	sslExpiryMu    sync.RWMutex
 	currentTarget  int
 	isSingle       bool
 	listWidget     *widgets.List
@@ -233,14 +240,40 @@ type PlotHistory struct {
 }
 
 func NewManager(targets []config.Target) *Manager {
-	return &Manager{
+	m := &Manager{
 		targets:        targets,
 		targetData:     make(map[string]TargetData),
 		plotData:       make(map[string]PlotHistory),
+		sslExpiry:      make(map[string]int),
 		currentTarget:  0,
 		isSingle:       len(targets) == 1,
 		detailsManager: NewDetailsManager(),
 	}
+
+	m.startSSLCollection()
+	return m
+}
+
+func (m *Manager) startSSLCollection() {
+	for _, target := range m.targets {
+		go func(url string) {
+			if strings.HasPrefix(url, "https://") {
+				sslDaysRemaining := net.GetSSLCertExpiry(url)
+				m.sslExpiryMu.Lock()
+				m.sslExpiry[url] = sslDaysRemaining
+				m.sslExpiryMu.Unlock()
+			}
+		}(target.URL)
+	}
+}
+
+func (m *Manager) getSSLExpiry(url string) int {
+	m.sslExpiryMu.RLock()
+	defer m.sslExpiryMu.RUnlock()
+	if days, exists := m.sslExpiry[url]; exists {
+		return days
+	}
+	return 0
 }
 
 func (m *Manager) InitializeLayout(width, height int) {
@@ -354,7 +387,7 @@ func (m *Manager) SetActiveTarget(index int) {
 
 		if data, exists := m.targetData[target.Name]; exists {
 			width, height := ui.TerminalDimensions()
-			m.detailsManager.UpdateWidgets(data.Result, data.Stats, width, height)
+			m.detailsManager.UpdateWidgets(data.Result, data.Stats, width, height, m)
 		}
 
 		m.updateTargetList()
@@ -405,8 +438,12 @@ func (m *Manager) updateCurrentTargetWidgets(result net.WebsiteCheckResult, stat
 		m.detailsManager.P95ResponseTimeWidget.Text = fmt.Sprintf("%d ms", stats.P95.Milliseconds())
 	}
 
-	sslExpiry := net.GetSSLCertExpiry(result.URL)
-	m.detailsManager.SSLOkWidget.Text = fmt.Sprintf("%d days remaining", sslExpiry)
+	sslExpiry := m.getSSLExpiry(result.URL)
+	if sslExpiry > 0 {
+		m.detailsManager.SSLOkWidget.Text = fmt.Sprintf("%d days remaining", sslExpiry)
+	} else {
+		m.detailsManager.SSLOkWidget.Text = "Checking..."
+	}
 
 	switch {
 	case result.AssertText == "":
