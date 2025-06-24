@@ -384,14 +384,14 @@ func (m *Manager) SetActiveTarget(index int) {
 		m.detailsManager.RefreshWidget.Text = fmt.Sprintf("%v seconds", target.GetRefreshInterval().Seconds())
 
 		m.restorePlotData(target.Name)
-
-		if data, exists := m.targetData[target.Name]; exists {
-			width, height := ui.TerminalDimensions()
-			m.detailsManager.UpdateWidgets(data.Result, data.Stats, width, height, m)
-		}
-
 		m.updateTargetList()
+
 		width, height := ui.TerminalDimensions()
+		
+		if data, exists := m.targetData[target.Name]; exists {
+			m.updateCurrentTargetWidgets(data.Result, data.Stats)
+		}
+		
 		m.setupGrid(width, height)
 	}
 }
