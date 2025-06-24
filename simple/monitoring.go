@@ -33,12 +33,6 @@ func StartMultiTargetMonitoring(targets []config.Target, options MonitoringOptio
 		log.Fatal("No targets provided")
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	resultsChan := make(chan TargetResult, len(targets)*2)
-	var wg sync.WaitGroup
-
 	monitors := make(map[string]*stats.Monitor)
 	sequences := make(map[string]*int)
 	alertStates := make(map[string]*bool)
@@ -46,7 +40,6 @@ func StartMultiTargetMonitoring(targets []config.Target, options MonitoringOptio
 	for _, target := range targets {
 		monitor, err := stats.NewMonitor()
 		if err != nil {
-			cancel()
 			log.Fatalf("Failed to initialize stats monitor for %s: %v", target.Name, err)
 		}
 		monitors[target.Name] = monitor
@@ -55,6 +48,12 @@ func StartMultiTargetMonitoring(targets []config.Target, options MonitoringOptio
 		sequences[target.Name] = &seq
 		alertStates[target.Name] = &alert
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	resultsChan := make(chan TargetResult, len(targets)*2)
+	var wg sync.WaitGroup
 
 	logMode := options.Log != ""
 
