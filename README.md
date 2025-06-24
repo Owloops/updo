@@ -16,11 +16,13 @@ Updo is a command-line tool for monitoring website uptime and performance. It pr
 ## Features
 
 - Real-time monitoring of website uptime and performance
+- **Multi-target monitoring** - Monitor multiple URLs concurrently
 - Displays various metrics like uptime percentage, average response time, and SSL certificate expiry
 - Desktop alert notifications for website status changes
-- Customizable refresh intervals and request timeouts
+- Customizable refresh intervals and request timeouts per target
 - Supports HTTP and HTTPS, with options to skip SSL verification
 - Assertion on response body content
+- TOML configuration file support for complex setups
 - Command-line interface with simple usage
 - Simple mode with text output
 - Automatic terminal capability detection
@@ -111,8 +113,14 @@ GOBIN="absolute_path_where_you_want_binaries_to_be_installed" go install github.
 Run Updo using the following command:
 
 ```bash
-# Basic usage
+# Monitor single URL
 ./updo monitor [options] <website-url>
+
+# Monitor multiple URLs
+./updo monitor <url1> <url2> <url3>
+
+# Using configuration file
+./updo monitor --config <config-file>
 
 # Alternative syntax using --url flag
 ./updo monitor --url <website-url> [options]
@@ -140,6 +148,8 @@ docker run -it updo monitor --url <website-url> [options]
 ### Options
 
 - `-u, --url`: URL of the website to monitor
+- `--urls`: Multiple URLs to monitor (comma-separated)
+- `-C, --config`: Config file path (TOML format) for multi-target monitoring
 - `-r, --refresh`: Refresh interval in seconds (default: 5)
 - `-f, --should-fail`: Invert status code success (default: false)
 - `-t, --timeout`: HTTP request timeout in seconds (default: 10)
@@ -152,7 +162,7 @@ docker run -it updo monitor --url <website-url> [options]
 - `-X, --request`: HTTP request method to use (default: GET)
 - `-d, --data`: HTTP request body data
 - `--log`: Output structured logs in JSON format (includes requests, responses, and metrics)
-- `-c, --count`: Number of checks to perform (0 = infinite)
+- `-c, --count`: Number of checks to perform (0 = infinite, applies per target)
 - `-h, --help`: Display help message
 
 ### Examples
@@ -199,7 +209,71 @@ docker run -it updo monitor --url <website-url> [options]
 
 # Sending requests with body data and viewing structured logs
 ./updo monitor --log -X POST -H "Content-Type: application/json" -d '{"name":"test"}' https://api.example.com/data
+
+# Multi-target monitoring examples
+# Monitor multiple URLs from command line
+./updo monitor https://google.com https://github.com https://cloudflare.com
+
+# Using --urls flag
+./updo monitor --urls="https://google.com,https://github.com"
+
+# Using TOML configuration file
+./updo monitor -C example-config.toml
+
+# Multi-target with custom count
+./updo monitor --count=5 https://google.com https://github.com
 ```
+
+## Configuration File
+
+Updo supports TOML configuration files for complex monitoring setups. This is especially useful for monitoring multiple targets with different settings.
+
+### Example Configuration (example-config.toml)
+
+```toml
+[global]
+refresh_interval = 5
+timeout = 10
+follow_redirects = true
+receive_alert = true
+count = 0  # 0 means infinite
+
+[[targets]]
+url = "https://www.google.com"
+name = "Google"
+refresh_interval = 3  # Override global setting
+assert_text = "Google"
+
+[[targets]]
+url = "https://api.github.com/repos/octocat/Hello-World"
+name = "GitHub-API"
+timeout = 15  # Override global timeout
+method = "GET"
+headers = ["User-Agent: updo-monitor/1.0", "Accept: application/vnd.github.v3+json"]
+
+[[targets]]
+url = "https://www.cloudflare.com"
+name = "Cloudflare"
+refresh_interval = 5
+follow_redirects = false  # Override global setting
+receive_alert = false  # Disable alerts for this target
+```
+
+### Configuration Options
+
+Each target can override global settings and supports:
+- `url`: Target URL (required)
+- `name`: Display name for the target
+- `refresh_interval`: Check interval in seconds
+- `timeout`: Request timeout in seconds
+- `method`: HTTP method (GET, POST, etc.)
+- `headers`: Array of HTTP headers
+- `body`: Request body for POST/PUT requests
+- `assert_text`: Text to find in response body
+- `should_fail`: Invert success status codes
+- `skip_ssl`: Skip SSL certificate verification
+- `follow_redirects`: Follow HTTP redirects
+- `receive_alert`: Enable desktop alerts
 
 ## Structured Logging
 

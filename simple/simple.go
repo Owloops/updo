@@ -4,81 +4,138 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Owloops/updo/config"
 	"github.com/Owloops/updo/net"
 	"github.com/Owloops/updo/stats"
 )
 
 type OutputManager struct {
-	URL string
+	targets  []config.Target
+	isSingle bool
 }
 
-func NewOutputManager(url string) *OutputManager {
+func NewOutputManager(targets []config.Target) *OutputManager {
 	return &OutputManager{
-		URL: url,
+		targets:  targets,
+		isSingle: len(targets) == 1,
 	}
 }
 
-func (o *OutputManager) PrintHeader() {
-	fmt.Printf("UPDO %s:\n", o.URL)
-
-	if strings.HasPrefix(o.URL, "https://") {
-		sslDaysRemaining := net.GetSSLCertExpiry(o.URL)
-		if sslDaysRemaining > 0 {
-			fmt.Printf("SSL certificate expires in %d days\n", sslDaysRemaining)
+func (m *OutputManager) PrintHeader() {
+	if m.isSingle {
+		fmt.Printf("UPDO %s:\n", m.targets[0].URL)
+		m.printSSLInfo(m.targets[0].URL, "")
+	} else {
+		fmt.Println("UPDO monitoring:")
+		for _, target := range m.targets {
+			fmt.Printf("%s: %s\n", target.Name, target.URL)
+			m.printSSLInfo(target.URL, "  ")
 		}
 	}
 }
 
-func (o *OutputManager) PrintResult(result net.WebsiteCheckResult, stats stats.Stats, sequence int) {
+func (m *OutputManager) printSSLInfo(url, indent string) {
+	if strings.HasPrefix(url, "https://") {
+		sslDaysRemaining := net.GetSSLCertExpiry(url)
+		if sslDaysRemaining > 0 {
+			fmt.Printf("%sSSL certificate expires in %d days\n", indent, sslDaysRemaining)
+		}
+	}
+}
 
-	statusInfo := fmt.Sprintf("status=%d", result.StatusCode)
-	if !result.IsUp {
-		statusInfo = fmt.Sprintf("status=%d (DOWN)", result.StatusCode)
+func (m *OutputManager) PrintResult(result TargetResult) {
+	statusInfo := fmt.Sprintf("status=%d", result.Result.StatusCode)
+	if !result.Result.IsUp {
+		statusInfo = fmt.Sprintf("status=%d (DOWN)", result.Result.StatusCode)
 	}
 
-	if result.AssertText != "" && !result.AssertionPassed {
+	if result.Result.AssertText != "" && !result.Result.AssertionPassed {
 		statusInfo += " (assertion failed)"
 	}
 
 	ipInfo := ""
-	if result.ResolvedIP != "" {
-		ipInfo = fmt.Sprintf(" from %s", result.ResolvedIP)
+	if result.Result.ResolvedIP != "" {
+		ipInfo = fmt.Sprintf(" from %s", result.Result.ResolvedIP)
 	}
 
-	fmt.Printf("Response%s: seq=%d time=%dms %s uptime=%.1f%%\n",
-		ipInfo,
-		sequence,
-		result.ResponseTime.Milliseconds(),
-		statusInfo,
-		stats.UptimePercent)
+	if m.isSingle {
+		fmt.Printf("Response%s: seq=%d time=%dms %s uptime=%.1f%%\n",
+			ipInfo,
+			result.Sequence,
+			result.Result.ResponseTime.Milliseconds(),
+			statusInfo,
+			result.Stats.UptimePercent)
+	} else {
+		fmt.Printf("%s response%s: seq=%d time=%dms %s uptime=%.1f%%\n",
+			result.Target.Name,
+			ipInfo,
+			result.Sequence,
+			result.Result.ResponseTime.Milliseconds(),
+			statusInfo,
+			result.Stats.UptimePercent)
+	}
 }
 
-func (o *OutputManager) PrintStatistics(stats *stats.Stats) {
-	fmt.Printf("\n--- %s statistics ---\n", o.URL)
+func (m *OutputManager) PrintStatistics(monitors map[string]*stats.Monitor) {
+	if m.isSingle {
+		target := m.targets[0]
+		monitor := monitors[target.Name]
+		stats := monitor.GetStats()
 
-	successPercent := 0.0
-	if stats.ChecksCount > 0 {
-		successPercent = float64(stats.SuccessCount) / float64(stats.ChecksCount) * 100
-	}
+		fmt.Printf("\n--- %s statistics ---\n", target.URL)
 
-	fmt.Printf("%d checks, %d successful (%.1f%%)\n",
-		stats.ChecksCount,
-		stats.SuccessCount,
-		successPercent)
-
-	fmt.Printf("uptime: %.1f%%\n", stats.UptimePercent)
-
-	if stats.ChecksCount > 0 {
-		responseTimeStr := fmt.Sprintf("response time min/avg/max/stddev = %d/%d/%d/%.1f ms",
-			stats.MinResponseTime.Milliseconds(),
-			stats.AvgResponseTime.Milliseconds(),
-			stats.MaxResponseTime.Milliseconds(),
-			stats.StdDev)
-
-		if stats.ChecksCount >= 2 && stats.P95 > 0 {
-			responseTimeStr += fmt.Sprintf(", 95th percentile: %d ms", stats.P95.Milliseconds())
+		successPercent := 0.0
+		if stats.ChecksCount > 0 {
+			successPercent = float64(stats.SuccessCount) / float64(stats.ChecksCount) * 100
 		}
 
-		fmt.Println(responseTimeStr)
+		fmt.Printf("%d checks, %d successful (%.1f%%)\n",
+			stats.ChecksCount,
+			stats.SuccessCount,
+			successPercent)
+
+		fmt.Printf("uptime: %.1f%%\n", stats.UptimePercent)
+
+		if stats.ChecksCount > 0 {
+			responseTimeStr := fmt.Sprintf("response time min/avg/max/stddev = %d/%d/%d/%.1f ms",
+				stats.MinResponseTime.Milliseconds(),
+				stats.AvgResponseTime.Milliseconds(),
+				stats.MaxResponseTime.Milliseconds(),
+				stats.StdDev)
+
+			if stats.ChecksCount >= 2 && stats.P95 > 0 {
+				responseTimeStr += fmt.Sprintf(", 95th percentile: %d ms", stats.P95.Milliseconds())
+			}
+
+			fmt.Println(responseTimeStr)
+		}
+	} else {
+		fmt.Println("\n--- statistics ---")
+		for _, target := range m.targets {
+			monitor := monitors[target.Name]
+			stats := monitor.GetStats()
+
+			fmt.Printf("\n%s (%s):\n", target.Name, target.URL)
+
+			successPercent := 0.0
+			if stats.ChecksCount > 0 {
+				successPercent = float64(stats.SuccessCount) / float64(stats.ChecksCount) * 100
+			}
+
+			fmt.Printf("  %d checks, %d successful (%.1f%%), uptime: %.1f%%\n",
+				stats.ChecksCount, stats.SuccessCount, successPercent, stats.UptimePercent)
+
+			if stats.ChecksCount > 0 {
+				fmt.Printf("  response time min/avg/max = %d/%d/%d ms",
+					stats.MinResponseTime.Milliseconds(),
+					stats.AvgResponseTime.Milliseconds(),
+					stats.MaxResponseTime.Milliseconds())
+
+				if stats.ChecksCount >= 2 && stats.P95 > 0 {
+					fmt.Printf(", 95p: %d ms", stats.P95.Milliseconds())
+				}
+				fmt.Println()
+			}
+		}
 	}
 }

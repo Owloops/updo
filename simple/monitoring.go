@@ -1,114 +1,165 @@
 package simple
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
+	"github.com/Owloops/updo/config"
 	"github.com/Owloops/updo/net"
 	"github.com/Owloops/updo/stats"
 	"github.com/Owloops/updo/utils"
 )
 
-type Config struct {
-	URL             string
-	RefreshInterval time.Duration
-	Timeout         time.Duration
-	ShouldFail      bool
-	FollowRedirects bool
-	SkipSSL         bool
-	AssertText      string
-	ReceiveAlert    bool
-	Count           int
-	Headers         []string
-	Method          string
-	Body            string
-	Log             string
+type TargetResult struct {
+	Target   config.Target
+	Result   net.WebsiteCheckResult
+	Stats    stats.Stats
+	Sequence int
 }
 
-func StartMonitoring(config Config) {
-	logMode := config.Log != ""
+type MonitoringOptions struct {
+	Count int
+	Log   string
+}
 
-	outputManager := NewOutputManager(config.URL)
+func StartMultiTargetMonitoring(targets []config.Target, options MonitoringOptions) {
+	if len(targets) == 0 {
+		log.Fatal("No targets provided")
+	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	resultsChan := make(chan TargetResult, len(targets)*2)
+	var wg sync.WaitGroup
+
+	monitors := make(map[string]*stats.Monitor)
+	sequences := make(map[string]*int)
+	alertStates := make(map[string]*bool)
+
+	for _, target := range targets {
+		monitor, err := stats.NewMonitor()
+		if err != nil {
+			cancel()
+			log.Fatalf("Failed to initialize stats monitor for %s: %v", target.Name, err)
+		}
+		monitors[target.Name] = monitor
+		seq := 0
+		alert := false
+		sequences[target.Name] = &seq
+		alertStates[target.Name] = &alert
+	}
+
+	logMode := options.Log != ""
+
+	outputManager := NewOutputManager(targets)
 	if !logMode {
 		outputManager.PrintHeader()
 	}
 
+	for _, target := range targets {
+		wg.Add(1)
+		go func(t config.Target) {
+			defer wg.Done()
+			monitorTarget(ctx, t, monitors[t.Name], sequences[t.Name], alertStates[t.Name], resultsChan, options)
+		}(target)
+	}
+
+	go func() {
+		wg.Wait()
+		close(resultsChan)
+	}()
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	alertSent := false
-
-	monitor, err := stats.NewMonitor()
-	if err != nil {
-		log.Fatalf("Failed to initialize stats monitor: %v", err)
-	}
-
-	doneChan := make(chan bool)
-
-	go func() {
-		for monitor.ChecksCount < config.Count || config.Count == 0 {
-			select {
-			case <-doneChan:
-				return
-			default:
-				netConfig := net.NetworkConfig{
-					Timeout:         config.Timeout,
-					ShouldFail:      config.ShouldFail,
-					FollowRedirects: config.FollowRedirects,
-					SkipSSL:         config.SkipSSL,
-					AssertText:      config.AssertText,
-					Headers:         config.Headers,
-					Method:          config.Method,
-					Body:            config.Body,
-				}
-
-				result := net.CheckWebsite(config.URL, netConfig)
-				monitor.AddResult(result)
-
+	totalChecks := 0
+	for {
+		select {
+		case result, ok := <-resultsChan:
+			if !ok {
 				if !logMode {
-					stats := monitor.GetStats()
-					outputManager.PrintResult(result, stats, monitor.ChecksCount-1)
+					outputManager.PrintStatistics(monitors)
 				} else {
-					utils.LogCheck(result, monitor.ChecksCount-1, config.Log)
-
-					if !result.IsUp {
-						errorMsg := "Request failed"
-						if result.StatusCode > 0 {
-							errorMsg = fmt.Sprintf("Non-success status code: %d", result.StatusCode)
-						} else if result.AssertText != "" && !result.AssertionPassed {
-							errorMsg = "Assertion failed"
-						}
-						utils.LogWarning(config.URL, errorMsg)
+					for _, target := range targets {
+						stats := monitors[target.Name].GetStats()
+						utils.LogMetrics(&stats, target.URL)
 					}
 				}
+				return
+			}
 
-				if config.ReceiveAlert {
-					utils.HandleAlerts(result.IsUp, &alertSent)
+			totalChecks++
+			if !logMode {
+				outputManager.PrintResult(result)
+			} else {
+				utils.LogCheck(result.Result, result.Sequence, options.Log)
+				if !result.Result.IsUp {
+					errorMsg := "Request failed"
+					if result.Result.StatusCode > 0 {
+						errorMsg = fmt.Sprintf("Non-success status code: %d", result.Result.StatusCode)
+					} else if result.Result.AssertText != "" && !result.Result.AssertionPassed {
+						errorMsg = "Assertion failed"
+					}
+					utils.LogWarning(result.Target.URL, errorMsg)
 				}
+			}
 
-				time.Sleep(config.RefreshInterval)
+			if options.Count > 0 && totalChecks >= options.Count*len(targets) {
+				cancel()
+			}
+
+		case <-sigChan:
+			cancel()
+		}
+	}
+}
+
+func monitorTarget(ctx context.Context, target config.Target, monitor *stats.Monitor, sequence *int, alertSent *bool, resultsChan chan<- TargetResult, options MonitoringOptions) {
+	ticker := time.NewTicker(target.GetRefreshInterval())
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			netConfig := net.NetworkConfig{
+				Timeout:         target.GetTimeout(),
+				ShouldFail:      target.ShouldFail,
+				FollowRedirects: target.FollowRedirects,
+				SkipSSL:         target.SkipSSL,
+				AssertText:      target.AssertText,
+				Headers:         target.Headers,
+				Method:          target.Method,
+				Body:            target.Body,
+			}
+
+			result := net.CheckWebsite(target.URL, netConfig)
+			monitor.AddResult(result)
+			*sequence++
+
+			if target.ReceiveAlert {
+				utils.HandleAlerts(result.IsUp, alertSent)
+			}
+
+			stats := monitor.GetStats()
+			resultsChan <- TargetResult{
+				Target:   target,
+				Result:   result,
+				Stats:    stats,
+				Sequence: *sequence - 1,
+			}
+
+			if options.Count > 0 && monitor.ChecksCount >= options.Count {
+				return
 			}
 		}
-
-		close(doneChan)
-	}()
-
-	select {
-	case <-doneChan:
-	case <-sigChan:
-		close(doneChan)
-	}
-
-	stats := monitor.GetStats()
-
-	if !logMode {
-		outputManager.PrintStatistics(&stats)
-	} else {
-		utils.LogMetrics(&stats, config.URL)
 	}
 }

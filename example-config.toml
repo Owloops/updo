@@ -1,0 +1,26 @@
+[global]
+refresh_interval = 5
+timeout = 10
+follow_redirects = true
+receive_alert = true
+count = 0
+
+[[targets]]
+url = "https://www.google.com"
+name = "Google"
+refresh_interval = 3
+assert_text = "Google"
+
+[[targets]]
+url = "https://api.github.com/repos/octocat/Hello-World"
+name = "GitHub-API"
+timeout = 15
+method = "GET"
+headers = ["User-Agent: updo-monitor/1.0", "Accept: application/vnd.github.v3+json"]
+
+[[targets]]
+url = "https://www.cloudflare.com"
+name = "Cloudflare"
+refresh_interval = 5
+follow_redirects = false
+receive_alert = false
