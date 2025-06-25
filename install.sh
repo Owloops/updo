@@ -44,7 +44,7 @@ print_banner() {
 detect_platform() {
     OS="$(uname -s)"
     case "${OS}" in
-        Linux*)     SYSTEM=linux;;
+        Linux*)     SYSTEM=Linux;;
         Darwin*)    SYSTEM=Darwin;;
         MINGW*)     SYSTEM=Windows;;
         MSYS*)      SYSTEM=Windows;;
@@ -56,8 +56,8 @@ detect_platform() {
         x86_64*)    ARCH=x86_64;;
         arm64*)     ARCH=arm64;;
         aarch64*)   ARCH=arm64;;
-        i386*)      ARCH=386;;
-        i686*)      ARCH=386;;
+        i386*)      ARCH=i386;;
+        i686*)      ARCH=i386;;
         *)          log ERROR "Unsupported architecture: ${ARCH}"; exit 2;;
     esac
 
