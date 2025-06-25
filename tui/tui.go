@@ -198,7 +198,6 @@ func (m *DetailsManager) UpdateWidgets(result net.WebsiteCheckResult, stats stat
 
 	m.updatePlotsData(result, width)
 
-	m.Grid.SetRect(0, 0, width, height)
 	ui.Render(m.Grid)
 }
 
@@ -220,7 +219,6 @@ func (m *DetailsManager) updatePlotsData(result net.WebsiteCheckResult, width in
 func (m *DetailsManager) UpdateDurationWidgets(stats stats.Stats, width int, height int) {
 	m.UpForWidget.Text = utils.FormatDurationMinute(stats.TotalDuration)
 
-	m.Grid.SetRect(0, 0, width, height)
 	ui.Render(m.Grid)
 }
 
@@ -235,6 +233,8 @@ type Manager struct {
 	listWidget     *widgets.List
 	detailsManager *DetailsManager
 	grid           *ui.Grid
+	termWidth      int
+	termHeight     int
 }
 
 type PlotHistory struct {
@@ -280,6 +280,9 @@ func (m *Manager) getSSLExpiry(url string) int {
 }
 
 func (m *Manager) InitializeLayout(width, height int) {
+	m.termWidth = width
+	m.termHeight = height
+
 	if len(m.targets) > 0 {
 		m.detailsManager.InitializeWidgets(m.targets[0].URL, m.targets[0].GetRefreshInterval())
 	}
@@ -389,8 +392,6 @@ func (m *Manager) SetActiveTarget(index int, monitors map[string]*stats.Monitor)
 		m.restorePlotData(target.Name)
 		m.updateTargetList()
 
-		width, height := ui.TerminalDimensions()
-
 		if monitor, exists := monitors[target.Name]; exists {
 			freshStats := monitor.GetStats()
 			m.detailsManager.UptimeWidget.Text = fmt.Sprintf("%.2f%%", freshStats.UptimePercent)
@@ -433,8 +434,6 @@ func (m *Manager) SetActiveTarget(index int, monitors map[string]*stats.Monitor)
 				})
 			}
 		}
-
-		m.setupGrid(width, height)
 	}
 }
 
@@ -520,12 +519,13 @@ func (m *Manager) updateCurrentTargetWidgets(result net.WebsiteCheckResult, stat
 		})
 	}
 
-	width, _ := ui.TerminalDimensions()
-	m.detailsManager.updatePlotsData(result, width)
+	m.detailsManager.updatePlotsData(result, m.termWidth)
 }
 
 func (m *Manager) Resize(width, height int) {
-	m.setupGrid(width, height)
+	m.termWidth = width
+	m.termHeight = height
+	m.grid.SetRect(0, 0, width, height)
 }
 
 func (m *Manager) restorePlotData(targetName string) {
@@ -550,8 +550,7 @@ func (m *Manager) updatePlotDataForTarget(targetName string, result net.WebsiteC
 	history.UptimeData = append(history.UptimeData, utils.BoolToFloat64(result.IsUp))
 	history.ResponseTimeData = append(history.ResponseTimeData, result.ResponseTime.Seconds())
 
-	width, _ := ui.TerminalDimensions()
-	maxLength := width / 2
+	maxLength := m.termWidth / 2
 
 	if len(history.UptimeData) > maxLength {
 		history.UptimeData = history.UptimeData[len(history.UptimeData)-maxLength:]

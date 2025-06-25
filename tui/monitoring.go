@@ -90,16 +90,19 @@ func StartMonitoring(targets []config.Target, options Options) {
 				if payload, ok := e.Payload.(ui.Resize); ok {
 					width, height = payload.Width, payload.Height
 					manager.Resize(width, height)
+					ui.Render(manager.grid)
 				}
 			case "<Down>", "j":
 				if len(targets) > 1 {
 					currentTargetIndex = (currentTargetIndex + 1) % len(targets)
 					manager.SetActiveTarget(currentTargetIndex, monitors)
+					ui.Render(manager.grid)
 				}
 			case "<Up>", "k":
 				if len(targets) > 1 {
 					currentTargetIndex = (currentTargetIndex - 1 + len(targets)) % len(targets)
 					manager.SetActiveTarget(currentTargetIndex, monitors)
+					ui.Render(manager.grid)
 				}
 			}
 
