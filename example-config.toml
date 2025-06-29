@@ -4,6 +4,7 @@ timeout = 10
 follow_redirects = true
 receive_alert = true
 count = 0
+skip = ["GitHub-API"]
 
 [[targets]]
 url = "https://www.google.com"

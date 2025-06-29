@@ -170,6 +170,16 @@ verify_installation() {
     echo "  updo --help                  # Show help and usage information"
     echo "  updo --version               # Show version information"
     echo
+    echo -e "${BLUE}Enable shell completions:${RESET}"
+    echo "  # For bash:"
+    echo "  source <(updo completion bash)"
+    echo
+    echo "  # For zsh:"
+    echo "  source <(updo completion zsh)"
+    echo
+    echo "  # For fish:"
+    echo "  updo completion fish | source"
+    echo
     echo -e "For full documentation, visit: ${GREEN}https://github.com/Owloops/updo#usage${RESET}"
 
     log INFO "Thank you for installing updo!"
