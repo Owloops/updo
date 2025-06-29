@@ -29,7 +29,7 @@ Updo is a command-line tool for monitoring website uptime and performance. It pr
 
 ## Demo
 
-<https://github.com/Owloops/updo/assets/17541283/5edd2eb1-af81-4b88-96e2-643c80d46aca>
+https://github.com/user-attachments/assets/f8a15cc7-7b30-448f-ab49-35396e6ed46f
 
 ## Installation
 
