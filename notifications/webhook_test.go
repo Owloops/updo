@@ -54,25 +54,25 @@ func TestSendWebhook(t *testing.T) {
 
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				receivedHeaders = r.Header
-				
+
 				if r.Method != "POST" {
 					t.Errorf("Expected POST method, got %s", r.Method)
 				}
-				
+
 				if contentType := r.Header.Get("Content-Type"); contentType != "application/json" {
 					t.Errorf("Expected Content-Type application/json, got %s", contentType)
 				}
-				
+
 				if err := json.NewDecoder(r.Body).Decode(&receivedPayload); err != nil {
 					t.Errorf("Failed to decode request body: %v", err)
 				}
-				
+
 				w.WriteHeader(tc.responseStatus)
 			}))
 			defer server.Close()
 
 			err := SendWebhook(server.URL, tc.headers, tc.payload)
-			
+
 			if tc.expectError && err == nil {
 				t.Error("Expected error but got none")
 			}
@@ -87,7 +87,7 @@ func TestSendWebhook(t *testing.T) {
 				if receivedPayload.Target != tc.payload.Target {
 					t.Errorf("Target mismatch: expected %s, got %s", tc.payload.Target, receivedPayload.Target)
 				}
-				
+
 				for key, value := range tc.headers {
 					if receivedHeaders.Get(key) != value {
 						t.Errorf("Header %s mismatch: expected %s, got %s", key, value, receivedHeaders.Get(key))
@@ -100,58 +100,58 @@ func TestSendWebhook(t *testing.T) {
 
 func TestHandleWebhookAlert(t *testing.T) {
 	tests := []struct {
-		name               string
-		isUp               bool
-		initialAlertSent   bool
-		expectedAlertSent  bool
-		expectWebhookCall  bool
-		targetName         string
-		targetURL          string
+		name              string
+		isUp              bool
+		initialAlertSent  bool
+		expectedAlertSent bool
+		expectWebhookCall bool
+		targetName        string
+		targetURL         string
 	}{
 		{
-			name:               "target goes down",
-			isUp:               false,
-			initialAlertSent:   false,
-			expectedAlertSent:  true,
-			expectWebhookCall:  true,
-			targetName:         "Test Site",
-			targetURL:          "https://example.com",
+			name:              "target goes down",
+			isUp:              false,
+			initialAlertSent:  false,
+			expectedAlertSent: true,
+			expectWebhookCall: true,
+			targetName:        "Test Site",
+			targetURL:         "https://example.com",
 		},
 		{
-			name:               "target still down",
-			isUp:               false,
-			initialAlertSent:   true,
-			expectedAlertSent:  true,
-			expectWebhookCall:  false,
-			targetName:         "Test Site",
-			targetURL:          "https://example.com",
+			name:              "target still down",
+			isUp:              false,
+			initialAlertSent:  true,
+			expectedAlertSent: true,
+			expectWebhookCall: false,
+			targetName:        "Test Site",
+			targetURL:         "https://example.com",
 		},
 		{
-			name:               "target comes up",
-			isUp:               true,
-			initialAlertSent:   true,
-			expectedAlertSent:  false,
-			expectWebhookCall:  true,
-			targetName:         "Test Site",
-			targetURL:          "https://example.com",
+			name:              "target comes up",
+			isUp:              true,
+			initialAlertSent:  true,
+			expectedAlertSent: false,
+			expectWebhookCall: true,
+			targetName:        "Test Site",
+			targetURL:         "https://example.com",
 		},
 		{
-			name:               "target still up",
-			isUp:               true,
-			initialAlertSent:   false,
-			expectedAlertSent:  false,
-			expectWebhookCall:  false,
-			targetName:         "Test Site",
-			targetURL:          "https://example.com",
+			name:              "target still up",
+			isUp:              true,
+			initialAlertSent:  false,
+			expectedAlertSent: false,
+			expectWebhookCall: false,
+			targetName:        "Test Site",
+			targetURL:         "https://example.com",
 		},
 		{
-			name:               "empty target name uses URL",
-			isUp:               false,
-			initialAlertSent:   false,
-			expectedAlertSent:  true,
-			expectWebhookCall:  true,
-			targetName:         "",
-			targetURL:          "https://example.com",
+			name:              "empty target name uses URL",
+			isUp:              false,
+			initialAlertSent:  false,
+			expectedAlertSent: true,
+			expectWebhookCall: true,
+			targetName:        "",
+			targetURL:         "https://example.com",
 		},
 	}
 
@@ -162,7 +162,9 @@ func TestHandleWebhookAlert(t *testing.T) {
 
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				webhookCalled = true
-				json.NewDecoder(r.Body).Decode(&receivedPayload)
+				if err := json.NewDecoder(r.Body).Decode(&receivedPayload); err != nil {
+					t.Errorf("Failed to decode webhook payload: %v", err)
+				}
 				w.WriteHeader(http.StatusOK)
 			}))
 			defer server.Close()
@@ -197,7 +199,7 @@ func TestHandleWebhookAlert(t *testing.T) {
 				if receivedPayload.Target != expectedTarget {
 					t.Errorf("Expected target %s, got %s", expectedTarget, receivedPayload.Target)
 				}
-				
+
 				expectedEvent := "target_down"
 				if tc.isUp {
 					expectedEvent = "target_up"
