@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -230,7 +231,8 @@ type Manager struct {
 	sslExpiryMu    sync.RWMutex
 	currentTarget  int
 	isSingle       bool
-	listWidget     *widgets.List
+	listWidget     *uw.FilteredList
+	searchWidget   *widgets.Paragraph
 	detailsManager *DetailsManager
 	grid           *ui.Grid
 	termWidth      int
@@ -288,15 +290,64 @@ func (m *Manager) InitializeLayout(width, height int) {
 	}
 
 	if !m.isSingle {
-		m.listWidget = widgets.NewList()
+		m.searchWidget = widgets.NewParagraph()
+		m.searchWidget.Border = true
+		m.searchWidget.BorderStyle.Fg = ui.ColorCyan
+		m.searchWidget.Title = "Search"
+		m.searchWidget.TitleStyle.Fg = ui.ColorWhite
+		m.searchWidget.TitleStyle.Modifier = ui.ModifierBold
+		m.searchWidget.Text = "Press / to activate"
+		m.searchWidget.TextStyle.Fg = ui.ColorWhite
+
+		m.listWidget = uw.NewFilteredList()
 		if len(m.targets) > 0 {
-			m.listWidget.Title = fmt.Sprintf("Targets (↑↓) → %s", m.targets[0].Name)
+			m.listWidget.Title = fmt.Sprintf("Targets → %s", m.targets[0].Name)
 		} else {
 			m.listWidget.Title = "Targets"
 		}
 		m.listWidget.BorderStyle.Fg = ui.ColorCyan
 		m.listWidget.TitleStyle.Fg = ui.ColorWhite
 		m.listWidget.TitleStyle.Modifier = ui.ModifierBold
+
+		m.listWidget.OnSearchChange = func(query string, filteredIndices []int) {
+			if m.listWidget.IsSearchMode() {
+				if query != "" {
+					m.searchWidget.Text = query
+					m.searchWidget.TextStyle.Fg = ui.ColorGreen
+					m.searchWidget.BorderStyle.Fg = ui.ColorGreen
+					m.listWidget.Title = fmt.Sprintf("Targets (%d/%d)", len(filteredIndices), len(m.targets))
+				} else {
+					m.searchWidget.Text = "Type to filter..."
+					m.searchWidget.TextStyle.Fg = ui.ColorYellow
+					m.searchWidget.BorderStyle.Fg = ui.ColorYellow
+					m.listWidget.Title = "Targets"
+				}
+
+				targetVisible := false
+				if len(filteredIndices) > 0 {
+					for i, idx := range filteredIndices {
+						if idx == m.currentTarget {
+							m.listWidget.SelectedRow = i
+							targetVisible = true
+							break
+						}
+					}
+				}
+
+				if !targetVisible {
+					m.listWidget.SelectedRow = 0
+					m.listWidget.SelectedRowStyle = m.listWidget.TextStyle
+				}
+			} else {
+				m.searchWidget.Text = "Press / to activate"
+				m.searchWidget.TextStyle.Fg = ui.ColorWhite
+				m.searchWidget.BorderStyle.Fg = ui.ColorCyan
+				if m.currentTarget < len(m.targets) {
+					m.listWidget.Title = fmt.Sprintf("Targets → %s", m.targets[m.currentTarget].Name)
+				}
+				m.listWidget.SelectedRow = m.currentTarget
+			}
+		}
 
 		m.updateTargetList()
 	}
@@ -342,10 +393,15 @@ func (m *Manager) updateTargetList() {
 		}
 	}
 
-	m.listWidget.Rows = items
-	m.listWidget.SelectedRow = m.currentTarget
+	m.listWidget.SetRows(items)
 
-	if m.currentTarget < len(m.targets) {
+	targetVisible := true
+	if m.listWidget.IsSearchMode() {
+		indices := m.listWidget.GetFilteredIndices()
+		targetVisible = slices.Contains(indices, m.currentTarget)
+	}
+
+	if targetVisible && m.currentTarget < len(m.targets) {
 		if data, exists := m.targetData[m.targets[m.currentTarget].Name]; exists {
 			if data.Result.IsUp {
 				m.listWidget.SelectedRowStyle.Fg = ui.ColorGreen
@@ -356,6 +412,8 @@ func (m *Manager) updateTargetList() {
 			m.listWidget.SelectedRowStyle.Fg = ui.ColorYellow
 		}
 		m.listWidget.SelectedRowStyle.Modifier = ui.ModifierBold
+	} else {
+		m.listWidget.SelectedRowStyle = m.listWidget.TextStyle
 	}
 }
 
@@ -370,7 +428,10 @@ func (m *Manager) setupGrid(width, height int) {
 	} else {
 		m.grid.Set(
 			ui.NewRow(1.0,
-				ui.NewCol(0.22, m.listWidget),
+				ui.NewCol(0.22,
+					ui.NewRow(1.0/7, m.searchWidget),
+					ui.NewRow(6.0/7, m.listWidget),
+				),
 				ui.NewCol(0.78, m.detailsManager.Grid),
 			),
 		)
@@ -384,7 +445,11 @@ func (m *Manager) SetActiveTarget(index int, monitors map[string]*stats.Monitor)
 		m.currentTarget = index
 		target := m.targets[index]
 
-		m.listWidget.Title = fmt.Sprintf("Targets (↑↓) → %s", target.Name)
+		if m.listWidget != nil {
+			if !m.listWidget.IsSearchMode() {
+				m.listWidget.Title = fmt.Sprintf("Targets → %s", target.Name)
+			}
+		}
 
 		m.detailsManager.URLWidget.Text = target.URL
 		m.detailsManager.RefreshWidget.Text = fmt.Sprintf("%v seconds", target.GetRefreshInterval().Seconds())
@@ -536,6 +601,56 @@ func (m *Manager) restorePlotData(targetName string) {
 		m.detailsManager.UptimePlot.Data[0] = make([]float64, 0)
 		m.detailsManager.ResponseTimePlot.Data[0] = []float64{0.0, 0.0}
 	}
+}
+
+func (m *Manager) NavigateTargets(direction int, currentIndex *int, monitors map[string]*stats.Monitor) {
+	if m.listWidget == nil {
+		return
+	}
+
+	if m.listWidget.IsSearchMode() {
+		filteredIndices := m.listWidget.GetFilteredIndices()
+		if len(filteredIndices) == 0 {
+			return
+		}
+
+		currentFilteredIndex := -1
+		for i, idx := range filteredIndices {
+			if idx == *currentIndex {
+				currentFilteredIndex = i
+				break
+			}
+		}
+
+		if currentFilteredIndex == -1 {
+			if direction > 0 {
+				currentFilteredIndex = 0
+			} else {
+				currentFilteredIndex = len(filteredIndices) - 1
+			}
+		} else {
+			if direction > 0 {
+				currentFilteredIndex = (currentFilteredIndex + 1) % len(filteredIndices)
+			} else {
+				currentFilteredIndex = (currentFilteredIndex - 1 + len(filteredIndices)) % len(filteredIndices)
+			}
+		}
+
+		*currentIndex = filteredIndices[currentFilteredIndex]
+	} else {
+		totalTargets := len(m.targets)
+		if totalTargets == 0 {
+			return
+		}
+
+		if direction > 0 {
+			*currentIndex = (*currentIndex + 1) % totalTargets
+		} else {
+			*currentIndex = (*currentIndex - 1 + totalTargets) % totalTargets
+		}
+	}
+
+	m.SetActiveTarget(*currentIndex, monitors)
 }
 
 func (m *Manager) updatePlotDataForTarget(targetName string, result net.WebsiteCheckResult) {

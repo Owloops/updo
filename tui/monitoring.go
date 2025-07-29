@@ -92,16 +92,41 @@ func StartMonitoring(targets []config.Target, options Options) {
 					manager.Resize(width, height)
 					ui.Render(manager.grid)
 				}
-			case "<Down>", "j":
+			case "<Down>":
 				if len(targets) > 1 {
-					currentTargetIndex = (currentTargetIndex + 1) % len(targets)
-					manager.SetActiveTarget(currentTargetIndex, monitors)
+					manager.NavigateTargets(1, &currentTargetIndex, monitors)
 					ui.Render(manager.grid)
 				}
-			case "<Up>", "k":
+			case "<Up>":
 				if len(targets) > 1 {
-					currentTargetIndex = (currentTargetIndex - 1 + len(targets)) % len(targets)
-					manager.SetActiveTarget(currentTargetIndex, monitors)
+					manager.NavigateTargets(-1, &currentTargetIndex, monitors)
+					ui.Render(manager.grid)
+				}
+			case "/":
+				if len(targets) > 1 && manager.listWidget != nil {
+					manager.listWidget.ToggleSearch()
+					if manager.listWidget.IsSearchMode() && manager.listWidget.OnSearchChange != nil {
+						indices := manager.listWidget.GetFilteredIndices()
+						manager.listWidget.OnSearchChange(manager.listWidget.GetQuery(), indices)
+					}
+					ui.Render(manager.grid)
+				}
+			case "<Escape>":
+				if manager.listWidget != nil && manager.listWidget.IsSearchMode() {
+					manager.listWidget.ToggleSearch()
+					if manager.listWidget.OnSearchChange != nil {
+						manager.listWidget.OnSearchChange(manager.listWidget.GetQuery(), manager.listWidget.GetFilteredIndices())
+					}
+					ui.Render(manager.grid)
+				}
+			case "<Backspace>", "<C-8>", "<Space>":
+				if manager.listWidget != nil && manager.listWidget.IsSearchMode() {
+					manager.listWidget.UpdateSearch(e.ID)
+					ui.Render(manager.grid)
+				}
+			default:
+				if manager.listWidget != nil && manager.listWidget.IsSearchMode() && len(e.ID) == 1 {
+					manager.listWidget.UpdateSearch(e.ID)
 					ui.Render(manager.grid)
 				}
 			}

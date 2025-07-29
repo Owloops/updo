@@ -29,7 +29,7 @@ Updo is a command-line tool for monitoring website uptime and performance. It pr
 
 ## Demo
 
-https://github.com/user-attachments/assets/f8a15cc7-7b30-448f-ab49-35396e6ed46f
+<https://github.com/user-attachments/assets/f8a15cc7-7b30-448f-ab49-35396e6ed46f>
 
 ## Installation
 
@@ -323,6 +323,13 @@ Usage examples:
 
 ## Keyboard Shortcuts
 
+When monitoring multiple targets:
+
+- `↑`: Move to previous target
+- `↓`: Move to next target
+- `/`: Activate search mode to filter targets
+- `ESC`: Exit search mode
+- `Backspace`: Delete characters while searching
 - `q` or `Ctrl+C`: Quit the application
 
 ## Mentions
