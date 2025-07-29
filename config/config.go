@@ -7,20 +7,20 @@ import (
 )
 
 type Target struct {
-	URL             string            `mapstructure:"url"`
-	Name            string            `mapstructure:"name"`
-	RefreshInterval int               `mapstructure:"refresh_interval"`
-	Timeout         int               `mapstructure:"timeout"`
-	ShouldFail      bool              `mapstructure:"should_fail"`
-	FollowRedirects bool              `mapstructure:"follow_redirects"`
-	SkipSSL         bool              `mapstructure:"skip_ssl"`
-	AssertText      string            `mapstructure:"assert_text"`
-	ReceiveAlert    bool              `mapstructure:"receive_alert"`
-	Headers         []string          `mapstructure:"headers"`
-	Method          string            `mapstructure:"method"`
-	Body            string            `mapstructure:"body"`
-	WebhookURL      string            `mapstructure:"webhook_url"`
-	WebhookHeaders  map[string]string `mapstructure:"webhook_headers"`
+	URL             string   `mapstructure:"url"`
+	Name            string   `mapstructure:"name"`
+	RefreshInterval int      `mapstructure:"refresh_interval"`
+	Timeout         int      `mapstructure:"timeout"`
+	ShouldFail      bool     `mapstructure:"should_fail"`
+	FollowRedirects bool     `mapstructure:"follow_redirects"`
+	SkipSSL         bool     `mapstructure:"skip_ssl"`
+	AssertText      string   `mapstructure:"assert_text"`
+	ReceiveAlert    bool     `mapstructure:"receive_alert"`
+	Headers         []string `mapstructure:"headers"`
+	Method          string   `mapstructure:"method"`
+	Body            string   `mapstructure:"body"`
+	WebhookURL      string   `mapstructure:"webhook_url"`
+	WebhookHeaders  []string `mapstructure:"webhook_headers"`
 }
 
 type Global struct {
@@ -35,6 +35,8 @@ type Global struct {
 	Log             bool     `mapstructure:"log"`
 	Only            []string `mapstructure:"only"`
 	Skip            []string `mapstructure:"skip"`
+	WebhookURL      string   `mapstructure:"webhook_url"`
+	WebhookHeaders  []string `mapstructure:"webhook_headers"`
 }
 
 type Config struct {
@@ -78,6 +80,12 @@ func LoadConfig(configFile string) (*Config, error) {
 		}
 		if !target.ReceiveAlert && config.Global.ReceiveAlert {
 			target.ReceiveAlert = config.Global.ReceiveAlert
+		}
+		if target.WebhookURL == "" && config.Global.WebhookURL != "" {
+			target.WebhookURL = config.Global.WebhookURL
+		}
+		if len(target.WebhookHeaders) == 0 && len(config.Global.WebhookHeaders) > 0 {
+			target.WebhookHeaders = config.Global.WebhookHeaders
 		}
 	}
 

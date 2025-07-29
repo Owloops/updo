@@ -25,6 +25,8 @@ type Config struct {
 	Log             string
 	Only            []string
 	Skip            []string
+	WebhookURL      string
+	WebhookHeaders  []string
 }
 
 var AppConfig Config
@@ -68,6 +70,8 @@ func init() {
 	RootCmd.PersistentFlags().StringVarP(&AppConfig.Body, "data", "d", "", "HTTP request body data")
 	RootCmd.PersistentFlags().StringSliceVar(&AppConfig.Only, "only", nil, "Only monitor specific targets (by name or URL)")
 	RootCmd.PersistentFlags().StringSliceVar(&AppConfig.Skip, "skip", nil, "Skip specific targets (by name or URL)")
+	RootCmd.PersistentFlags().StringVar(&AppConfig.WebhookURL, "webhook-url", "", "Webhook URL for notifications")
+	RootCmd.PersistentFlags().StringArrayVar(&AppConfig.WebhookHeaders, "webhook-header", nil, "Webhook headers (can be used multiple times, format: 'Header-Name: value')")
 
 	var logEnabled bool
 	RootCmd.PersistentFlags().BoolVar(&logEnabled, "log", false, "Output structured logs in JSON format (includes requests, responses, and metrics)")

@@ -81,6 +81,8 @@ You can monitor multiple targets by:
 					Headers:         appConfig.Headers,
 					Method:          appConfig.Method,
 					Body:            appConfig.Body,
+					WebhookURL:      appConfig.WebhookURL,
+					WebhookHeaders:  appConfig.WebhookHeaders,
 				}
 			}
 		}
@@ -100,7 +102,6 @@ You can monitor multiple targets by:
 			}
 			simple.StartMultiTargetMonitoring(targets, options)
 		} else {
-			// Unified TUI mode - handles both single and multi-target
 			options := tui.Options{
 				Count: appConfig.Count,
 				Log:   appConfig.Log,

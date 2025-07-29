@@ -166,7 +166,11 @@ docker run -it updo monitor --url <website-url> [options]
 - `-c, --count`: Number of checks to perform (0 = infinite, applies per target)
 - `--only`: Only monitor specific targets (by name or URL, comma-separated)
 - `--skip`: Skip specific targets (by name or URL, comma-separated)
+- `--webhook-url`: Webhook URL for notifications (applies to all targets)
+- `--webhook-header`: Webhook headers (can be used multiple times, applies to all targets)
 - `-h, --help`: Display help message
+
+> **Note:** When using CLI flags, all settings (headers, webhook URL, timeouts, etc.) apply globally to all monitored targets. For per-target configuration, use a TOML configuration file.
 
 ### Examples
 
@@ -235,6 +239,13 @@ docker run -it updo monitor --url <website-url> [options]
 
 # Combine filtering with other options
 ./updo monitor --config example-config.toml --only Google --simple --count=5
+
+# Webhook notifications examples
+# Monitor with webhook notifications (applies to all targets)
+./updo monitor --webhook-url "https://hooks.slack.com/services/YOUR/WEBHOOK/URL" https://example.com https://api.example.com
+
+# Webhook with custom headers
+./updo monitor --webhook-url "https://alerts.internal.com/webhook" --webhook-header "Authorization: Bearer token" --webhook-header "X-Service: updo" https://example.com
 ```
 
 ## Configuration File
@@ -250,6 +261,9 @@ timeout = 10
 follow_redirects = true
 receive_alert = true
 count = 0  # 0 means infinite
+# Global webhook settings (optional - applies to all targets)
+webhook_url = "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+webhook_headers = ["X-Team: ops"]
 # Target filtering (optional)
 only = ["Google", "GitHub"]  # Only monitor these targets
 skip = ["slow-api"]          # Skip these targets
@@ -278,7 +292,7 @@ receive_alert = false  # Disable alerts for this target
 url = "https://critical-api.example.com/health"
 name = "Critical API"
 webhook_url = "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
-webhook_headers = { "X-Custom-Header" = "updo-monitor" }
+webhook_headers = ["X-Custom-Header: updo-monitor"]
 ```
 
 ### Configuration Options
@@ -287,6 +301,8 @@ webhook_headers = { "X-Custom-Header" = "updo-monitor" }
 
 - `only`: Array of target names/URLs to monitor exclusively
 - `skip`: Array of target names/URLs to skip
+- `webhook_url`: Default webhook URL for all targets
+- `webhook_headers`: Default webhook headers for all targets
 - Other global settings apply to all targets unless overridden
 
 > **Note:** Command line `--only` and `--skip` flags override config file settings.
@@ -307,7 +323,7 @@ Each target can override global settings and supports:
 - `follow_redirects`: Follow HTTP redirects
 - `receive_alert`: Enable desktop alerts
 - `webhook_url`: Webhook endpoint for notifications
-- `webhook_headers`: Custom headers for webhook requests (as map)
+- `webhook_headers`: Custom headers for webhook requests (as array)
 
 ## Webhook Notifications
 
@@ -347,10 +363,10 @@ webhook_url = "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
 url = "https://critical-service.example.com"
 name = "Critical Service"
 webhook_url = "https://alerts.internal.com/webhook"
-webhook_headers = { 
-  "Authorization" = "Bearer YOUR_TOKEN",
-  "X-Service" = "updo-monitor"
-}
+webhook_headers = [
+  "Authorization: Bearer YOUR_TOKEN",
+  "X-Service: updo-monitor"
+]
 ```
 
 ## Structured Logging

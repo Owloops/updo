@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -56,7 +57,7 @@ func SendWebhook(webhookURL string, headers map[string]string, payload WebhookPa
 	return nil
 }
 
-func HandleWebhookAlert(webhookURL string, headers map[string]string, isUp bool, alertSent *bool, targetName string, targetURL string, responseTime time.Duration, statusCode int, errorMsg string) {
+func HandleWebhookAlert(webhookURL string, headers []string, isUp bool, alertSent *bool, targetName string, targetURL string, responseTime time.Duration, statusCode int, errorMsg string) {
 	displayName := targetName
 	if displayName == "" {
 		displayName = targetURL
@@ -89,7 +90,17 @@ func HandleWebhookAlert(webhookURL string, headers map[string]string, isUp bool,
 		Error:          errorMsg,
 	}
 
-	if err := SendWebhook(webhookURL, headers, payload); err != nil {
+	headerMap := make(map[string]string)
+	for _, header := range headers {
+		parts := strings.SplitN(header, ":", 2)
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			headerMap[key] = value
+		}
+	}
+
+	if err := SendWebhook(webhookURL, headerMap, payload); err != nil {
 		log.Printf("Failed to send webhook: %v", err)
 	}
 }

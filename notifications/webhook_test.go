@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -12,7 +13,7 @@ func TestSendWebhook(t *testing.T) {
 	tests := []struct {
 		name           string
 		payload        WebhookPayload
-		headers        map[string]string
+		headers        []string
 		responseStatus int
 		expectError    bool
 	}{
@@ -27,7 +28,7 @@ func TestSendWebhook(t *testing.T) {
 				StatusCode:     500,
 				Error:          "Internal Server Error",
 			},
-			headers:        map[string]string{"X-Custom": "test"},
+			headers:        []string{"X-Custom: test"},
 			responseStatus: http.StatusOK,
 			expectError:    false,
 		},
@@ -71,7 +72,17 @@ func TestSendWebhook(t *testing.T) {
 			}))
 			defer server.Close()
 
-			err := SendWebhook(server.URL, tc.headers, tc.payload)
+			headerMap := make(map[string]string)
+			for _, header := range tc.headers {
+				parts := strings.SplitN(header, ":", 2)
+				if len(parts) == 2 {
+					key := strings.TrimSpace(parts[0])
+					value := strings.TrimSpace(parts[1])
+					headerMap[key] = value
+				}
+			}
+
+			err := SendWebhook(server.URL, headerMap, tc.payload)
 
 			if tc.expectError && err == nil {
 				t.Error("Expected error but got none")
@@ -88,7 +99,18 @@ func TestSendWebhook(t *testing.T) {
 					t.Errorf("Target mismatch: expected %s, got %s", tc.payload.Target, receivedPayload.Target)
 				}
 
-				for key, value := range tc.headers {
+				// Parse and check headers
+				expectedHeaders := make(map[string]string)
+				for _, header := range tc.headers {
+					parts := strings.SplitN(header, ":", 2)
+					if len(parts) == 2 {
+						key := strings.TrimSpace(parts[0])
+						value := strings.TrimSpace(parts[1])
+						expectedHeaders[key] = value
+					}
+				}
+
+				for key, value := range expectedHeaders {
 					if receivedHeaders.Get(key) != value {
 						t.Errorf("Header %s mismatch: expected %s, got %s", key, value, receivedHeaders.Get(key))
 					}
