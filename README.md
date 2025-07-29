@@ -19,6 +19,7 @@ Updo is a command-line tool for monitoring website uptime and performance. It pr
 - **Multi-target monitoring** - Monitor multiple URLs concurrently
 - Displays various metrics like uptime percentage, average response time, and SSL certificate expiry
 - Desktop alert notifications for website status changes
+- **Webhook notifications** - Send alerts to Slack, Discord, or any webhook endpoint
 - Customizable refresh intervals and request timeouts per target
 - Supports HTTP and HTTPS, with options to skip SSL verification
 - Assertion on response body content
@@ -272,6 +273,12 @@ name = "Cloudflare"
 refresh_interval = 5
 follow_redirects = false  # Override global setting
 receive_alert = false  # Disable alerts for this target
+
+[[targets]]
+url = "https://critical-api.example.com/health"
+name = "Critical API"
+webhook_url = "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+webhook_headers = { "X-Custom-Header" = "updo-monitor" }
 ```
 
 ### Configuration Options
@@ -299,6 +306,52 @@ Each target can override global settings and supports:
 - `skip_ssl`: Skip SSL certificate verification
 - `follow_redirects`: Follow HTTP redirects
 - `receive_alert`: Enable desktop alerts
+- `webhook_url`: Webhook endpoint for notifications
+- `webhook_headers`: Custom headers for webhook requests (as map)
+
+## Webhook Notifications
+
+Updo can send webhook notifications when targets go up or down. This enables integration with various services like Slack, Discord, PagerDuty, or custom alerting systems.
+
+### Webhook Payload
+
+When a target status changes, Updo sends a JSON payload:
+
+```json
+{
+  "event": "target_down",  // or "target_up"
+  "target": "Critical API",
+  "url": "https://api.example.com",
+  "timestamp": "2024-01-01T12:00:00Z",
+  "response_time_ms": 1500,
+  "status_code": 500,
+  "error": "Internal Server Error"  // only for down events
+}
+```
+
+### Integration Examples
+
+**Slack Webhook:**
+
+```toml
+[[targets]]
+url = "https://api.example.com"
+name = "Production API"
+webhook_url = "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+```
+
+**Custom Webhook with Headers:**
+
+```toml
+[[targets]]
+url = "https://critical-service.example.com"
+name = "Critical Service"
+webhook_url = "https://alerts.internal.com/webhook"
+webhook_headers = { 
+  "Authorization" = "Bearer YOUR_TOKEN",
+  "X-Service" = "updo-monitor"
+}
+```
 
 ## Structured Logging
 

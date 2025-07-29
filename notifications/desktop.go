@@ -1,4 +1,4 @@
-package utils
+package notifications
 
 import (
 	"log"
@@ -13,12 +13,17 @@ func alert(message string) {
 	}
 }
 
-func HandleAlerts(isUp bool, alertSent *bool) {
+func HandleAlerts(isUp bool, alertSent *bool, targetName string, targetURL string) {
+	displayName := targetName
+	if displayName == "" {
+		displayName = targetURL
+	}
+
 	if !isUp && !*alertSent {
-		alert("The website is down!")
+		alert(displayName + " is down!")
 		*alertSent = true
 	} else if isUp && *alertSent {
-		alert("The website is back up!")
+		alert(displayName + " is back up!")
 		*alertSent = false
 	}
 }

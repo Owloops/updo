@@ -1,4 +1,4 @@
-package utils
+package notifications
 
 import (
 	"testing"
@@ -41,7 +41,7 @@ func TestHandleAlertsLogic(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			alertSent := tc.initialSent
 
-			HandleAlerts(tc.isUp, &alertSent)
+			HandleAlerts(tc.isUp, &alertSent, "Test Site", "https://example.com")
 
 			if alertSent != tc.expectedSent {
 				t.Errorf("Expected alertSent to be: %v, got: %v", tc.expectedSent, alertSent)

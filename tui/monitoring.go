@@ -8,8 +8,8 @@ import (
 
 	"github.com/Owloops/updo/config"
 	"github.com/Owloops/updo/net"
+	"github.com/Owloops/updo/notifications"
 	"github.com/Owloops/updo/stats"
-	"github.com/Owloops/updo/utils"
 	ui "github.com/gizak/termui/v3"
 )
 
@@ -37,6 +37,7 @@ func StartMonitoring(targets []config.Target, options Options) {
 	monitors := make(map[string]*stats.Monitor)
 	sequences := make(map[string]*int)
 	alertStates := make(map[string]*bool)
+	webhookAlertStates := make(map[string]*bool)
 
 	for _, target := range targets {
 		monitor, err := stats.NewMonitor()
@@ -46,8 +47,10 @@ func StartMonitoring(targets []config.Target, options Options) {
 		monitors[target.Name] = monitor
 		seq := 0
 		alert := false
+		webhookAlert := false
 		sequences[target.Name] = &seq
 		alertStates[target.Name] = &alert
+		webhookAlertStates[target.Name] = &webhookAlert
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -60,7 +63,7 @@ func StartMonitoring(targets []config.Target, options Options) {
 		wg.Add(1)
 		go func(t config.Target) {
 			defer wg.Done()
-			monitorTargetTUI(ctx, t, monitors[t.Name], sequences[t.Name], alertStates[t.Name], dataChannel, options)
+			monitorTargetTUI(ctx, t, monitors[t.Name], sequences[t.Name], alertStates[t.Name], webhookAlertStates[t.Name], dataChannel, options)
 		}(target)
 	}
 
@@ -143,7 +146,7 @@ func StartMonitoring(targets []config.Target, options Options) {
 	}
 }
 
-func monitorTargetTUI(ctx context.Context, target config.Target, monitor *stats.Monitor, sequence *int, alertSent *bool, dataChannel chan<- TargetData, options Options) {
+func monitorTargetTUI(ctx context.Context, target config.Target, monitor *stats.Monitor, sequence *int, alertSent *bool, webhookAlertSent *bool, dataChannel chan<- TargetData, options Options) {
 	ticker := time.NewTicker(target.GetRefreshInterval())
 	defer ticker.Stop()
 
@@ -164,7 +167,25 @@ func monitorTargetTUI(ctx context.Context, target config.Target, monitor *stats.
 		*sequence++
 
 		if target.ReceiveAlert {
-			utils.HandleAlerts(result.IsUp, alertSent)
+			notifications.HandleAlerts(result.IsUp, alertSent, target.Name, target.URL)
+		}
+
+		if target.WebhookURL != "" {
+			errorMsg := ""
+			if !result.IsUp {
+				errorMsg = fmt.Sprintf("Status code: %d", result.StatusCode)
+			}
+			notifications.HandleWebhookAlert(
+				target.WebhookURL,
+				target.WebhookHeaders,
+				result.IsUp,
+				webhookAlertSent,
+				target.Name,
+				target.URL,
+				result.ResponseTime,
+				result.StatusCode,
+				errorMsg,
+			)
 		}
 
 		stats := monitor.GetStats()

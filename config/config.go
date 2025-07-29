@@ -7,18 +7,20 @@ import (
 )
 
 type Target struct {
-	URL             string   `mapstructure:"url"`
-	Name            string   `mapstructure:"name"`
-	RefreshInterval int      `mapstructure:"refresh_interval"`
-	Timeout         int      `mapstructure:"timeout"`
-	ShouldFail      bool     `mapstructure:"should_fail"`
-	FollowRedirects bool     `mapstructure:"follow_redirects"`
-	SkipSSL         bool     `mapstructure:"skip_ssl"`
-	AssertText      string   `mapstructure:"assert_text"`
-	ReceiveAlert    bool     `mapstructure:"receive_alert"`
-	Headers         []string `mapstructure:"headers"`
-	Method          string   `mapstructure:"method"`
-	Body            string   `mapstructure:"body"`
+	URL             string            `mapstructure:"url"`
+	Name            string            `mapstructure:"name"`
+	RefreshInterval int               `mapstructure:"refresh_interval"`
+	Timeout         int               `mapstructure:"timeout"`
+	ShouldFail      bool              `mapstructure:"should_fail"`
+	FollowRedirects bool              `mapstructure:"follow_redirects"`
+	SkipSSL         bool              `mapstructure:"skip_ssl"`
+	AssertText      string            `mapstructure:"assert_text"`
+	ReceiveAlert    bool              `mapstructure:"receive_alert"`
+	Headers         []string          `mapstructure:"headers"`
+	Method          string            `mapstructure:"method"`
+	Body            string            `mapstructure:"body"`
+	WebhookURL      string            `mapstructure:"webhook_url"`
+	WebhookHeaders  map[string]string `mapstructure:"webhook_headers"`
 }
 
 type Global struct {
