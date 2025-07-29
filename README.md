@@ -149,7 +149,6 @@ docker run -it updo monitor --url <website-url> [options]
 ### Options
 
 - `-u, --url`: URL of the website to monitor
-- `--urls`: Multiple URLs to monitor (comma-separated)
 - `-C, --config`: Config file path (TOML format) for multi-target monitoring
 - `-r, --refresh`: Refresh interval in seconds (default: 5)
 - `-f, --should-fail`: Invert status code success (default: false)
@@ -220,9 +219,6 @@ docker run -it updo monitor --url <website-url> [options]
 # Multi-target monitoring examples
 # Monitor multiple URLs from command line
 ./updo monitor https://google.com https://github.com https://cloudflare.com
-
-# Using --urls flag
-./updo monitor --urls="https://google.com,https://github.com"
 
 # Using TOML configuration file
 ./updo monitor -C example-config.toml

@@ -8,7 +8,6 @@ import (
 
 type Config struct {
 	URL             string
-	URLs            []string
 	ConfigFile      string
 	RefreshInterval time.Duration
 	Timeout         time.Duration
@@ -54,7 +53,6 @@ func Execute() error {
 
 func init() {
 	RootCmd.PersistentFlags().StringVarP(&AppConfig.URL, "url", "u", "", "URL or IP address to monitor")
-	RootCmd.PersistentFlags().StringSliceVar(&AppConfig.URLs, "urls", nil, "Multiple URLs to monitor")
 	RootCmd.PersistentFlags().StringVarP(&AppConfig.ConfigFile, "config", "C", "", "Config file (TOML format)")
 	RootCmd.PersistentFlags().IntP("refresh", "r", 5, "Refresh interval in seconds")
 	RootCmd.PersistentFlags().IntP("timeout", "t", 10, "HTTP request timeout in seconds")

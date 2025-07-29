@@ -22,11 +22,9 @@ with a visual interface or in simple mode with text output.
 
 You can monitor multiple targets by:
 - Providing multiple URLs as arguments
-- Using --urls flag with comma-separated URLs  
 - Using --config flag with a TOML configuration file`,
 	Example: `  updo monitor https://example.com
   updo monitor https://example.com https://google.com
-  updo monitor --urls="https://example.com,https://google.com"
   updo monitor --config updo.toml
   updo monitor -r 10 -t 5 https://example.com
   updo monitor --simple -c 10 https://example.com
@@ -52,9 +50,6 @@ You can monitor multiple targets by:
 
 			if appConfig.URL != "" {
 				urls = append(urls, appConfig.URL)
-			}
-			if len(appConfig.URLs) > 0 {
-				urls = append(urls, appConfig.URLs...)
 			}
 			if len(args) > 0 {
 				urls = append(urls, args...)
