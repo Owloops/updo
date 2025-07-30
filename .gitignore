@@ -17,6 +17,7 @@ main
 # Go directories
 bin/
 dist/
+aws/bootstrap
 
 # Go workspace
 go.work

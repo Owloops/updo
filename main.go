@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/Owloops/updo/cmd/deploy"
+	"github.com/Owloops/updo/cmd/destroy"
 	"github.com/Owloops/updo/cmd/monitor"
 	"github.com/Owloops/updo/cmd/root"
 	"github.com/spf13/cobra"
@@ -22,6 +24,8 @@ func main() {
 	root.RootCmd.SetVersionTemplate("updo version {{.Version}}\n")
 
 	root.RootCmd.AddCommand(monitor.MonitorCmd)
+	root.RootCmd.AddCommand(deploy.DeployCmd)
+	root.RootCmd.AddCommand(destroy.DestroyCmd)
 
 	root.RootCmd.Run = func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 && cmd.CalledAs() == "updo" {
