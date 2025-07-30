@@ -79,17 +79,24 @@ func (m *OutputManager) PrintResult(result TargetResult) {
 		ipInfo = fmt.Sprintf(" from %s", result.Result.ResolvedIP)
 	}
 
+	regionInfo := ""
+	if result.Region != "" {
+		regionInfo = fmt.Sprintf(" [%s]", result.Region)
+	}
+
 	if m.isSingle {
-		fmt.Printf("Response%s: seq=%d time=%dms %s uptime=%.1f%%\n",
+		fmt.Printf("Response%s%s: seq=%d time=%dms %s uptime=%.1f%%\n",
 			ipInfo,
+			regionInfo,
 			result.Sequence,
 			result.Result.ResponseTime.Milliseconds(),
 			statusInfo,
 			result.Stats.UptimePercent)
 	} else {
-		fmt.Printf("%s response%s: seq=%d time=%dms %s uptime=%.1f%%\n",
+		fmt.Printf("%s response%s%s: seq=%d time=%dms %s uptime=%.1f%%\n",
 			result.Target.Name,
 			ipInfo,
+			regionInfo,
 			result.Sequence,
 			result.Result.ResponseTime.Milliseconds(),
 			statusInfo,

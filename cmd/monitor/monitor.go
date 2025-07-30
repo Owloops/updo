@@ -32,6 +32,8 @@ You can monitor multiple targets by:
   updo monitor -H "Authorization: Bearer token123" https://example.com`,
 	Run: func(cmd *cobra.Command, args []string) {
 		appConfig := root.AppConfig
+		regions, _ := cmd.Flags().GetStringSlice("regions")
+		profile, _ := cmd.Flags().GetString("profile")
 
 		var targets []config.Target
 
@@ -92,14 +94,18 @@ You can monitor multiple targets by:
 
 		if useSimpleMode {
 			options := simple.MonitoringOptions{
-				Count: appConfig.Count,
-				Log:   appConfig.Log,
+				Count:   appConfig.Count,
+				Log:     appConfig.Log,
+				Regions: regions,
+				Profile: profile,
 			}
 			simple.StartMultiTargetMonitoring(targets, options)
 		} else {
 			options := tui.Options{
-				Count: appConfig.Count,
-				Log:   appConfig.Log,
+				Count:   appConfig.Count,
+				Log:     appConfig.Log,
+				Regions: regions,
+				Profile: profile,
 			}
 			tui.StartMonitoring(targets, options)
 		}
@@ -107,5 +113,6 @@ You can monitor multiple targets by:
 }
 
 func init() {
-	// Add monitor-specific flags here if needed
+	MonitorCmd.Flags().StringSlice("regions", nil, "AWS regions to invoke Lambda functions for multi-region checks")
+	MonitorCmd.Flags().String("profile", "", "AWS profile to use for Lambda invocations")
 }

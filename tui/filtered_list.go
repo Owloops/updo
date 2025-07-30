@@ -1,10 +1,12 @@
-package widgets
+package tui
 
 import (
 	"strings"
 
 	"github.com/gizak/termui/v3/widgets"
 )
+
+const spaceKey = "<Space>"
 
 type FilteredList struct {
 	*widgets.List
@@ -53,8 +55,8 @@ func (fl *FilteredList) UpdateSearch(char string) {
 		if len(fl.searchQuery) > 0 {
 			fl.searchQuery = fl.searchQuery[:len(fl.searchQuery)-1]
 		}
-	} else if len(fl.searchQuery) < maxSearchLength && (len(char) == 1 || char == "<Space>") {
-		if char == "<Space>" {
+	} else if len(fl.searchQuery) < maxSearchLength && (len(char) == 1 || char == spaceKey) {
+		if char == spaceKey {
 			fl.searchQuery += " "
 		} else {
 			fl.searchQuery += char

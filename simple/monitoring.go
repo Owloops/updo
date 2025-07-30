@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Owloops/updo/aws"
 	"github.com/Owloops/updo/config"
 	"github.com/Owloops/updo/net"
 	"github.com/Owloops/updo/notifications"
@@ -17,16 +18,24 @@ import (
 	"github.com/Owloops/updo/utils"
 )
 
+const (
+	requestFailedMsg   = "Request failed"
+	assertionFailedMsg = "Assertion failed"
+)
+
 type TargetResult struct {
 	Target   config.Target
 	Result   net.WebsiteCheckResult
 	Stats    stats.Stats
 	Sequence int
+	Region   string
 }
 
 type MonitoringOptions struct {
-	Count int
-	Log   string
+	Count   int
+	Log     string
+	Regions []string
+	Profile string
 }
 
 func StartMultiTargetMonitoring(targets []config.Target, options MonitoringOptions) {
@@ -94,15 +103,15 @@ func StartMultiTargetMonitoring(targets []config.Target, options MonitoringOptio
 			if !logMode {
 				outputManager.PrintResult(result)
 			} else {
-				utils.LogCheck(result.Result, result.Sequence, options.Log)
+				utils.LogCheck(result.Result, result.Sequence, options.Log, result.Region)
 				if !result.Result.IsUp {
-					errorMsg := "Request failed"
+					errorMsg := requestFailedMsg
 					if result.Result.StatusCode > 0 {
 						errorMsg = fmt.Sprintf("Non-success status code: %d", result.Result.StatusCode)
 					} else if result.Result.AssertText != "" && !result.Result.AssertionPassed {
-						errorMsg = "Assertion failed"
+						errorMsg = assertionFailedMsg
 					}
-					utils.LogWarning(result.Target.URL, errorMsg)
+					utils.LogWarning(result.Target.URL, errorMsg, result.Region)
 				}
 			}
 
@@ -136,38 +145,74 @@ func monitorTarget(ctx context.Context, target config.Target, monitor *stats.Mon
 			Body:            target.Body,
 		}
 
-		result := net.CheckWebsite(target.URL, netConfig)
-		monitor.AddResult(result)
-		*sequence++
+		if len(options.Regions) > 0 {
+			lambdaResults := aws.InvokeMultiRegion(target.URL, netConfig, options.Regions, options.Profile)
+			for _, lambdaResult := range lambdaResults {
+				if lambdaResult.Error != nil {
+					log.Printf("Lambda invocation failed for region %s: %v", lambdaResult.Region, lambdaResult.Error)
+					continue
+				}
+				monitor.AddResult(lambdaResult.Result)
+				*sequence++
 
-		if target.ReceiveAlert {
-			notifications.HandleAlerts(result.IsUp, alertSent, target.Name, target.URL)
-		}
+				if target.ReceiveAlert {
+					notifications.HandleAlerts(lambdaResult.Result.IsUp, alertSent, target.Name, lambdaResult.Result.URL)
+				}
 
-		if target.WebhookURL != "" {
-			errorMsg := ""
-			if !result.IsUp {
-				errorMsg = fmt.Sprintf("Status code: %d", result.StatusCode)
+				if target.WebhookURL != "" {
+					errorMsg := ""
+					if !lambdaResult.Result.IsUp {
+						switch {
+						case lambdaResult.Result.StatusCode > 0:
+							errorMsg = fmt.Sprintf("Non-success status code: %d", lambdaResult.Result.StatusCode)
+						case lambdaResult.Result.AssertText != "" && !lambdaResult.Result.AssertionPassed:
+							errorMsg = assertionFailedMsg
+						default:
+							errorMsg = requestFailedMsg
+						}
+					}
+					notifications.HandleWebhookAlert(target.WebhookURL, target.WebhookHeaders, lambdaResult.Result.IsUp, webhookAlertSent, target.Name, lambdaResult.Result.URL, lambdaResult.Result.ResponseTime, lambdaResult.Result.StatusCode, errorMsg)
+				}
+
+				resultsChan <- TargetResult{
+					Target:   target,
+					Result:   lambdaResult.Result,
+					Stats:    monitor.GetStats(),
+					Sequence: *sequence,
+					Region:   lambdaResult.Region,
+				}
 			}
-			notifications.HandleWebhookAlert(
-				target.WebhookURL,
-				target.WebhookHeaders,
-				result.IsUp,
-				webhookAlertSent,
-				target.Name,
-				target.URL,
-				result.ResponseTime,
-				result.StatusCode,
-				errorMsg,
-			)
-		}
+		} else {
+			result := net.CheckWebsite(target.URL, netConfig)
+			monitor.AddResult(result)
+			*sequence++
 
-		stats := monitor.GetStats()
-		resultsChan <- TargetResult{
-			Target:   target,
-			Result:   result,
-			Stats:    stats,
-			Sequence: *sequence - 1,
+			if target.ReceiveAlert {
+				notifications.HandleAlerts(result.IsUp, alertSent, target.Name, target.URL)
+			}
+
+			if target.WebhookURL != "" {
+				errorMsg := ""
+				if !result.IsUp {
+					switch {
+					case result.StatusCode > 0:
+						errorMsg = fmt.Sprintf("Non-success status code: %d", result.StatusCode)
+					case result.AssertText != "" && !result.AssertionPassed:
+						errorMsg = assertionFailedMsg
+					default:
+						errorMsg = requestFailedMsg
+					}
+				}
+				notifications.HandleWebhookAlert(target.WebhookURL, target.WebhookHeaders, result.IsUp, webhookAlertSent, target.Name, target.URL, result.ResponseTime, result.StatusCode, errorMsg)
+			}
+
+			resultsChan <- TargetResult{
+				Target:   target,
+				Result:   result,
+				Stats:    monitor.GetStats(),
+				Sequence: *sequence,
+				Region:   "",
+			}
 		}
 	}
 

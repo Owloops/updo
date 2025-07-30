@@ -1,4 +1,4 @@
-package widgets
+package tui
 
 import (
 	"fmt"

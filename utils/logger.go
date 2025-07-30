@@ -15,6 +15,7 @@ type MetricsData struct {
 	Type           string    `json:"type"`
 	Timestamp      time.Time `json:"timestamp"`
 	URL            string    `json:"url"`
+	Region         string    `json:"region,omitempty"`
 	Uptime         float64   `json:"uptime"`
 	AvgResponseMS  int64     `json:"avg_response_time_ms"`
 	MinResponseMS  int64     `json:"min_response_time_ms"`
@@ -29,6 +30,7 @@ type ErrorData struct {
 	Type      string    `json:"type"`
 	Timestamp time.Time `json:"timestamp"`
 	URL       string    `json:"url"`
+	Region    string    `json:"region,omitempty"`
 	Level     string    `json:"level"`
 	Message   string    `json:"message"`
 	Error     string    `json:"error,omitempty"`
@@ -38,6 +40,7 @@ type CheckData struct {
 	Type            string              `json:"type"`
 	Timestamp       time.Time           `json:"timestamp"`
 	URL             string              `json:"url"`
+	Region          string              `json:"region,omitempty"`
 	ResolvedIP      string              `json:"resolved_ip,omitempty"`
 	StatusCode      int                 `json:"status_code"`
 	ResponseTimeMS  int64               `json:"response_time_ms"`
@@ -52,7 +55,7 @@ type CheckData struct {
 	AssertionText   string              `json:"assertion_text,omitempty"`
 }
 
-func LogMetrics(stats *stats.Stats, url string) {
+func LogMetrics(stats *stats.Stats, url string, region ...string) {
 	if stats == nil {
 		return
 	}
@@ -68,6 +71,10 @@ func LogMetrics(stats *stats.Stats, url string) {
 		ChecksCount:    stats.ChecksCount,
 		SuccessCount:   stats.SuccessCount,
 		SuccessPercent: 0,
+	}
+
+	if len(region) > 0 && region[0] != "" {
+		data.Region = region[0]
 	}
 
 	if stats.ChecksCount > 0 {
@@ -87,7 +94,7 @@ func LogMetrics(stats *stats.Stats, url string) {
 	}
 }
 
-func LogCheck(result net.WebsiteCheckResult, seq int, jsonFormat string) {
+func LogCheck(result net.WebsiteCheckResult, seq int, jsonFormat string, region ...string) {
 	data := CheckData{
 		Type:            "check",
 		Timestamp:       result.LastCheckTime,
@@ -106,6 +113,10 @@ func LogCheck(result net.WebsiteCheckResult, seq int, jsonFormat string) {
 		ResponseBody:    result.ResponseBody,
 	}
 
+	if len(region) > 0 && region[0] != "" {
+		data.Region = region[0]
+	}
+
 	var buf strings.Builder
 	encoder := json.NewEncoder(&buf)
 	encoder.SetEscapeHTML(false)
@@ -115,13 +126,17 @@ func LogCheck(result net.WebsiteCheckResult, seq int, jsonFormat string) {
 	}
 }
 
-func LogError(url string, msg string, err error) {
+func LogError(url string, msg string, err error, region ...string) {
 	data := ErrorData{
 		Type:      "error",
 		Timestamp: time.Now(),
 		URL:       url,
 		Level:     "error",
 		Message:   msg,
+	}
+
+	if len(region) > 0 && region[0] != "" {
+		data.Region = region[0]
 	}
 
 	if err != nil {
@@ -137,13 +152,17 @@ func LogError(url string, msg string, err error) {
 	}
 }
 
-func LogWarning(url string, msg string) {
+func LogWarning(url string, msg string, region ...string) {
 	data := ErrorData{
 		Type:      "warning",
 		Timestamp: time.Now(),
 		URL:       url,
 		Level:     "warning",
 		Message:   msg,
+	}
+
+	if len(region) > 0 && region[0] != "" {
+		data.Region = region[0]
 	}
 
 	var buf strings.Builder

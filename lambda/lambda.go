@@ -41,12 +41,21 @@ type CheckRequest struct {
 }
 
 type CheckResponse struct {
-	Success        bool    `json:"success"`
-	StatusCode     int     `json:"status_code"`
-	ResponseTimeMs float64 `json:"response_time_ms"`
-	Error          string  `json:"error,omitempty"`
-	Region         string  `json:"region"`
-	SSLExpiry      *int    `json:"ssl_expiry_days,omitempty"`
+	Success        bool                 `json:"success"`
+	StatusCode     int                  `json:"status_code"`
+	ResponseTimeMs float64              `json:"response_time_ms"`
+	Error          string               `json:"error,omitempty"`
+	Region         string               `json:"region"`
+	SSLExpiry      *int                 `json:"ssl_expiry_days,omitempty"`
+	TraceInfo      *HttpTraceInfoSimple `json:"trace_info,omitempty"`
+}
+
+type HttpTraceInfoSimple struct {
+	WaitMs             float64 `json:"wait_ms"`
+	DNSLookupMs        float64 `json:"dns_lookup_ms"`
+	TCPConnectionMs    float64 `json:"tcp_connection_ms"`
+	TimeToFirstByteMs  float64 `json:"time_to_first_byte_ms"`
+	DownloadDurationMs float64 `json:"download_duration_ms"`
 }
 
 func handleRequest(ctx context.Context, req CheckRequest) (CheckResponse, error) {
@@ -106,6 +115,16 @@ func handleRequest(ctx context.Context, req CheckRequest) (CheckResponse, error)
 	}
 
 	resp.Success = result.IsUp
+
+	if result.TraceInfo != nil {
+		resp.TraceInfo = &HttpTraceInfoSimple{
+			WaitMs:             float64(result.TraceInfo.Wait / time.Millisecond),
+			DNSLookupMs:        float64(result.TraceInfo.DNSLookup / time.Millisecond),
+			TCPConnectionMs:    float64(result.TraceInfo.TCPConnection / time.Millisecond),
+			TimeToFirstByteMs:  float64(result.TraceInfo.TimeToFirstByte / time.Millisecond),
+			DownloadDurationMs: float64(result.TraceInfo.DownloadDuration / time.Millisecond),
+		}
+	}
 
 	if !result.IsUp {
 		if !result.AssertionPassed && req.AssertText != "" {
