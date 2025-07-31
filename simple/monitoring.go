@@ -157,7 +157,7 @@ func monitorTarget(ctx context.Context, target config.Target, monitor *stats.Mon
 			lambdaResults := aws.InvokeMultiRegion(target.URL, netConfig, regions, options.Profile)
 			for _, lambdaResult := range lambdaResults {
 				if lambdaResult.Error != nil {
-					log.Printf("Lambda invocation failed for region %s: %v", lambdaResult.Region, lambdaResult.Error)
+					utils.LogWarning(target.URL, fmt.Sprintf("Lambda invocation failed: %v", lambdaResult.Error), lambdaResult.Region)
 					continue
 				}
 				monitor.AddResult(lambdaResult.Result)
