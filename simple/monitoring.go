@@ -133,7 +133,10 @@ func monitorTarget(ctx context.Context, target config.Target, monitor *stats.Mon
 	ticker := time.NewTicker(target.GetRefreshInterval())
 	defer ticker.Stop()
 
+	attemptCount := 0
+
 	makeRequest := func() {
+		attemptCount++
 		netConfig := net.NetworkConfig{
 			Timeout:         target.GetTimeout(),
 			ShouldFail:      target.ShouldFail,
@@ -145,8 +148,13 @@ func monitorTarget(ctx context.Context, target config.Target, monitor *stats.Mon
 			Body:            target.Body,
 		}
 
-		if len(options.Regions) > 0 {
-			lambdaResults := aws.InvokeMultiRegion(target.URL, netConfig, options.Regions, options.Profile)
+		regions := target.Regions
+		if len(regions) == 0 {
+			regions = options.Regions
+		}
+
+		if len(regions) > 0 {
+			lambdaResults := aws.InvokeMultiRegion(target.URL, netConfig, regions, options.Profile)
 			for _, lambdaResult := range lambdaResults {
 				if lambdaResult.Error != nil {
 					log.Printf("Lambda invocation failed for region %s: %v", lambdaResult.Region, lambdaResult.Error)
@@ -218,7 +226,7 @@ func monitorTarget(ctx context.Context, target config.Target, monitor *stats.Mon
 
 	makeRequest()
 
-	if options.Count > 0 && monitor.ChecksCount >= options.Count {
+	if options.Count > 0 && attemptCount >= options.Count {
 		return
 	}
 
@@ -229,7 +237,7 @@ func monitorTarget(ctx context.Context, target config.Target, monitor *stats.Mon
 		case <-ticker.C:
 			makeRequest()
 
-			if options.Count > 0 && monitor.ChecksCount >= options.Count {
+			if options.Count > 0 && attemptCount >= options.Count {
 				return
 			}
 		}

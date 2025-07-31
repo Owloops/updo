@@ -3,11 +3,9 @@ package tui
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
-	"github.com/Owloops/updo/aws"
 	"github.com/Owloops/updo/config"
 	"github.com/Owloops/updo/net"
 	"github.com/Owloops/updo/notifications"
@@ -15,23 +13,15 @@ import (
 	ui "github.com/gizak/termui/v3"
 )
 
-const (
-	requestFailedMsg   = "Request failed"
-	assertionFailedMsg = "Assertion failed"
-)
-
 type TargetData struct {
 	Target config.Target
 	Result net.WebsiteCheckResult
 	Stats  stats.Stats
-	Region string
 }
 
 type Options struct {
-	Count   int
-	Log     string
-	Regions []string
-	Profile string
+	Count int
+	Log   string
 }
 
 func StartMonitoring(targets []config.Target, options Options) {
@@ -73,7 +63,7 @@ func StartMonitoring(targets []config.Target, options Options) {
 		wg.Add(1)
 		go func(t config.Target) {
 			defer wg.Done()
-			monitorTargetTUI(ctx, t, monitors[t.Name], sequences[t.Name], alertStates[t.Name], webhookAlertStates[t.Name], dataChannel, options, monitors, sequences, alertStates, webhookAlertStates)
+			monitorTargetTUI(ctx, t, monitors[t.Name], sequences[t.Name], alertStates[t.Name], webhookAlertStates[t.Name], dataChannel, options)
 		}(target)
 	}
 
@@ -82,7 +72,7 @@ func StartMonitoring(targets []config.Target, options Options) {
 		close(dataChannel)
 	}()
 
-	manager := NewRefactoredManager(targets, options.Regions)
+	manager := NewManager(targets)
 	width, height := ui.TerminalDimensions()
 	manager.InitializeLayout(width, height)
 
@@ -103,56 +93,44 @@ func StartMonitoring(targets []config.Target, options Options) {
 				if payload, ok := e.Payload.(ui.Resize); ok {
 					width, height = payload.Width, payload.Height
 					manager.Resize(width, height)
-					ui.Render(manager.GetGrid())
+					ui.Render(manager.grid)
 				}
 			case "<Down>":
-				totalItems := len(targets)
-				if len(options.Regions) > 0 && len(targets) == 1 {
-					totalItems = len(options.Regions)
-				}
-				if totalItems > 1 {
+				if len(targets) > 1 {
 					manager.NavigateTargets(1, &currentTargetIndex, monitors)
-					ui.Render(manager.GetGrid())
+					ui.Render(manager.grid)
 				}
 			case "<Up>":
-				totalItems := len(targets)
-				if len(options.Regions) > 0 && len(targets) == 1 {
-					totalItems = len(options.Regions)
-				}
-				if totalItems > 1 {
+				if len(targets) > 1 {
 					manager.NavigateTargets(-1, &currentTargetIndex, monitors)
-					ui.Render(manager.GetGrid())
-				}
-			case "<Enter>":
-				if len(targets) > 1 || len(options.Regions) > 0 {
-					manager.ToggleExpansion()
+					ui.Render(manager.grid)
 				}
 			case "/":
-				if len(targets) > 1 || len(options.Regions) > 0 {
-					manager.ToggleSearch()
-					if manager.GetListWidgetForSearch() != nil && manager.GetListWidgetForSearch().IsSearchMode() && manager.GetListWidgetForSearch().OnSearchChange != nil {
-						indices := manager.GetListWidgetForSearch().GetFilteredIndices()
-						manager.GetListWidgetForSearch().OnSearchChange(manager.GetListWidgetForSearch().GetQuery(), indices)
+				if len(targets) > 1 && manager.listWidget != nil {
+					manager.listWidget.ToggleSearch()
+					if manager.listWidget.IsSearchMode() && manager.listWidget.OnSearchChange != nil {
+						indices := manager.listWidget.GetFilteredIndices()
+						manager.listWidget.OnSearchChange(manager.listWidget.GetQuery(), indices)
 					}
-					ui.Render(manager.GetGrid())
+					ui.Render(manager.grid)
 				}
 			case "<Escape>":
-				if manager.GetListWidgetForSearch() != nil && manager.GetListWidgetForSearch().IsSearchMode() {
-					manager.ToggleSearch()
-					if manager.GetListWidgetForSearch().OnSearchChange != nil {
-						manager.GetListWidgetForSearch().OnSearchChange(manager.GetListWidgetForSearch().GetQuery(), manager.GetListWidgetForSearch().GetFilteredIndices())
+				if manager.listWidget != nil && manager.listWidget.IsSearchMode() {
+					manager.listWidget.ToggleSearch()
+					if manager.listWidget.OnSearchChange != nil {
+						manager.listWidget.OnSearchChange(manager.listWidget.GetQuery(), manager.listWidget.GetFilteredIndices())
 					}
-					ui.Render(manager.GetGrid())
+					ui.Render(manager.grid)
 				}
 			case "<Backspace>", "<C-8>", "<Space>":
-				if manager.GetListWidgetForSearch() != nil && manager.GetListWidgetForSearch().IsSearchMode() {
-					manager.GetListWidgetForSearch().UpdateSearch(e.ID)
-					ui.Render(manager.GetGrid())
+				if manager.listWidget != nil && manager.listWidget.IsSearchMode() {
+					manager.listWidget.UpdateSearch(e.ID)
+					ui.Render(manager.grid)
 				}
 			default:
-				if manager.GetListWidgetForSearch() != nil && manager.GetListWidgetForSearch().IsSearchMode() && len(e.ID) == 1 {
-					manager.GetListWidgetForSearch().UpdateSearch(e.ID)
-					ui.Render(manager.GetGrid())
+				if manager.listWidget != nil && manager.listWidget.IsSearchMode() && len(e.ID) == 1 {
+					manager.listWidget.UpdateSearch(e.ID)
+					ui.Render(manager.grid)
 				}
 			}
 
@@ -168,7 +146,7 @@ func StartMonitoring(targets []config.Target, options Options) {
 	}
 }
 
-func monitorTargetTUI(ctx context.Context, target config.Target, monitor *stats.Monitor, sequence *int, alertSent *bool, webhookAlertSent *bool, dataChannel chan<- TargetData, options Options, monitors map[string]*stats.Monitor, sequences map[string]*int, alertStates map[string]*bool, webhookAlertStates map[string]*bool) {
+func monitorTargetTUI(ctx context.Context, target config.Target, monitor *stats.Monitor, sequence *int, alertSent *bool, webhookAlertSent *bool, dataChannel chan<- TargetData, options Options) {
 	ticker := time.NewTicker(target.GetRefreshInterval())
 	defer ticker.Stop()
 
@@ -184,94 +162,37 @@ func monitorTargetTUI(ctx context.Context, target config.Target, monitor *stats.
 			Body:            target.Body,
 		}
 
-		if len(options.Regions) > 0 {
-			lambdaResults := aws.InvokeMultiRegion(target.URL, netConfig, options.Regions, options.Profile)
-			for _, lambdaResult := range lambdaResults {
-				if lambdaResult.Error != nil {
-					log.Printf("Lambda invocation failed for region %s: %v", lambdaResult.Region, lambdaResult.Error)
-					continue
-				}
+		result := net.CheckWebsite(target.URL, netConfig)
+		monitor.AddResult(result)
+		*sequence++
 
-				regionKey := fmt.Sprintf("%s@%s", target.Name, lambdaResult.Region)
-				regionMonitor, exists := monitors[regionKey]
-				if !exists {
-					monitor, err := stats.NewMonitor()
-					if err != nil {
-						log.Printf("Failed to create monitor for %s: %v", regionKey, err)
-						continue
-					}
-					monitors[regionKey] = monitor
-					seq := 0
-					alert := false
-					webhookAlert := false
-					sequences[regionKey] = &seq
-					alertStates[regionKey] = &alert
-					webhookAlertStates[regionKey] = &webhookAlert
-					regionMonitor = monitor
-				}
-				regionSequence := sequences[regionKey]
-				regionAlertSent := alertStates[regionKey]
-				regionWebhookAlertSent := webhookAlertStates[regionKey]
+		if target.ReceiveAlert {
+			notifications.HandleAlerts(result.IsUp, alertSent, target.Name, target.URL)
+		}
 
-				regionMonitor.AddResult(lambdaResult.Result)
-				*regionSequence++
-
-				if target.ReceiveAlert {
-					notifications.HandleAlerts(lambdaResult.Result.IsUp, regionAlertSent, target.Name, lambdaResult.Result.URL)
-				}
-
-				if target.WebhookURL != "" {
-					errorMsg := ""
-					if !lambdaResult.Result.IsUp {
-						switch {
-						case lambdaResult.Result.StatusCode > 0:
-							errorMsg = fmt.Sprintf("Non-success status code: %d", lambdaResult.Result.StatusCode)
-						case lambdaResult.Result.AssertText != "" && !lambdaResult.Result.AssertionPassed:
-							errorMsg = assertionFailedMsg
-						default:
-							errorMsg = requestFailedMsg
-						}
-					}
-					notifications.HandleWebhookAlert(target.WebhookURL, target.WebhookHeaders, lambdaResult.Result.IsUp, regionWebhookAlertSent, target.Name, lambdaResult.Result.URL, lambdaResult.Result.ResponseTime, lambdaResult.Result.StatusCode, errorMsg)
-				}
-
-				dataChannel <- TargetData{
-					Target: target,
-					Result: lambdaResult.Result,
-					Stats:  regionMonitor.GetStats(),
-					Region: lambdaResult.Region,
-				}
+		if target.WebhookURL != "" {
+			errorMsg := ""
+			if !result.IsUp {
+				errorMsg = fmt.Sprintf("Status code: %d", result.StatusCode)
 			}
-		} else {
-			result := net.CheckWebsite(target.URL, netConfig)
-			monitor.AddResult(result)
-			*sequence++
+			notifications.HandleWebhookAlert(
+				target.WebhookURL,
+				target.WebhookHeaders,
+				result.IsUp,
+				webhookAlertSent,
+				target.Name,
+				target.URL,
+				result.ResponseTime,
+				result.StatusCode,
+				errorMsg,
+			)
+		}
 
-			if target.ReceiveAlert {
-				notifications.HandleAlerts(result.IsUp, alertSent, target.Name, target.URL)
-			}
-
-			if target.WebhookURL != "" {
-				errorMsg := ""
-				if !result.IsUp {
-					switch {
-					case result.StatusCode > 0:
-						errorMsg = fmt.Sprintf("Non-success status code: %d", result.StatusCode)
-					case result.AssertText != "" && !result.AssertionPassed:
-						errorMsg = assertionFailedMsg
-					default:
-						errorMsg = requestFailedMsg
-					}
-				}
-				notifications.HandleWebhookAlert(target.WebhookURL, target.WebhookHeaders, result.IsUp, webhookAlertSent, target.Name, target.URL, result.ResponseTime, result.StatusCode, errorMsg)
-			}
-
-			dataChannel <- TargetData{
-				Target: target,
-				Result: result,
-				Stats:  monitor.GetStats(),
-				Region: "",
-			}
+		stats := monitor.GetStats()
+		dataChannel <- TargetData{
+			Target: target,
+			Result: result,
+			Stats:  stats,
 		}
 	}
 

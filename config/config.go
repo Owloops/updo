@@ -21,6 +21,7 @@ type Target struct {
 	Body            string   `mapstructure:"body"`
 	WebhookURL      string   `mapstructure:"webhook_url"`
 	WebhookHeaders  []string `mapstructure:"webhook_headers"`
+	Regions         []string `mapstructure:"regions"`
 }
 
 type Global struct {
@@ -37,6 +38,7 @@ type Global struct {
 	Skip            []string `mapstructure:"skip"`
 	WebhookURL      string   `mapstructure:"webhook_url"`
 	WebhookHeaders  []string `mapstructure:"webhook_headers"`
+	Regions         []string `mapstructure:"regions"`
 }
 
 type Config struct {
@@ -86,6 +88,9 @@ func LoadConfig(configFile string) (*Config, error) {
 		}
 		if len(target.WebhookHeaders) == 0 && len(config.Global.WebhookHeaders) > 0 {
 			target.WebhookHeaders = config.Global.WebhookHeaders
+		}
+		if len(target.Regions) == 0 && len(config.Global.Regions) > 0 {
+			target.Regions = config.Global.Regions
 		}
 	}
 
