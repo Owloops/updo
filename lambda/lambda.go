@@ -41,13 +41,18 @@ type CheckRequest struct {
 }
 
 type CheckResponse struct {
-	Success        bool                 `json:"success"`
-	StatusCode     int                  `json:"status_code"`
-	ResponseTimeMs float64              `json:"response_time_ms"`
-	Error          string               `json:"error,omitempty"`
-	Region         string               `json:"region"`
-	SSLExpiry      *int                 `json:"ssl_expiry_days,omitempty"`
-	TraceInfo      *HttpTraceInfoSimple `json:"trace_info,omitempty"`
+	Success         bool                 `json:"success"`
+	StatusCode      int                  `json:"status_code"`
+	ResponseTimeMs  float64              `json:"response_time_ms"`
+	Error           string               `json:"error,omitempty"`
+	Region          string               `json:"region"`
+	SSLExpiry       *int                 `json:"ssl_expiry_days,omitempty"`
+	TraceInfo       *HttpTraceInfoSimple `json:"trace_info,omitempty"`
+	ResolvedIP      string               `json:"resolved_ip,omitempty"`
+	RequestHeaders  map[string][]string  `json:"request_headers,omitempty"`
+	ResponseHeaders map[string][]string  `json:"response_headers,omitempty"`
+	RequestBody     string               `json:"request_body,omitempty"`
+	ResponseBody    string               `json:"response_body,omitempty"`
 }
 
 type HttpTraceInfoSimple struct {
@@ -99,6 +104,16 @@ func handleRequest(ctx context.Context, req CheckRequest) (CheckResponse, error)
 
 	resp.StatusCode = result.StatusCode
 	resp.ResponseTimeMs = float64(result.ResponseTime / time.Millisecond)
+	resp.ResolvedIP = result.ResolvedIP
+	resp.RequestBody = result.RequestBody
+	resp.ResponseBody = result.ResponseBody
+
+	if result.RequestHeaders != nil {
+		resp.RequestHeaders = map[string][]string(result.RequestHeaders)
+	}
+	if result.ResponseHeaders != nil {
+		resp.ResponseHeaders = map[string][]string(result.ResponseHeaders)
+	}
 
 	if strings.HasPrefix(strings.ToLower(req.URL), "https://") {
 		func() {

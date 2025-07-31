@@ -32,3 +32,5 @@ vendor/
 # Local files
 CLAUDE.local.md
 **/.claude/settings.local.json
+*.local.md
+*.local.toml

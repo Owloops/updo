@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"sync"
 	"time"
 
@@ -27,13 +28,18 @@ type LambdaRequest struct {
 }
 
 type LambdaResponse struct {
-	Success        bool                 `json:"success"`
-	StatusCode     int                  `json:"status_code"`
-	ResponseTimeMs float64              `json:"response_time_ms"`
-	Error          string               `json:"error,omitempty"`
-	Region         string               `json:"region"`
-	SSLExpiry      *int                 `json:"ssl_expiry_days,omitempty"`
-	TraceInfo      *HttpTraceInfoSimple `json:"trace_info,omitempty"`
+	Success         bool                 `json:"success"`
+	StatusCode      int                  `json:"status_code"`
+	ResponseTimeMs  float64              `json:"response_time_ms"`
+	Error           string               `json:"error,omitempty"`
+	Region          string               `json:"region"`
+	SSLExpiry       *int                 `json:"ssl_expiry_days,omitempty"`
+	TraceInfo       *HttpTraceInfoSimple `json:"trace_info,omitempty"`
+	ResolvedIP      string               `json:"resolved_ip,omitempty"`
+	RequestHeaders  map[string][]string  `json:"request_headers,omitempty"`
+	ResponseHeaders map[string][]string  `json:"response_headers,omitempty"`
+	RequestBody     string               `json:"request_body,omitempty"`
+	ResponseBody    string               `json:"response_body,omitempty"`
 }
 
 type HttpTraceInfoSimple struct {
@@ -157,6 +163,16 @@ func invokeLambdaInRegion(url string, config net.NetworkConfig, region string, p
 		LastCheckTime: time.Now(),
 		Method:        request.Method,
 		AssertText:    request.AssertText,
+		ResolvedIP:    lambdaResp.ResolvedIP,
+		RequestBody:   lambdaResp.RequestBody,
+		ResponseBody:  lambdaResp.ResponseBody,
+	}
+
+	if lambdaResp.RequestHeaders != nil {
+		result.RequestHeaders = http.Header(lambdaResp.RequestHeaders)
+	}
+	if lambdaResp.ResponseHeaders != nil {
+		result.ResponseHeaders = http.Header(lambdaResp.ResponseHeaders)
 	}
 
 	if lambdaResp.TraceInfo != nil {
