@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Owloops/updo/aws"
 	"github.com/Owloops/updo/config"
 	"github.com/Owloops/updo/net"
 	"github.com/Owloops/updo/notifications"
@@ -14,14 +15,17 @@ import (
 )
 
 type TargetData struct {
-	Target config.Target
-	Result net.WebsiteCheckResult
-	Stats  stats.Stats
+	Target    config.Target
+	Result    net.WebsiteCheckResult
+	Stats     stats.Stats
+	TargetKey TargetKey
 }
 
 type Options struct {
-	Count int
-	Log   string
+	Count   int
+	Log     string
+	Regions []string
+	Profile string
 }
 
 func StartMonitoring(targets []config.Target, options Options) {
@@ -34,23 +38,26 @@ func StartMonitoring(targets []config.Target, options Options) {
 	}
 	defer ui.Close()
 
+	keyRegistry := NewTargetKeyRegistry(targets, options.Regions)
+	allKeys := keyRegistry.GetAllKeys()
+
 	monitors := make(map[string]*stats.Monitor)
 	sequences := make(map[string]*int)
 	alertStates := make(map[string]*bool)
 	webhookAlertStates := make(map[string]*bool)
 
-	for _, target := range targets {
+	for _, key := range allKeys {
 		monitor, err := stats.NewMonitor()
 		if err != nil {
-			panic(fmt.Sprintf("Failed to initialize stats monitor for %s: %v", target.Name, err))
+			panic(fmt.Sprintf("Failed to initialize stats monitor for %s: %v", key.String(), err))
 		}
-		monitors[target.Name] = monitor
+		monitors[key.String()] = monitor
 		seq := 0
 		alert := false
 		webhookAlert := false
-		sequences[target.Name] = &seq
-		alertStates[target.Name] = &alert
-		webhookAlertStates[target.Name] = &webhookAlert
+		sequences[key.String()] = &seq
+		alertStates[key.String()] = &alert
+		webhookAlertStates[key.String()] = &webhookAlert
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -63,7 +70,7 @@ func StartMonitoring(targets []config.Target, options Options) {
 		wg.Add(1)
 		go func(t config.Target) {
 			defer wg.Done()
-			monitorTargetTUI(ctx, t, monitors[t.Name], sequences[t.Name], alertStates[t.Name], webhookAlertStates[t.Name], dataChannel, options)
+			monitorTargetTUI(ctx, t, monitors, sequences, alertStates, webhookAlertStates, dataChannel, options)
 		}(target)
 	}
 
@@ -72,7 +79,7 @@ func StartMonitoring(targets []config.Target, options Options) {
 		close(dataChannel)
 	}()
 
-	manager := NewManager(targets)
+	manager := NewManager(targets, options)
 	width, height := ui.TerminalDimensions()
 	manager.InitializeLayout(width, height)
 
@@ -80,7 +87,6 @@ func StartMonitoring(targets []config.Target, options Options) {
 	defer uiRefreshTicker.Stop()
 
 	uiEvents := ui.PollEvents()
-	currentTargetIndex := 0
 
 	for {
 		select {
@@ -96,15 +102,38 @@ func StartMonitoring(targets []config.Target, options Options) {
 					ui.Render(manager.grid)
 				}
 			case "<Down>":
-				if len(targets) > 1 {
-					manager.NavigateTargets(1, &currentTargetIndex, monitors)
+				if !manager.isSingle {
+					if manager.IsFocusedOnLogs() {
+						manager.NavigateLogs(1)
+					} else {
+						manager.NavigateTargetKeys(1, monitors)
+					}
 					ui.Render(manager.grid)
 				}
 			case "<Up>":
-				if len(targets) > 1 {
-					manager.NavigateTargets(-1, &currentTargetIndex, monitors)
+				if !manager.isSingle {
+					if manager.IsFocusedOnLogs() {
+						manager.NavigateLogs(-1)
+					} else {
+						manager.NavigateTargetKeys(-1, monitors)
+					}
 					ui.Render(manager.grid)
 				}
+			case "<Enter>":
+				if manager.detailsManager.LogsWidget != nil {
+					func() {
+						defer func() {
+							if r := recover(); r != nil {
+								_ = r
+							}
+						}()
+						manager.detailsManager.LogsWidget.ToggleExpand()
+					}()
+					ui.Render(manager.grid)
+				}
+			case "l":
+				manager.ToggleLogsVisibility()
+				ui.Render(manager.grid)
 			case "/":
 				if len(targets) > 1 && manager.listWidget != nil {
 					manager.listWidget.ToggleSearch()
@@ -146,11 +175,14 @@ func StartMonitoring(targets []config.Target, options Options) {
 	}
 }
 
-func monitorTargetTUI(ctx context.Context, target config.Target, monitor *stats.Monitor, sequence *int, alertSent *bool, webhookAlertSent *bool, dataChannel chan<- TargetData, options Options) {
+func monitorTargetTUI(ctx context.Context, target config.Target, monitors map[string]*stats.Monitor, sequences map[string]*int, alertStates map[string]*bool, webhookAlertStates map[string]*bool, dataChannel chan<- TargetData, options Options) {
 	ticker := time.NewTicker(target.GetRefreshInterval())
 	defer ticker.Stop()
 
+	attemptCount := 0
+
 	makeRequest := func() {
+		attemptCount++
 		netConfig := net.NetworkConfig{
 			Timeout:         target.GetTimeout(),
 			ShouldFail:      target.ShouldFail,
@@ -162,42 +194,123 @@ func monitorTargetTUI(ctx context.Context, target config.Target, monitor *stats.
 			Body:            target.Body,
 		}
 
-		result := net.CheckWebsite(target.URL, netConfig)
-		monitor.AddResult(result)
-		*sequence++
-
-		if target.ReceiveAlert {
-			notifications.HandleAlerts(result.IsUp, alertSent, target.Name, target.URL)
+		regions := target.Regions
+		if len(regions) == 0 {
+			regions = options.Regions
 		}
 
-		if target.WebhookURL != "" {
-			errorMsg := ""
-			if !result.IsUp {
-				errorMsg = fmt.Sprintf("Status code: %d", result.StatusCode)
+		if len(regions) > 0 {
+			lambdaResults := aws.InvokeMultiRegion(target.URL, netConfig, regions, options.Profile)
+			for _, lambdaResult := range lambdaResults {
+				if lambdaResult.Error != nil {
+					errorResult := net.WebsiteCheckResult{
+						URL:           target.URL,
+						IsUp:          false,
+						StatusCode:    0,
+						LastCheckTime: time.Now(),
+					}
+
+					targetKey := NewRegionTargetKey(target.Name, lambdaResult.Region)
+					dataChannel <- TargetData{
+						Target:    target,
+						Result:    errorResult,
+						Stats:     stats.Stats{},
+						TargetKey: targetKey,
+					}
+					continue
+				}
+
+				targetKey := NewRegionTargetKey(target.Name, lambdaResult.Region)
+				targetKeyStr := targetKey.String()
+
+				if monitor, exists := monitors[targetKeyStr]; exists {
+					monitor.AddResult(lambdaResult.Result)
+					if sequence, exists := sequences[targetKeyStr]; exists {
+						*sequence++
+					}
+
+					if target.ReceiveAlert {
+						if alertSent, exists := alertStates[targetKeyStr]; exists {
+							notifications.HandleAlerts(lambdaResult.Result.IsUp, alertSent, target.Name, lambdaResult.Result.URL)
+						}
+					}
+
+					if target.WebhookURL != "" {
+						errorMsg := ""
+						if !lambdaResult.Result.IsUp {
+							switch {
+							case lambdaResult.Result.StatusCode > 0:
+								errorMsg = fmt.Sprintf("Non-success status code: %d", lambdaResult.Result.StatusCode)
+							case lambdaResult.Result.AssertText != "" && !lambdaResult.Result.AssertionPassed:
+								errorMsg = "Assertion failed"
+							default:
+								errorMsg = "Request failed"
+							}
+						}
+						if webhookAlertSent, exists := webhookAlertStates[targetKeyStr]; exists {
+							notifications.HandleWebhookAlert(target.WebhookURL, target.WebhookHeaders, lambdaResult.Result.IsUp, webhookAlertSent, target.Name, lambdaResult.Result.URL, lambdaResult.Result.ResponseTime, lambdaResult.Result.StatusCode, errorMsg)
+						}
+					}
+
+					stats := monitor.GetStats()
+					dataChannel <- TargetData{
+						Target:    target,
+						Result:    lambdaResult.Result,
+						Stats:     stats,
+						TargetKey: targetKey,
+					}
+				}
 			}
-			notifications.HandleWebhookAlert(
-				target.WebhookURL,
-				target.WebhookHeaders,
-				result.IsUp,
-				webhookAlertSent,
-				target.Name,
-				target.URL,
-				result.ResponseTime,
-				result.StatusCode,
-				errorMsg,
-			)
-		}
+		} else {
+			result := net.CheckWebsite(target.URL, netConfig)
+			targetKey := NewLocalTargetKey(target.Name)
+			targetKeyStr := targetKey.String()
 
-		stats := monitor.GetStats()
-		dataChannel <- TargetData{
-			Target: target,
-			Result: result,
-			Stats:  stats,
+			if monitor, exists := monitors[targetKeyStr]; exists {
+				monitor.AddResult(result)
+				if sequence, exists := sequences[targetKeyStr]; exists {
+					*sequence++
+				}
+
+				if target.ReceiveAlert {
+					if alertSent, exists := alertStates[targetKeyStr]; exists {
+						notifications.HandleAlerts(result.IsUp, alertSent, target.Name, target.URL)
+					}
+				}
+
+				if target.WebhookURL != "" {
+					errorMsg := ""
+					if !result.IsUp {
+						errorMsg = fmt.Sprintf("Status code: %d", result.StatusCode)
+					}
+					if webhookAlertSent, exists := webhookAlertStates[targetKeyStr]; exists {
+						notifications.HandleWebhookAlert(
+							target.WebhookURL,
+							target.WebhookHeaders,
+							result.IsUp,
+							webhookAlertSent,
+							target.Name,
+							target.URL,
+							result.ResponseTime,
+							result.StatusCode,
+							errorMsg,
+						)
+					}
+				}
+
+				stats := monitor.GetStats()
+				dataChannel <- TargetData{
+					Target:    target,
+					Result:    result,
+					Stats:     stats,
+					TargetKey: targetKey,
+				}
+			}
 		}
 	}
 
 	makeRequest()
-	if options.Count > 0 && monitor.ChecksCount >= options.Count {
+	if options.Count > 0 && attemptCount >= options.Count {
 		return
 	}
 
@@ -207,7 +320,7 @@ func monitorTargetTUI(ctx context.Context, target config.Target, monitor *stats.
 			return
 		case <-ticker.C:
 			makeRequest()
-			if options.Count > 0 && monitor.ChecksCount >= options.Count {
+			if options.Count > 0 && attemptCount >= options.Count {
 				return
 			}
 		}

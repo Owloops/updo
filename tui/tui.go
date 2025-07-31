@@ -40,7 +40,10 @@ type DetailsManager struct {
 	RefreshWidget         *widgets.Paragraph
 	AssertionWidget       *widgets.Paragraph
 	TimingBreakdownWidget *uw.TimingBreakdown
-	Grid                  *ui.Grid
+	LogsWidget            *widgets.Tree
+	NormalGrid            *ui.Grid
+	LogsGrid              *ui.Grid
+	ActiveGrid            *ui.Grid
 }
 
 func NewDetailsManager() *DetailsManager {
@@ -50,7 +53,7 @@ func NewDetailsManager() *DetailsManager {
 func (m *DetailsManager) InitializeWidgets(url string, refreshInterval time.Duration) {
 	m.QuitWidget = widgets.NewParagraph()
 	m.QuitWidget.Title = "Information"
-	m.QuitWidget.Text = "Press q or <C-c> to quit"
+	m.QuitWidget.Text = "q:quit l:logs ↑↓:nav"
 	m.QuitWidget.BorderStyle.Fg = ui.ColorClear
 
 	m.UptimeWidget = widgets.NewParagraph()
@@ -123,11 +126,29 @@ func (m *DetailsManager) InitializeWidgets(url string, refreshInterval time.Dura
 	m.TimingBreakdownWidget.Title = "Timing Breakdown"
 	m.TimingBreakdownWidget.BorderStyle.Fg = ui.ColorYellow
 
-	m.Grid = ui.NewGrid()
-	termWidth, termHeight := ui.TerminalDimensions()
-	m.Grid.SetRect(0, 0, termWidth, termHeight)
+	m.LogsWidget = widgets.NewTree()
+	m.LogsWidget.Title = "Recent Logs"
+	m.LogsWidget.BorderStyle.Fg = ui.ColorMagenta
+	m.LogsWidget.TitleStyle.Fg = ui.ColorWhite
+	m.LogsWidget.TitleStyle.Modifier = ui.ModifierBold
+	m.LogsWidget.TextStyle.Fg = ui.ColorWhite
+	m.LogsWidget.SelectedRowStyle = ui.NewStyle(ui.ColorBlack, ui.ColorMagenta, ui.ModifierBold)
 
-	m.Grid.Set(
+	termWidth, termHeight := ui.TerminalDimensions()
+
+	m.NormalGrid = ui.NewGrid()
+	m.NormalGrid.SetRect(0, 0, termWidth, termHeight)
+	m.setupNormalGrid()
+
+	m.LogsGrid = ui.NewGrid()
+	m.LogsGrid.SetRect(0, 0, termWidth, termHeight)
+	m.setupLogsGrid()
+
+	m.ActiveGrid = m.NormalGrid
+}
+
+func (m *DetailsManager) setupNormalGrid() {
+	m.NormalGrid.Set(
 		ui.NewRow(1.0/7,
 			ui.NewCol(1.0/4, m.URLWidget),
 			ui.NewCol(1.0/4, m.RefreshWidget),
@@ -145,61 +166,56 @@ func (m *DetailsManager) InitializeWidgets(url string, refreshInterval time.Dura
 				ui.NewRow(0.5, m.UptimePlot),
 			),
 			ui.NewCol(2.0/5,
-				ui.NewRow(0.5/2,
-					ui.NewCol(1.0/2, m.MinResponseTimeWidget),
-					ui.NewCol(1.0/2, m.MaxResponseTimeWidget),
+				ui.NewRow(0.5,
+					ui.NewCol(1.0/2,
+						ui.NewRow(0.5, m.MinResponseTimeWidget),
+						ui.NewRow(0.5, m.AvgResponseTimeWidget),
+					),
+					ui.NewCol(1.0/2,
+						ui.NewRow(0.5, m.MaxResponseTimeWidget),
+						ui.NewRow(0.5, m.P95ResponseTimeWidget),
+					),
 				),
-				ui.NewRow(0.5/2,
-					ui.NewCol(1.0/2, m.AvgResponseTimeWidget),
-					ui.NewCol(1.0/2, m.P95ResponseTimeWidget),
-				),
-				ui.NewRow(1.0/2, m.TimingBreakdownWidget),
+				ui.NewRow(0.5, m.TimingBreakdownWidget),
 			),
 		),
 	)
 }
 
-func (m *DetailsManager) UpdateWidgets(result net.WebsiteCheckResult, stats stats.Stats, width int, height int, manager *Manager) {
-
-	m.UptimeWidget.Text = fmt.Sprintf("%.2f%%", stats.UptimePercent)
-	m.UpForWidget.Text = utils.FormatDurationMinute(stats.TotalDuration)
-	m.AvgResponseTimeWidget.Text = utils.FormatDurationMillisecond(stats.AvgResponseTime)
-	m.MinResponseTimeWidget.Text = utils.FormatDurationMillisecond(stats.MinResponseTime)
-	m.MaxResponseTimeWidget.Text = utils.FormatDurationMillisecond(stats.MaxResponseTime)
-
-	if stats.ChecksCount >= 2 {
-		m.P95ResponseTimeWidget.Text = fmt.Sprintf("%d ms", stats.P95.Milliseconds())
-	}
-
-	sslExpiry := manager.getSSLExpiry(result.URL)
-	if sslExpiry > 0 {
-		m.SSLOkWidget.Text = fmt.Sprintf("%d days remaining", sslExpiry)
-	} else {
-		m.SSLOkWidget.Text = checking
-	}
-
-	switch {
-	case result.AssertText == "":
-		m.AssertionWidget.Text = notAvailable
-	case result.AssertionPassed:
-		m.AssertionWidget.Text = passing
-	default:
-		m.AssertionWidget.Text = failing
-	}
-
-	if result.TraceInfo != nil {
-		m.TimingBreakdownWidget.SetTimings(map[string]time.Duration{
-			"Wait":     result.TraceInfo.Wait,
-			"DNS":      result.TraceInfo.DNSLookup,
-			"TCP":      result.TraceInfo.TCPConnection,
-			"TTFB":     result.TraceInfo.TimeToFirstByte,
-			"Download": result.TraceInfo.DownloadDuration,
-		})
-	}
-
-	m.updatePlotsData(result, width)
-
-	ui.Render(m.Grid)
+func (m *DetailsManager) setupLogsGrid() {
+	m.LogsGrid.Set(
+		ui.NewRow(0.1,
+			ui.NewCol(1.0/4, m.URLWidget),
+			ui.NewCol(1.0/4, m.RefreshWidget),
+			ui.NewCol(1.0/4, m.UpForWidget),
+			ui.NewCol(1.0/4, m.QuitWidget),
+		),
+		ui.NewRow(0.1,
+			ui.NewCol(1.0/3, m.UptimeWidget),
+			ui.NewCol(1.0/3, m.AssertionWidget),
+			ui.NewCol(1.0/3, m.SSLOkWidget),
+		),
+		ui.NewRow(0.5,
+			ui.NewCol(3.0/5,
+				ui.NewRow(0.5, m.ResponseTimePlot),
+				ui.NewRow(0.5, m.UptimePlot),
+			),
+			ui.NewCol(2.0/5,
+				ui.NewRow(0.5,
+					ui.NewCol(1.0/2,
+						ui.NewRow(0.5, m.MinResponseTimeWidget),
+						ui.NewRow(0.5, m.AvgResponseTimeWidget),
+					),
+					ui.NewCol(1.0/2,
+						ui.NewRow(0.5, m.MaxResponseTimeWidget),
+						ui.NewRow(0.5, m.P95ResponseTimeWidget),
+					),
+				),
+				ui.NewRow(0.5, m.TimingBreakdownWidget),
+			),
+		),
+		ui.NewRow(0.3, m.LogsWidget),
+	)
 }
 
 func (m *DetailsManager) updatePlotsData(result net.WebsiteCheckResult, width int) {
@@ -217,26 +233,24 @@ func (m *DetailsManager) updatePlotsData(result net.WebsiteCheckResult, width in
 	}
 }
 
-func (m *DetailsManager) UpdateDurationWidgets(stats stats.Stats, width int, height int) {
-	m.UpForWidget.Text = utils.FormatDurationMinute(stats.TotalDuration)
-
-	ui.Render(m.Grid)
-}
-
 type Manager struct {
-	targets        []config.Target
-	targetData     map[string]TargetData
-	plotData       map[string]PlotHistory
-	sslExpiry      map[string]int
-	sslExpiryMu    sync.RWMutex
-	currentTarget  int
-	isSingle       bool
-	listWidget     *uw.FilteredList
-	searchWidget   *widgets.Paragraph
-	detailsManager *DetailsManager
-	grid           *ui.Grid
-	termWidth      int
-	termHeight     int
+	targets         []config.Target
+	keyRegistry     *TargetKeyRegistry
+	targetData      map[string]TargetData
+	plotData        map[string]PlotHistory
+	logBuffer       *LogBuffer
+	sslExpiry       map[string]int
+	sslExpiryMu     sync.RWMutex
+	currentKeyIndex int
+	isSingle        bool
+	listWidget      *uw.FilteredList
+	searchWidget    *widgets.Paragraph
+	detailsManager  *DetailsManager
+	grid            *ui.Grid
+	termWidth       int
+	termHeight      int
+	focusOnLogs     bool
+	showLogs        bool
 }
 
 type PlotHistory struct {
@@ -244,15 +258,20 @@ type PlotHistory struct {
 	ResponseTimeData []float64
 }
 
-func NewManager(targets []config.Target) *Manager {
+func NewManager(targets []config.Target, options Options) *Manager {
+	keyRegistry := NewTargetKeyRegistry(targets, options.Regions)
+	allKeys := keyRegistry.GetAllKeys()
+
 	m := &Manager{
-		targets:        targets,
-		targetData:     make(map[string]TargetData),
-		plotData:       make(map[string]PlotHistory),
-		sslExpiry:      make(map[string]int),
-		currentTarget:  0,
-		isSingle:       len(targets) == 1,
-		detailsManager: NewDetailsManager(),
+		targets:         targets,
+		keyRegistry:     keyRegistry,
+		targetData:      make(map[string]TargetData),
+		plotData:        make(map[string]PlotHistory),
+		logBuffer:       NewLogBuffer(1000),
+		sslExpiry:       make(map[string]int),
+		currentKeyIndex: 0,
+		isSingle:        len(allKeys) == 1,
+		detailsManager:  NewDetailsManager(),
 	}
 
 	m.startSSLCollection()
@@ -285,8 +304,17 @@ func (m *Manager) InitializeLayout(width, height int) {
 	m.termWidth = width
 	m.termHeight = height
 
-	if len(m.targets) > 0 {
-		m.detailsManager.InitializeWidgets(m.targets[0].URL, m.targets[0].GetRefreshInterval())
+	allKeys := m.keyRegistry.GetAllKeys()
+	if len(allKeys) > 0 {
+		firstKey := allKeys[0]
+		var firstTarget config.Target
+		for _, target := range m.targets {
+			if target.Name == firstKey.TargetName {
+				firstTarget = target
+				break
+			}
+		}
+		m.detailsManager.InitializeWidgets(firstTarget.URL, firstTarget.GetRefreshInterval())
 	}
 
 	if !m.isSingle {
@@ -300,8 +328,8 @@ func (m *Manager) InitializeLayout(width, height int) {
 		m.searchWidget.TextStyle.Fg = ui.ColorWhite
 
 		m.listWidget = uw.NewFilteredList()
-		if len(m.targets) > 0 {
-			m.listWidget.Title = fmt.Sprintf("Targets → %s", m.targets[0].Name)
+		if len(allKeys) > 0 {
+			m.listWidget.Title = fmt.Sprintf("Targets → %s", allKeys[0].DisplayName())
 		} else {
 			m.listWidget.Title = "Targets"
 		}
@@ -315,7 +343,7 @@ func (m *Manager) InitializeLayout(width, height int) {
 					m.searchWidget.Text = query
 					m.searchWidget.TextStyle.Fg = ui.ColorGreen
 					m.searchWidget.BorderStyle.Fg = ui.ColorGreen
-					m.listWidget.Title = fmt.Sprintf("Targets (%d/%d)", len(filteredIndices), len(m.targets))
+					m.listWidget.Title = fmt.Sprintf("Targets (%d/%d)", len(filteredIndices), len(allKeys))
 				} else {
 					m.searchWidget.Text = "Type to filter..."
 					m.searchWidget.TextStyle.Fg = ui.ColorYellow
@@ -323,18 +351,18 @@ func (m *Manager) InitializeLayout(width, height int) {
 					m.listWidget.Title = "Targets"
 				}
 
-				targetVisible := false
+				keyVisible := false
 				if len(filteredIndices) > 0 {
 					for i, idx := range filteredIndices {
-						if idx == m.currentTarget {
+						if idx == m.currentKeyIndex {
 							m.listWidget.SelectedRow = i
-							targetVisible = true
+							keyVisible = true
 							break
 						}
 					}
 				}
 
-				if !targetVisible {
+				if !keyVisible {
 					m.listWidget.SelectedRow = 0
 					m.listWidget.SelectedRowStyle = m.listWidget.TextStyle
 				}
@@ -342,10 +370,10 @@ func (m *Manager) InitializeLayout(width, height int) {
 				m.searchWidget.Text = "Press / to activate"
 				m.searchWidget.TextStyle.Fg = ui.ColorWhite
 				m.searchWidget.BorderStyle.Fg = ui.ColorCyan
-				if m.currentTarget < len(m.targets) {
-					m.listWidget.Title = fmt.Sprintf("Targets → %s", m.targets[m.currentTarget].Name)
+				if m.currentKeyIndex < len(allKeys) {
+					m.listWidget.Title = fmt.Sprintf("Targets → %s", allKeys[m.currentKeyIndex].DisplayName())
 				}
-				m.listWidget.SelectedRow = m.currentTarget
+				m.listWidget.SelectedRow = m.currentKeyIndex
 			}
 		}
 
@@ -356,13 +384,14 @@ func (m *Manager) InitializeLayout(width, height int) {
 }
 
 func (m *Manager) updateTargetList() {
-	items := make([]string, len(m.targets))
+	allKeys := m.keyRegistry.GetAllKeys()
+	items := make([]string, len(allKeys))
 
-	for i, target := range m.targets {
+	for i, key := range allKeys {
 		icon := statusIcon
 		statusColor := ""
 
-		if data, exists := m.targetData[target.Name]; exists {
+		if data, exists := m.targetData[key.String()]; exists {
 			if data.Result.IsUp {
 				statusColor = " UP  "
 			} else {
@@ -372,21 +401,13 @@ func (m *Manager) updateTargetList() {
 			statusColor = "WAIT "
 		}
 
-		displayName := target.Name
-		if displayName == "" || displayName == fmt.Sprintf("Target-%d", i+1) {
-			displayName = target.URL
-			if strings.HasPrefix(displayName, "https://") {
-				displayName = displayName[8:]
-			} else if strings.HasPrefix(displayName, "http://") {
-				displayName = displayName[7:]
-			}
+		displayName := key.DisplayName()
+		maxLen := 25
+		if len(displayName) > maxLen {
+			displayName = displayName[:maxLen-3] + "..."
 		}
 
-		if len(displayName) > 16 {
-			displayName = displayName[:13] + "..."
-		}
-
-		if i == m.currentTarget {
+		if i == m.currentKeyIndex {
 			items[i] = fmt.Sprintf("▶ %s %s %s", icon, statusColor, displayName)
 		} else {
 			items[i] = fmt.Sprintf("  %s %s %s", icon, statusColor, displayName)
@@ -395,14 +416,15 @@ func (m *Manager) updateTargetList() {
 
 	m.listWidget.SetRows(items)
 
-	targetVisible := true
+	keyVisible := true
 	if m.listWidget.IsSearchMode() {
 		indices := m.listWidget.GetFilteredIndices()
-		targetVisible = slices.Contains(indices, m.currentTarget)
+		keyVisible = slices.Contains(indices, m.currentKeyIndex)
 	}
 
-	if targetVisible && m.currentTarget < len(m.targets) {
-		if data, exists := m.targetData[m.targets[m.currentTarget].Name]; exists {
+	if keyVisible && m.currentKeyIndex < len(allKeys) {
+		currentKey := allKeys[m.currentKeyIndex]
+		if data, exists := m.targetData[currentKey.String()]; exists {
 			if data.Result.IsUp {
 				m.listWidget.SelectedRowStyle.Fg = ui.ColorGreen
 			} else {
@@ -423,7 +445,7 @@ func (m *Manager) setupGrid(width, height int) {
 
 	if m.isSingle {
 		m.grid.Set(
-			ui.NewRow(1.0, m.detailsManager.Grid),
+			ui.NewRow(1.0, m.detailsManager.ActiveGrid),
 		)
 	} else {
 		m.grid.Set(
@@ -432,7 +454,7 @@ func (m *Manager) setupGrid(width, height int) {
 					ui.NewRow(1.0/7, m.searchWidget),
 					ui.NewRow(6.0/7, m.listWidget),
 				),
-				ui.NewCol(0.78, m.detailsManager.Grid),
+				ui.NewCol(0.78, m.detailsManager.ActiveGrid),
 			),
 		)
 	}
@@ -440,90 +462,192 @@ func (m *Manager) setupGrid(width, height int) {
 	ui.Render(m.grid)
 }
 
-func (m *Manager) SetActiveTarget(index int, monitors map[string]*stats.Monitor) {
-	if index >= 0 && index < len(m.targets) {
-		m.currentTarget = index
-		target := m.targets[index]
-
-		if m.listWidget != nil {
-			if !m.listWidget.IsSearchMode() {
-				m.listWidget.Title = fmt.Sprintf("Targets → %s", target.Name)
-			}
-		}
-
-		m.detailsManager.URLWidget.Text = target.URL
-		m.detailsManager.RefreshWidget.Text = fmt.Sprintf("%v seconds", target.GetRefreshInterval().Seconds())
-
-		m.restorePlotData(target.Name)
-		m.updateTargetList()
-
-		if monitor, exists := monitors[target.Name]; exists {
-			freshStats := monitor.GetStats()
-			m.detailsManager.UptimeWidget.Text = fmt.Sprintf("%.2f%%", freshStats.UptimePercent)
-			m.detailsManager.UpForWidget.Text = utils.FormatDurationMinute(freshStats.TotalDuration)
-			m.detailsManager.AvgResponseTimeWidget.Text = utils.FormatDurationMillisecond(freshStats.AvgResponseTime)
-			m.detailsManager.MinResponseTimeWidget.Text = utils.FormatDurationMillisecond(freshStats.MinResponseTime)
-			m.detailsManager.MaxResponseTimeWidget.Text = utils.FormatDurationMillisecond(freshStats.MaxResponseTime)
-
-			if freshStats.ChecksCount >= 2 {
-				m.detailsManager.P95ResponseTimeWidget.Text = fmt.Sprintf("%d ms", freshStats.P95.Milliseconds())
-			} else {
-				m.detailsManager.P95ResponseTimeWidget.Text = notAvailable
-			}
-		}
-
-		if data, exists := m.targetData[target.Name]; exists {
-			sslExpiry := m.getSSLExpiry(data.Result.URL)
-			if sslExpiry > 0 {
-				m.detailsManager.SSLOkWidget.Text = fmt.Sprintf("%d days remaining", sslExpiry)
-			} else {
-				m.detailsManager.SSLOkWidget.Text = checking
-			}
-
-			switch {
-			case data.Result.AssertText == "":
-				m.detailsManager.AssertionWidget.Text = notAvailable
-			case data.Result.AssertionPassed:
-				m.detailsManager.AssertionWidget.Text = passing
-			default:
-				m.detailsManager.AssertionWidget.Text = failing
-			}
-
-			if data.Result.TraceInfo != nil {
-				m.detailsManager.TimingBreakdownWidget.SetTimings(map[string]time.Duration{
-					"Wait":     data.Result.TraceInfo.Wait,
-					"DNS":      data.Result.TraceInfo.DNSLookup,
-					"TCP":      data.Result.TraceInfo.TCPConnection,
-					"TTFB":     data.Result.TraceInfo.TimeToFirstByte,
-					"Download": data.Result.TraceInfo.DownloadDuration,
-				})
-			}
-		}
+func (m *Manager) SetActiveTargetKey(keyIndex int, monitors map[string]*stats.Monitor) {
+	allKeys := m.keyRegistry.GetAllKeys()
+	if keyIndex >= 0 && keyIndex < len(allKeys) {
+		m.currentKeyIndex = keyIndex
+		m.updateActiveTarget(monitors)
 	}
 }
 
 func (m *Manager) UpdateTarget(data TargetData) {
-	m.targetData[data.Target.Name] = data
+	targetKeyStr := data.TargetKey.String()
+	m.targetData[targetKeyStr] = data
 
-	m.updatePlotDataForTarget(data.Target.Name, data.Result)
+	m.updatePlotDataForTarget(targetKeyStr, data.Result)
 
-	if m.targets[m.currentTarget].Name == data.Target.Name {
-		m.restorePlotData(data.Target.Name)
+	if !data.Result.IsUp {
+		level := LogLevelError
+		message := "Request failed"
 
-		m.updateCurrentTargetWidgets(data.Result, data.Stats)
+		if data.Result.StatusCode > 0 {
+			message = fmt.Sprintf("Status code: %d", data.Result.StatusCode)
+		} else if !data.TargetKey.IsLocal {
+			message = "Lambda invocation failed"
+			level = LogLevelWarning
+		}
 
-		if !m.isSingle {
+		m.logBuffer.AddLogEntry(level, message, "", data.TargetKey)
+	} else if m.logBuffer.Size() == 0 || m.logBuffer.Size()%10 == 0 {
+		m.logBuffer.AddLogEntry(LogLevelInfo, "Request successful", "", data.TargetKey)
+	}
+
+	allKeys := m.keyRegistry.GetAllKeys()
+	if m.currentKeyIndex < len(allKeys) {
+		currentKey := allKeys[m.currentKeyIndex]
+		if currentKey.String() == targetKeyStr {
+			m.restorePlotData(targetKeyStr)
+			m.updateCurrentTargetWidgets(data.Result, data.Stats)
+			if m.showLogs {
+				m.updateLogsWidget(currentKey)
+			}
+			if !m.isSingle {
+				m.updateTargetList()
+			}
+			ui.Render(m.grid)
+		} else if !m.isSingle {
 			m.updateTargetList()
 		}
-		ui.Render(m.grid)
-	} else if !m.isSingle {
-		m.updateTargetList()
 	}
 }
 
+type nodeValue string
+
+func (nv nodeValue) String() string {
+	return string(nv)
+}
+
+func (m *Manager) updateLogsWidget(targetKey TargetKey) {
+	logs := m.logBuffer.GetEntriesForTarget(targetKey)
+
+	if len(logs) == 0 {
+		emptyNode := &widgets.TreeNode{
+			Value: nodeValue("No logs available"),
+			Nodes: []*widgets.TreeNode{},
+		}
+		m.detailsManager.LogsWidget.SetNodes([]*widgets.TreeNode{emptyNode})
+		m.detailsManager.LogsWidget.Title = "Recent Logs"
+		return
+	}
+
+	maxLogs := 10
+	startIdx := 0
+	if len(logs) > maxLogs {
+		startIdx = len(logs) - maxLogs
+	}
+
+	var treeNodes []*widgets.TreeNode
+	for _, log := range logs[startIdx:] {
+		timeStr := log.Timestamp.Format("15:04:05")
+		levelColor := ""
+		levelStr := string(log.Level)
+
+		switch log.Level {
+		case LogLevelError:
+			levelColor = "[red]"
+			levelStr = "ERROR"
+		case LogLevelWarning:
+			levelColor = "[yellow]"
+			levelStr = "WARN"
+		case LogLevelInfo:
+			levelColor = "[green]"
+			levelStr = "INFO"
+		}
+
+		mainText := fmt.Sprintf("%s%s[white] [%s] %s", levelColor, levelStr, timeStr, log.Message)
+
+		var childNodes []*widgets.TreeNode
+		if log.Details != "" {
+			childNodes = append(childNodes, &widgets.TreeNode{
+				Value: nodeValue(fmt.Sprintf("Details: %s", log.Details)),
+				Nodes: []*widgets.TreeNode{},
+			})
+		}
+
+		childNodes = append(childNodes, &widgets.TreeNode{
+			Value: nodeValue(fmt.Sprintf("Full timestamp: %s", log.Timestamp.Format("2006-01-02 15:04:05.000"))),
+			Nodes: []*widgets.TreeNode{},
+		})
+
+		childNodes = append(childNodes, &widgets.TreeNode{
+			Value: nodeValue(fmt.Sprintf("Target: %s", log.TargetKey.DisplayName())),
+			Nodes: []*widgets.TreeNode{},
+		})
+
+		treeNode := &widgets.TreeNode{
+			Value: nodeValue(mainText),
+			Nodes: childNodes,
+		}
+		treeNodes = append(treeNodes, treeNode)
+	}
+
+	for i, j := 0, len(treeNodes)-1; i < j; i, j = i+1, j-1 {
+		treeNodes[i], treeNodes[j] = treeNodes[j], treeNodes[i]
+	}
+
+	m.detailsManager.LogsWidget.SetNodes(treeNodes)
+	m.detailsManager.LogsWidget.Title = fmt.Sprintf("Recent Logs (%d) - Press Enter to expand", len(logs))
+}
+
+func (m *Manager) NavigateLogs(direction int) {
+	if !m.focusOnLogs || m.detailsManager.LogsWidget == nil {
+		return
+	}
+
+	if direction > 0 {
+		m.detailsManager.LogsWidget.ScrollDown()
+	} else {
+		m.detailsManager.LogsWidget.ScrollUp()
+	}
+}
+
+func (m *Manager) IsFocusedOnLogs() bool {
+	return m.focusOnLogs
+}
+
+func (m *Manager) IsLogsVisible() bool {
+	return m.showLogs
+}
+
+func (m *Manager) ToggleLogsVisibility() {
+	m.showLogs = !m.showLogs
+
+	if m.showLogs {
+		m.focusOnLogs = true
+		m.detailsManager.ActiveGrid = m.detailsManager.LogsGrid
+
+		m.detailsManager.LogsWidget.BorderStyle.Fg = ui.ColorGreen
+		m.detailsManager.LogsWidget.Title = "Recent Logs (FOCUSED) - ↑↓:nav Enter:expand l:hide"
+
+		allKeys := m.keyRegistry.GetAllKeys()
+		if m.currentKeyIndex < len(allKeys) {
+			currentKey := allKeys[m.currentKeyIndex]
+			m.updateLogsWidget(currentKey)
+		}
+
+		if m.listWidget != nil {
+			m.listWidget.BorderStyle.Fg = ui.ColorCyan
+		}
+	} else {
+		m.focusOnLogs = false
+		m.detailsManager.ActiveGrid = m.detailsManager.NormalGrid
+
+		if m.listWidget != nil {
+			m.listWidget.BorderStyle.Fg = ui.ColorGreen
+		}
+	}
+
+	m.setupGrid(m.termWidth, m.termHeight)
+}
+
 func (m *Manager) RefreshStats(monitors map[string]*stats.Monitor) {
-	currentTargetName := m.targets[m.currentTarget].Name
-	if monitor, exists := monitors[currentTargetName]; exists {
+	allKeys := m.keyRegistry.GetAllKeys()
+	if m.currentKeyIndex >= len(allKeys) {
+		return
+	}
+
+	currentKey := allKeys[m.currentKeyIndex]
+	if monitor, exists := monitors[currentKey.String()]; exists {
 		freshStats := monitor.GetStats()
 
 		m.detailsManager.UptimeWidget.Text = fmt.Sprintf("%.2f%%", freshStats.UptimePercent)
@@ -595,62 +719,12 @@ func (m *Manager) Resize(width, height int) {
 
 func (m *Manager) restorePlotData(targetName string) {
 	if history, exists := m.plotData[targetName]; exists {
-		m.detailsManager.UptimePlot.Data[0] = append([]float64{}, history.UptimeData...)
-		m.detailsManager.ResponseTimePlot.Data[0] = append([]float64{}, history.ResponseTimeData...)
+		m.detailsManager.UptimePlot.Data[0] = slices.Clone(history.UptimeData)
+		m.detailsManager.ResponseTimePlot.Data[0] = slices.Clone(history.ResponseTimeData)
 	} else {
 		m.detailsManager.UptimePlot.Data[0] = make([]float64, 0)
 		m.detailsManager.ResponseTimePlot.Data[0] = []float64{0.0, 0.0}
 	}
-}
-
-func (m *Manager) NavigateTargets(direction int, currentIndex *int, monitors map[string]*stats.Monitor) {
-	if m.listWidget == nil {
-		return
-	}
-
-	if m.listWidget.IsSearchMode() {
-		filteredIndices := m.listWidget.GetFilteredIndices()
-		if len(filteredIndices) == 0 {
-			return
-		}
-
-		currentFilteredIndex := -1
-		for i, idx := range filteredIndices {
-			if idx == *currentIndex {
-				currentFilteredIndex = i
-				break
-			}
-		}
-
-		if currentFilteredIndex == -1 {
-			if direction > 0 {
-				currentFilteredIndex = 0
-			} else {
-				currentFilteredIndex = len(filteredIndices) - 1
-			}
-		} else {
-			if direction > 0 {
-				currentFilteredIndex = (currentFilteredIndex + 1) % len(filteredIndices)
-			} else {
-				currentFilteredIndex = (currentFilteredIndex - 1 + len(filteredIndices)) % len(filteredIndices)
-			}
-		}
-
-		*currentIndex = filteredIndices[currentFilteredIndex]
-	} else {
-		totalTargets := len(m.targets)
-		if totalTargets == 0 {
-			return
-		}
-
-		if direction > 0 {
-			*currentIndex = (*currentIndex + 1) % totalTargets
-		} else {
-			*currentIndex = (*currentIndex - 1 + totalTargets) % totalTargets
-		}
-	}
-
-	m.SetActiveTarget(*currentIndex, monitors)
 }
 
 func (m *Manager) updatePlotDataForTarget(targetName string, result net.WebsiteCheckResult) {

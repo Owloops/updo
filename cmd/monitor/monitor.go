@@ -102,8 +102,10 @@ You can monitor multiple targets by:
 			simple.StartMultiTargetMonitoring(targets, options)
 		} else {
 			options := tui.Options{
-				Count: appConfig.Count,
-				Log:   appConfig.Log,
+				Count:   appConfig.Count,
+				Log:     appConfig.Log,
+				Regions: regions,
+				Profile: profile,
 			}
 			tui.StartMonitoring(targets, options)
 		}
