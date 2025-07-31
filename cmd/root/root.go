@@ -53,11 +53,12 @@ func Execute() error {
 }
 
 func HideMonitoringFlags(cmd *cobra.Command) {
-	cmd.SetHelpFunc(func(c *cobra.Command, s []string) {
+	cmd.SetHelpFunc(func(c *cobra.Command, args []string) {
 		c.InheritedFlags().VisitAll(func(flag *pflag.Flag) {
 			flag.Hidden = true
 		})
-		c.Parent().HelpFunc()(c, s)
+
+		c.Print(c.UsageString())
 	})
 }
 

@@ -30,15 +30,30 @@ By default, destroys from 13 regional edge caches:
 - sa-east-1 (South America - São Paulo)
 - ca-central-1 (Canada - Central)
 
-This will remove the Lambda functions but keep the IAM role for future deployments.`,
-	Example: `  updo destroy
-  updo destroy --regions us-east-1,eu-west-1
-  updo destroy -r us-east-1`,
+This will remove the Lambda functions but keep the IAM role for future deployments.
+Use --regions all to destroy from all currently deployed regions.`,
+	Example: `  updo aws destroy
+  updo aws destroy --regions us-east-1,eu-west-1
+  updo aws destroy --regions all`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		regions, _ := cmd.Flags().GetStringSlice("regions")
 		profile, _ := cmd.Flags().GetString("profile")
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 		sequential, _ := cmd.Flags().GetBool("sequential")
+
+		// Handle --regions all
+		if len(regions) == 1 && regions[0] == "all" {
+			deployedRegions, err := aws.GetDeployedRegions(profile)
+			if err != nil {
+				return fmt.Errorf("failed to discover deployed regions: %w", err)
+			}
+			if len(deployedRegions) == 0 {
+				utils.Log.Info("No Lambda functions found in any region")
+				return nil
+			}
+			regions = deployedRegions
+			utils.Log.Info(fmt.Sprintf("Discovered %d deployed regions: %s", len(regions), strings.Join(regions, ", ")))
+		}
 
 		if dryRun {
 			utils.Log.Info(fmt.Sprintf("Dry run: Would destroy Lambda functions from regions: %s", strings.Join(regions, ", ")))
@@ -101,7 +116,7 @@ func init() {
 		"ap-southeast-1", "ap-southeast-2", "ap-northeast-1", "ap-northeast-2",
 		"ap-south-1", "sa-east-1", "ca-central-1", "eu-west-2",
 	}
-	DestroyCmd.Flags().StringSlice("regions", defaultRegions, "AWS regions to destroy from")
+	DestroyCmd.Flags().StringSlice("regions", defaultRegions, "AWS regions to destroy from (use 'all' to destroy from all deployed regions)")
 	DestroyCmd.Flags().String("profile", "", "AWS profile to use")
 	DestroyCmd.Flags().Bool("dry-run", false, "Show what would be destroyed without executing")
 	DestroyCmd.Flags().Bool("sequential", false, "Destroy from regions sequentially instead of parallel")

@@ -102,12 +102,14 @@ func DeployToRegions(regions []string, options ...DeploymentOptions) []Deploymen
 		regions = defaultRegions
 	}
 
+	validatedRegions := validateRegions(regions)
+
 	var opts DeploymentOptions
 	if len(options) > 0 {
 		opts = options[0]
 	}
 
-	return executeRegionOperation(regions, opts, deployToRegion, "deploy")
+	return executeRegionOperation(validatedRegions, opts, deployToRegion, "deploy")
 }
 
 func deployToRegion(region, profile string) DeploymentResult {
@@ -424,4 +426,83 @@ func (d *Deployer) deployLambdaFunction(roleArn string, lambdaBinary []byte) (st
 		return "", fmt.Errorf("failed to deploy Lambda function: %w", err)
 	}
 	return *createOutput.FunctionArn, nil
+}
+
+func GetDeployedRegions(profile string) ([]string, error) {
+	var deployedRegions []string
+
+	allRegions := defaultRegions
+
+	type regionResult struct {
+		region string
+		exists bool
+	}
+
+	resultChan := make(chan regionResult, len(allRegions))
+
+	for _, region := range allRegions {
+		go func(r string) {
+			exists, _ := checkFunctionExists(r, profile)
+			resultChan <- regionResult{region: r, exists: exists}
+		}(region)
+	}
+
+	for range len(allRegions) {
+		result := <-resultChan
+		if result.exists {
+			deployedRegions = append(deployedRegions, result.region)
+		}
+	}
+
+	return deployedRegions, nil
+}
+
+func checkFunctionExists(region, profile string) (bool, error) {
+	deployer, err := NewDeployer(region, profile)
+	if err != nil {
+		return false, err
+	}
+
+	funcName := fmt.Sprintf("%s-%s", functionName, region)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err = deployer.lambdaClient.GetFunction(ctx, &lambda.GetFunctionInput{
+		FunctionName: aws.String(funcName),
+	})
+
+	if err != nil {
+		return false, nil
+	}
+
+	return true, nil
+}
+
+func validateRegions(regions []string) []string {
+	var validRegions []string
+	var unsupportedRegions []string
+
+	defaultRegionSet := make(map[string]bool)
+	for _, region := range defaultRegions {
+		defaultRegionSet[region] = true
+	}
+
+	for _, region := range regions {
+		if defaultRegionSet[region] {
+			validRegions = append(validRegions, region)
+		} else {
+			unsupportedRegions = append(unsupportedRegions, region)
+		}
+	}
+
+	if len(unsupportedRegions) > 0 {
+		utils.Log.Warn(fmt.Sprintf("Unsupported regions (not in our 13 locations): %s",
+			strings.Join(unsupportedRegions, ", ")))
+		utils.Log.Plain("Supported regions: us-east-1, us-west-1, us-west-2, eu-west-1, eu-central-1,")
+		utils.Log.Plain("  ap-southeast-1, ap-southeast-2, ap-northeast-1, ap-northeast-2,")
+		utils.Log.Plain("  ap-south-1, sa-east-1, ca-central-1, eu-west-2")
+		utils.Log.Plain("Continuing with supported regions only...")
+	}
+
+	return validRegions
 }
