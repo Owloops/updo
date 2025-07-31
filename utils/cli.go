@@ -3,6 +3,8 @@ package utils
 import (
 	"fmt"
 	"os"
+	"strings"
+	"time"
 )
 
 type CLI struct{}
@@ -31,4 +33,47 @@ func (c CLI) Plain(msg string) {
 
 func (c CLI) Region(region string) string {
 	return fmt.Sprintf("[%s]", region)
+}
+
+func (c CLI) Progress(current, total int, prefix string) {
+	percent := float64(current) / float64(total) * 100
+	barWidth := 40
+	filledWidth := int(float64(barWidth) * float64(current) / float64(total))
+
+	bar := strings.Repeat("█", filledWidth) + strings.Repeat("░", barWidth-filledWidth)
+	fmt.Printf("\r%s [%s] %d/%d (%.1f%%)", prefix, bar, current, total, percent)
+
+	if current == total {
+		fmt.Println()
+	}
+}
+
+func (c CLI) ProgressWithStatus(current, total int, prefix, status string) {
+	percent := float64(current) / float64(total) * 100
+	barWidth := 30
+	filledWidth := int(float64(barWidth) * float64(current) / float64(total))
+
+	bar := strings.Repeat("█", filledWidth) + strings.Repeat("░", barWidth-filledWidth)
+	fmt.Printf("\r%s [%s] %d/%d (%.1f%%) - %s", prefix, bar, current, total, percent, status)
+
+	if current == total {
+		fmt.Println()
+	}
+}
+
+func (c CLI) Spinner(message string, stopCh <-chan bool) {
+	spinChars := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+	i := 0
+
+	for {
+		select {
+		case <-stopCh:
+			fmt.Printf("\r%s\n", message)
+			return
+		default:
+			fmt.Printf("\r%s %s", spinChars[i%len(spinChars)], message)
+			i++
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
 }

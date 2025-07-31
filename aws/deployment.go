@@ -7,7 +7,6 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -35,10 +34,19 @@ const (
 )
 
 var defaultRegions = []string{
-	"us-east-1",
-	"us-west-2",
-	"eu-central-1",
-	"ap-southeast-1",
+	"us-east-1",      // N. Virginia
+	"us-west-1",      // N. California
+	"us-west-2",      // Oregon
+	"eu-west-1",      // Ireland
+	"eu-central-1",   // Frankfurt
+	"ap-southeast-1", // Singapore
+	"ap-southeast-2", // Sydney
+	"ap-northeast-1", // Tokyo
+	"ap-northeast-2", // Seoul
+	"ap-south-1",     // Mumbai
+	"sa-east-1",      // São Paulo
+	"ca-central-1",   // Canada
+	"eu-west-2",      // London
 }
 
 type Deployer struct {
@@ -99,7 +107,7 @@ func DeployToRegions(regions []string, options ...DeploymentOptions) []Deploymen
 		opts = options[0]
 	}
 
-	return executeRegionOperation(regions, opts, deployToRegion)
+	return executeRegionOperation(regions, opts, deployToRegion, "deploy")
 }
 
 func deployToRegion(region, profile string) DeploymentResult {
@@ -132,7 +140,7 @@ func DestroyFromRegions(regions []string, options ...DeploymentOptions) []Deploy
 		opts = options[0]
 	}
 
-	results := executeRegionOperation(regions, opts, destroyFromRegion)
+	results := executeRegionOperation(regions, opts, destroyFromRegion, "destroy")
 
 	if shouldCleanupIAMRole(regions, results) {
 		cleanupIAMRole(regions[0], opts.Profile)
@@ -143,15 +151,36 @@ func DestroyFromRegions(regions []string, options ...DeploymentOptions) []Deploy
 
 type regionOperationFunc func(region, profile string) DeploymentResult
 
-func executeRegionOperation(regions []string, opts DeploymentOptions, operation regionOperationFunc) []DeploymentResult {
+func executeRegionOperation(regions []string, opts DeploymentOptions, operation regionOperationFunc, operationType string) []DeploymentResult {
 	results := make([]DeploymentResult, len(regions))
+	total := len(regions)
 
 	if opts.Sequential {
+		operationName := "Deploying"
+		progressLabel := "Deployment"
+		if operationType == "destroy" {
+			operationName = "Destroying"
+			progressLabel = "Destroy"
+		}
+		utils.Log.Info(fmt.Sprintf("%s to %d regions sequentially...", operationName, total))
 		for i, region := range regions {
+			utils.Log.ProgressWithStatus(i, total, progressLabel, fmt.Sprintf("Processing %s", region))
 			results[i] = operation(region, opts.Profile)
+			utils.Log.ProgressWithStatus(i+1, total, progressLabel, fmt.Sprintf("Completed %s", region))
 		}
 	} else {
 		ch := make(chan DeploymentResult, len(regions))
+		completed := 0
+		successful := 0
+
+		spinnerStop := make(chan bool)
+		operationName := "Deploying"
+		progressLabel := "Deployment"
+		if operationType == "destroy" {
+			operationName = "Destroying"
+			progressLabel = "Destroy"
+		}
+		go utils.Log.Spinner(fmt.Sprintf("%s to %d regions in parallel...", operationName, total), spinnerStop)
 
 		for _, region := range regions {
 			go func(r string) {
@@ -159,8 +188,21 @@ func executeRegionOperation(regions []string, opts DeploymentOptions, operation 
 			}(region)
 		}
 
-		for i := 0; i < len(regions); i++ {
+		for range len(regions) {
 			result := <-ch
+			completed++
+			if result.Success {
+				successful++
+			}
+
+			if completed == 1 {
+				spinnerStop <- true
+				close(spinnerStop)
+			}
+
+			utils.Log.ProgressWithStatus(successful, total, progressLabel,
+				fmt.Sprintf("%d/%d completed (%d successful)", completed, total, successful))
+
 			for j, region := range regions {
 				if result.Region == region {
 					results[j] = result
@@ -236,8 +278,6 @@ func destroyFromRegion(region, profile string) DeploymentResult {
 }
 
 func (d *Deployer) Deploy() (string, error) {
-	utils.Log.Info(fmt.Sprintf("Deploying Lambda function to %s...", d.region))
-
 	roleArn, err := d.ensureIAMRole()
 	if err != nil {
 		return "", fmt.Errorf("failed to ensure IAM role: %w", err)
@@ -248,7 +288,6 @@ func (d *Deployer) Deploy() (string, error) {
 		return "", err
 	}
 
-	utils.Log.Success(fmt.Sprintf("Successfully deployed Lambda function: %s", functionArn))
 	return functionArn, nil
 }
 
@@ -305,11 +344,8 @@ func (d *Deployer) ensureIAMRole() (string, error) {
 	if _, err := d.iamClient.GetRole(ctx, &iam.GetRoleInput{
 		RoleName: aws.String(roleName),
 	}); err == nil {
-		log.Printf("IAM role %s already exists", roleName)
 		return roleArn, nil
 	}
-
-	log.Printf("Creating IAM role %s...", roleName)
 	trustPolicyDoc := `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"lambda.amazonaws.com"},"Action":"sts:AssumeRole"}]}`
 	_, err := d.iamClient.CreateRole(ctx, &iam.CreateRoleInput{
 		RoleName:                 aws.String(roleName),
@@ -320,12 +356,8 @@ func (d *Deployer) ensureIAMRole() (string, error) {
 			{Key: aws.String("Purpose"), Value: aws.String("updo-multi-region-monitoring")},
 		},
 	})
-	if err != nil {
-		if strings.Contains(err.Error(), "EntityAlreadyExists") {
-			log.Printf("IAM role %s already exists (created by another region)", roleName)
-		} else {
-			return "", fmt.Errorf("failed to create IAM role: %w", err)
-		}
+	if err != nil && !strings.Contains(err.Error(), "EntityAlreadyExists") {
+		return "", fmt.Errorf("failed to create IAM role: %w", err)
 	}
 
 	_, err = d.iamClient.AttachRolePolicy(ctx, &iam.AttachRolePolicyInput{
@@ -361,7 +393,6 @@ func (d *Deployer) deployLambdaFunction(roleArn string, lambdaBinary []byte) (st
 	if getOutput, err := d.lambdaClient.GetFunction(ctx, &lambda.GetFunctionInput{
 		FunctionName: aws.String(funcName),
 	}); err == nil {
-		log.Printf("Updating existing Lambda function %s...", funcName)
 		_, err = d.lambdaClient.UpdateFunctionCode(ctx, &lambda.UpdateFunctionCodeInput{
 			FunctionName: aws.String(funcName),
 			ZipFile:      zipData,
@@ -371,8 +402,6 @@ func (d *Deployer) deployLambdaFunction(roleArn string, lambdaBinary []byte) (st
 		}
 		return *getOutput.Configuration.FunctionArn, nil
 	}
-
-	log.Printf("Creating new Lambda function %s...", funcName)
 	createOutput, err := d.lambdaClient.CreateFunction(ctx, &lambda.CreateFunctionInput{
 		FunctionName: aws.String(funcName),
 		Runtime:      lambdatypes.RuntimeProvidedal2023,

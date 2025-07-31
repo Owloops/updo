@@ -15,11 +15,20 @@ var DestroyCmd = &cobra.Command{
 	Short: "Destroy Lambda functions from regions",
 	Long: `Destroy Lambda functions from AWS regions.
 
-By default, destroys from these regions:
+By default, destroys from 13 regional edge caches:
 - us-east-1 (US East - N. Virginia)
-- us-west-2 (US West - Oregon)  
+- us-west-1 (US West - N. California)
+- us-west-2 (US West - Oregon)
+- eu-west-1 (Europe - Ireland)
 - eu-central-1 (Europe - Frankfurt)
+- eu-west-2 (Europe - London)
 - ap-southeast-1 (Asia Pacific - Singapore)
+- ap-southeast-2 (Asia Pacific - Sydney)
+- ap-northeast-1 (Asia Pacific - Tokyo)
+- ap-northeast-2 (Asia Pacific - Seoul)
+- ap-south-1 (Asia Pacific - Mumbai)
+- sa-east-1 (South America - São Paulo)
+- ca-central-1 (Canada - Central)
 
 This will remove the Lambda functions but keep the IAM role for future deployments.`,
 	Example: `  updo destroy
@@ -48,12 +57,8 @@ This will remove the Lambda functions but keep the IAM role for future deploymen
 			return nil
 		}
 
-		utils.Log.Info(fmt.Sprintf("Destroying Lambda functions from regions: %s", strings.Join(regions, ", ")))
 		if profile != "" {
 			utils.Log.Plain(fmt.Sprintf("Using AWS profile: %s", profile))
-		}
-		if sequential {
-			utils.Log.Plain("Destroying sequentially")
 		}
 
 		results := aws.DestroyFromRegions(regions, aws.DeploymentOptions{
@@ -63,19 +68,24 @@ This will remove the Lambda functions but keep the IAM role for future deploymen
 
 		successful := 0
 		failed := 0
+		var failedRegions []string
 
 		for _, result := range results {
-			regionStr := utils.Log.Region(result.Region)
 			if result.Success {
-				utils.Log.Success(fmt.Sprintf("%s destroyed", regionStr))
 				successful++
 			} else {
-				utils.Log.Error(fmt.Sprintf("%s %s", regionStr, result.Error))
 				failed++
+				failedRegions = append(failedRegions, result.Region)
+				utils.Log.Error(fmt.Sprintf("%s %s", utils.Log.Region(result.Region), result.Error))
 			}
 		}
 
-		utils.Log.Plain(fmt.Sprintf("\nDestroy completed: %d successful, %d failed", successful, failed))
+		if failed > 0 {
+			utils.Log.Plain(fmt.Sprintf("\nDestroy completed: %d successful, %d failed", successful, failed))
+			utils.Log.Plain(fmt.Sprintf("Failed regions: %s", strings.Join(failedRegions, ", ")))
+		} else {
+			utils.Log.Success(fmt.Sprintf("Destroy completed successfully in all %d regions", successful))
+		}
 
 		if failed > 0 {
 			return fmt.Errorf("destroy failed in %d regions", failed)
@@ -86,7 +96,11 @@ This will remove the Lambda functions but keep the IAM role for future deploymen
 }
 
 func init() {
-	defaultRegions := []string{"us-east-1", "us-west-2", "eu-central-1", "ap-southeast-1"}
+	defaultRegions := []string{
+		"us-east-1", "us-west-1", "us-west-2", "eu-west-1", "eu-central-1",
+		"ap-southeast-1", "ap-southeast-2", "ap-northeast-1", "ap-northeast-2",
+		"ap-south-1", "sa-east-1", "ca-central-1", "eu-west-2",
+	}
 	DestroyCmd.Flags().StringSlice("regions", defaultRegions, "AWS regions to destroy from")
 	DestroyCmd.Flags().String("profile", "", "AWS profile to use")
 	DestroyCmd.Flags().Bool("dry-run", false, "Show what would be destroyed without executing")

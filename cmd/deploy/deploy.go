@@ -15,11 +15,20 @@ var DeployCmd = &cobra.Command{
 	Short: "Deploy Lambda functions for multi-region monitoring",
 	Long: `Deploy Lambda functions to AWS regions for multi-region website monitoring.
 
-By default, deploys to these regions:
+By default, deploys to 13 regional edge caches:
 - us-east-1 (US East - N. Virginia)
-- us-west-2 (US West - Oregon)  
+- us-west-1 (US West - N. California)
+- us-west-2 (US West - Oregon)
+- eu-west-1 (Europe - Ireland)
 - eu-central-1 (Europe - Frankfurt)
+- eu-west-2 (Europe - London)
 - ap-southeast-1 (Asia Pacific - Singapore)
+- ap-southeast-2 (Asia Pacific - Sydney)
+- ap-northeast-1 (Asia Pacific - Tokyo)
+- ap-northeast-2 (Asia Pacific - Seoul)
+- ap-south-1 (Asia Pacific - Mumbai)
+- sa-east-1 (South America - São Paulo)
+- ca-central-1 (Canada - Central)
 
 Requires AWS credentials to be configured (AWS CLI, environment variables, or IAM roles).`,
 	Example: `  updo deploy
@@ -44,12 +53,8 @@ Requires AWS credentials to be configured (AWS CLI, environment variables, or IA
 			return nil
 		}
 
-		utils.Log.Info(fmt.Sprintf("Deploying Lambda functions to regions: %s", strings.Join(regions, ", ")))
 		if profile != "" {
 			utils.Log.Plain(fmt.Sprintf("Using AWS profile: %s", profile))
-		}
-		if sequential {
-			utils.Log.Plain("Deploying sequentially")
 		}
 
 		results := aws.DeployToRegions(regions, aws.DeploymentOptions{
@@ -59,19 +64,24 @@ Requires AWS credentials to be configured (AWS CLI, environment variables, or IA
 
 		successful := 0
 		failed := 0
+		var failedRegions []string
 
 		for _, result := range results {
-			regionStr := utils.Log.Region(result.Region)
 			if result.Success {
-				utils.Log.Success(fmt.Sprintf("%s %s", regionStr, result.FunctionArn))
 				successful++
 			} else {
-				utils.Log.Error(fmt.Sprintf("%s %s", regionStr, result.Error))
 				failed++
+				failedRegions = append(failedRegions, result.Region)
+				utils.Log.Error(fmt.Sprintf("%s %s", utils.Log.Region(result.Region), result.Error))
 			}
 		}
 
-		utils.Log.Plain(fmt.Sprintf("\nDeployment completed: %d successful, %d failed", successful, failed))
+		if failed > 0 {
+			utils.Log.Plain(fmt.Sprintf("\nDeployment completed: %d successful, %d failed", successful, failed))
+			utils.Log.Plain(fmt.Sprintf("Failed regions: %s", strings.Join(failedRegions, ", ")))
+		} else {
+			utils.Log.Success(fmt.Sprintf("Deployment completed successfully in all %d regions", successful))
+		}
 
 		if failed > 0 {
 			return fmt.Errorf("deployment failed in %d regions", failed)
@@ -82,7 +92,11 @@ Requires AWS credentials to be configured (AWS CLI, environment variables, or IA
 }
 
 func init() {
-	defaultRegions := []string{"us-east-1", "us-west-2", "eu-central-1", "ap-southeast-1"}
+	defaultRegions := []string{
+		"us-east-1", "us-west-1", "us-west-2", "eu-west-1", "eu-central-1",
+		"ap-southeast-1", "ap-southeast-2", "ap-northeast-1", "ap-northeast-2",
+		"ap-south-1", "sa-east-1", "ca-central-1", "eu-west-2",
+	}
 	DeployCmd.Flags().StringSlice("regions", defaultRegions, "AWS regions to deploy to")
 	DeployCmd.Flags().String("profile", "", "AWS profile to use")
 	DeployCmd.Flags().Bool("dry-run", false, "Show what would be deployed without executing")
