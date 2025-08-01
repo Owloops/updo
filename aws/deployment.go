@@ -1,8 +1,6 @@
 package aws
 
 import (
-	"archive/zip"
-	"bytes"
 	"context"
 	_ "embed"
 	"errors"
@@ -21,8 +19,8 @@ import (
 	"github.com/Owloops/updo/utils"
 )
 
-//go:embed bootstrap
-var embeddedLambdaBinary []byte
+//go:embed bootstrap.zip
+var embeddedLambdaZip []byte
 
 const (
 	functionName        = "updo-executor"
@@ -285,7 +283,7 @@ func (d *Deployer) Deploy() (string, error) {
 		return "", fmt.Errorf("failed to ensure IAM role: %w", err)
 	}
 
-	functionArn, err := d.deployLambdaFunction(roleArn, embeddedLambdaBinary)
+	functionArn, err := d.deployLambdaFunction(roleArn, embeddedLambdaZip)
 	if err != nil {
 		return "", err
 	}
@@ -374,20 +372,8 @@ func (d *Deployer) ensureIAMRole() (string, error) {
 	return roleArn, nil
 }
 
-func (d *Deployer) deployLambdaFunction(roleArn string, lambdaBinary []byte) (string, error) {
-	var buf bytes.Buffer
-	zipWriter := zip.NewWriter(&buf)
-	writer, err := zipWriter.Create("bootstrap")
-	if err != nil {
-		return "", fmt.Errorf("failed to create ZIP entry: %w", err)
-	}
-	if _, err := writer.Write(lambdaBinary); err != nil {
-		return "", fmt.Errorf("failed to write Lambda binary: %w", err)
-	}
-	if err := zipWriter.Close(); err != nil {
-		return "", fmt.Errorf("failed to close ZIP: %w", err)
-	}
-	zipData := buf.Bytes()
+func (d *Deployer) deployLambdaFunction(roleArn string, lambdaZip []byte) (string, error) {
+	zipData := lambdaZip
 	funcName := fmt.Sprintf("%s-%s", functionName, d.region)
 	ctx, cancel := context.WithTimeout(context.Background(), awsOperationTimeout)
 	defer cancel()

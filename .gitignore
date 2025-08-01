@@ -18,6 +18,7 @@ main
 bin/
 dist/
 aws/bootstrap
+aws/bootstrap.zip
 
 # Go workspace
 go.work

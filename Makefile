@@ -2,6 +2,7 @@
 
 BINARY_NAME := updo
 LAMBDA_BINARY := aws/bootstrap
+LAMBDA_ZIP := aws/bootstrap.zip
 LAMBDA_SOURCE := lambda/lambda.go
 
 GOOS := linux
@@ -29,6 +30,10 @@ doctor: ## Check required tools and environment
 		echo "Error: Go not found in PATH"; exit 1; \
 	fi
 	@echo "OK: Go found ($$(go version))"
+	@if ! command -v zip >/dev/null 2>&1; then \
+		echo "Error: zip not found in PATH"; exit 1; \
+	fi
+	@echo "OK: zip found"
 	@if ! go mod verify >/dev/null 2>&1; then \
 		echo "Error: Go modules not valid - run 'go mod tidy'"; exit 1; \
 	fi
@@ -44,6 +49,9 @@ build-lambda: ## Build Lambda binary for embedding
 	@cd lambda && GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=$(CGO_ENABLED) \
 		go build -tags $(BUILD_TAGS) -ldflags="-s -w" -o ../$(LAMBDA_BINARY) $(notdir $(LAMBDA_SOURCE))
 	@echo "Lambda binary built: $(LAMBDA_BINARY)"
+	@echo "Creating ZIP archive for embedding..."
+	@cd aws && zip -q bootstrap.zip bootstrap
+	@echo "Lambda ZIP created: $(LAMBDA_ZIP)"
 
 build: build-lambda ## Build updo binary with embedded Lambda
 	@echo "Building $(BINARY_NAME) with embedded Lambda binary..."
@@ -82,5 +90,5 @@ check: vet lint ## Run all code quality checks
 
 clean: ## Remove all build artifacts
 	@echo "Cleaning build artifacts..."
-	@rm -f $(BINARY_NAME) $(LAMBDA_BINARY)
+	@rm -f $(BINARY_NAME) $(LAMBDA_BINARY) $(LAMBDA_ZIP)
 	@echo "Clean completed"
