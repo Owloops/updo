@@ -128,7 +128,16 @@ func StartMonitoring(targets []config.Target, options Options) {
 					ui.Render(manager.grid)
 				}
 			case "<Enter>":
-				if manager.detailsManager.LogsWidget != nil {
+				if manager.listWidget != nil && manager.listWidget.IsHeaderAtIndex(manager.listWidget.SelectedRow) {
+					groupID := manager.listWidget.GetGroupAtIndex(manager.listWidget.SelectedRow)
+					if groupID != "" {
+						manager.preserveHeaderSelection = groupID
+						manager.listWidget.ToggleGroupCollapse(groupID)
+						manager.updateTargetList()
+						manager.preserveHeaderSelection = ""
+						ui.Render(manager.grid)
+					}
+				} else if manager.detailsManager.LogsWidget != nil {
 					func() {
 						defer func() {
 							if r := recover(); r != nil {
@@ -166,6 +175,12 @@ func StartMonitoring(targets []config.Target, options Options) {
 			case "<Backspace>", "<C-8>", "<Space>":
 				if manager.listWidget != nil && manager.listWidget.IsSearchMode() {
 					manager.listWidget.UpdateSearch(e.ID)
+					ui.Render(manager.grid)
+				}
+			case "<Tab>":
+				if manager.listWidget != nil && !manager.listWidget.IsSearchMode() {
+					manager.listWidget.ToggleAllGroups()
+					manager.updateTargetList()
 					ui.Render(manager.grid)
 				}
 			default:

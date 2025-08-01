@@ -20,6 +20,7 @@ type FilteredList struct {
 	rowMetadata     []RowMetadata
 	filteredIndices []int
 	filteredRows    []string
+	collapsedGroups map[string]bool
 	OnSearchChange  func(query string, filteredIndices []int)
 }
 
@@ -33,6 +34,7 @@ func NewFilteredList() *FilteredList {
 		rowMetadata:     []RowMetadata{},
 		filteredIndices: []int{},
 		filteredRows:    []string{},
+		collapsedGroups: make(map[string]bool),
 	}
 }
 
@@ -109,6 +111,9 @@ func (fl *FilteredList) updateFiltered() {
 
 	if fl.searchQuery == "" {
 		for i, row := range fl.allRows {
+			if fl.rowMetadata[i].GroupID != "" && !fl.rowMetadata[i].IsHeader && fl.collapsedGroups[fl.rowMetadata[i].GroupID] {
+				continue
+			}
 			fl.filteredIndices = append(fl.filteredIndices, i)
 			fl.filteredRows = append(fl.filteredRows, row)
 		}
@@ -129,6 +134,9 @@ func (fl *FilteredList) updateFiltered() {
 
 			if fl.rowMetadata[i].GroupID != "" {
 				includeRow = matchingGroups[fl.rowMetadata[i].GroupID]
+				if includeRow && !fl.rowMetadata[i].IsHeader && fl.collapsedGroups[fl.rowMetadata[i].GroupID] {
+					includeRow = false
+				}
 			} else {
 				includeRow = strings.Contains(strings.ToLower(row), query)
 			}
@@ -172,4 +180,59 @@ func (fl *FilteredList) GetFilteredDisplayIndices() map[int]int {
 		displayMap[originalIdx] = displayIdx
 	}
 	return displayMap
+}
+
+func (fl *FilteredList) ToggleGroupCollapse(groupID string) {
+	if groupID == "" {
+		return
+	}
+	fl.collapsedGroups[groupID] = !fl.collapsedGroups[groupID]
+	fl.updateFiltered()
+}
+
+func (fl *FilteredList) IsGroupCollapsed(groupID string) bool {
+	return fl.collapsedGroups[groupID]
+}
+
+func (fl *FilteredList) GetGroupAtIndex(index int) string {
+	if index >= 0 && index < len(fl.filteredIndices) {
+		originalIdx := fl.filteredIndices[index]
+		if originalIdx < len(fl.rowMetadata) {
+			return fl.rowMetadata[originalIdx].GroupID
+		}
+	}
+	return ""
+}
+
+func (fl *FilteredList) IsHeaderAtIndex(index int) bool {
+	if index >= 0 && index < len(fl.filteredIndices) {
+		originalIdx := fl.filteredIndices[index]
+		if originalIdx < len(fl.rowMetadata) {
+			return fl.rowMetadata[originalIdx].IsHeader
+		}
+	}
+	return false
+}
+
+func (fl *FilteredList) ToggleAllGroups() {
+	groupsFound := make(map[string]bool)
+	for _, meta := range fl.rowMetadata {
+		if meta.GroupID != "" && meta.IsHeader {
+			groupsFound[meta.GroupID] = true
+		}
+	}
+
+	shouldExpand := false
+	for groupID := range groupsFound {
+		if fl.collapsedGroups[groupID] {
+			shouldExpand = true
+			break
+		}
+	}
+
+	for groupID := range groupsFound {
+		fl.collapsedGroups[groupID] = !shouldExpand
+	}
+
+	fl.updateFiltered()
 }

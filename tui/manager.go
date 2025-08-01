@@ -44,7 +44,8 @@ type Manager struct {
 	focusOnLogs     bool
 	showLogs        bool
 
-	itemToKeyIndex []int
+	itemToKeyIndex          []int
+	preserveHeaderSelection string
 }
 
 type PlotHistory struct {
@@ -131,6 +132,19 @@ func (m *Manager) updateTargetList() {
 		targetGroups[key.TargetName] = append(targetGroups[key.TargetName], key)
 	}
 
+	preserveSelection := false
+	currentSelectedRow := -1
+	preserveGroupID := m.preserveHeaderSelection
+
+	if preserveGroupID == "" && m.listWidget != nil && len(m.itemToKeyIndex) > 0 {
+		currentSelectedRow = m.listWidget.SelectedRow
+		if currentSelectedRow >= 0 && currentSelectedRow < len(m.itemToKeyIndex) {
+			if m.itemToKeyIndex[currentSelectedRow] == -1 {
+				preserveSelection = true
+			}
+		}
+	}
+
 	items := make([]string, 0)
 	metadata := make([]uw.RowMetadata, 0)
 
@@ -141,61 +155,82 @@ func (m *Manager) updateTargetList() {
 		keys := targetGroups[targetName]
 		groupID := targetName
 
-		header := fmt.Sprintf("━ %s", targetName)
+		isCollapsed := m.listWidget != nil && m.listWidget.IsGroupCollapsed(groupID)
+		collapseIcon := "▼"
+		if isCollapsed {
+			collapseIcon = "▶"
+		}
+
+		header := fmt.Sprintf("%s %s", collapseIcon, targetName)
+		if isCollapsed && len(keys) > 1 {
+			header = fmt.Sprintf("%s %s (%d)", collapseIcon, targetName, len(keys))
+		}
 		items = append(items, header)
 		metadata = append(metadata, uw.RowMetadata{
 			GroupID:      groupID,
 			IsHeader:     true,
-			IsSelectable: false,
+			IsSelectable: true,
 		})
 		itemToKeyIndex = append(itemToKeyIndex, -1)
 
-		for _, key := range keys {
+		if !isCollapsed {
+			for _, key := range keys {
 
-			var icon, iconColor string
-			var responseTime string
+				var icon, iconColor string
+				var responseTime string
 
-			if data, exists := m.targetData[key.String()]; exists {
-				if data.Result.IsUp {
-					icon = "◉"
-					iconColor = "green"
+				if data, exists := m.targetData[key.String()]; exists {
+					if data.Result.IsUp {
+						icon = "◉"
+						iconColor = "green"
+					} else {
+						icon = "◉"
+						iconColor = "red"
+					}
+					ms := int(data.Result.ResponseTime.Seconds() * 1000)
+					responseTime = fmt.Sprintf("%dms", ms)
 				} else {
 					icon = "◉"
-					iconColor = "red"
+					iconColor = "yellow"
+					responseTime = "..."
 				}
-				ms := int(data.Result.ResponseTime.Seconds() * 1000)
-				responseTime = fmt.Sprintf("%dms", ms)
-			} else {
-				icon = "◉"
-				iconColor = "yellow"
-				responseTime = "..."
+
+				region := "local"
+				if !key.IsLocal && key.Region != "" {
+					region = key.Region
+				}
+
+				coloredIcon := fmt.Sprintf("[%s](fg:%s)", icon, iconColor)
+				line := fmt.Sprintf("  %s %-10s %8s", coloredIcon, region, responseTime)
+
+				isOnHeader := false
+				if m.preserveHeaderSelection != "" {
+					isOnHeader = true
+				} else if m.listWidget != nil && m.listWidget.SelectedRow >= 0 && m.listWidget.SelectedRow < len(m.itemToKeyIndex) {
+					if m.itemToKeyIndex[m.listWidget.SelectedRow] == -1 {
+						isOnHeader = true
+					}
+				}
+
+				if keyIndex == m.currentKeyIndex && !isOnHeader {
+					items = append(items, "▶ "+line)
+				} else {
+					items = append(items, "  "+line)
+				}
+
+				metadata = append(metadata, uw.RowMetadata{
+					GroupID:      groupID,
+					IsHeader:     false,
+					IsSelectable: true,
+				})
+
+				itemToKeyIndex = append(itemToKeyIndex, keyIndex)
+
+				keyIndex++
 			}
-
-			region := "local"
-			if !key.IsLocal && key.Region != "" {
-				region = key.Region
-			}
-
-			coloredIcon := fmt.Sprintf("[%s](fg:%s)", icon, iconColor)
-			line := fmt.Sprintf("  %s %-10s %8s", coloredIcon, region, responseTime)
-
-			if keyIndex == m.currentKeyIndex {
-				items = append(items, "▶ "+line)
-			} else {
-				items = append(items, "  "+line)
-			}
-
-			metadata = append(metadata, uw.RowMetadata{
-				GroupID:      groupID,
-				IsHeader:     false,
-				IsSelectable: true,
-			})
-
-			itemToKeyIndex = append(itemToKeyIndex, keyIndex)
-
-			keyIndex++
+		} else {
+			keyIndex += len(keys)
 		}
-
 	}
 
 	m.itemToKeyIndex = itemToKeyIndex
@@ -210,7 +245,16 @@ func (m *Manager) updateTargetList() {
 		}
 	}
 
-	if currentItemIndex >= 0 {
+	if preserveGroupID != "" {
+		for i := range items {
+			if i < len(metadata) && metadata[i].IsHeader && metadata[i].GroupID == preserveGroupID {
+				m.listWidget.SelectedRow = i
+				break
+			}
+		}
+	} else if preserveSelection && currentSelectedRow >= 0 && currentSelectedRow < len(items) {
+		m.listWidget.SelectedRow = currentSelectedRow
+	} else if currentItemIndex >= 0 {
 		m.listWidget.SelectedRow = currentItemIndex
 	}
 
@@ -226,7 +270,17 @@ func (m *Manager) updateTargetList() {
 		}
 	}
 
-	if keyVisible && m.currentKeyIndex < len(allKeys) {
+	isOnHeader := false
+	if m.listWidget.SelectedRow >= 0 && m.listWidget.SelectedRow < len(m.itemToKeyIndex) {
+		if m.itemToKeyIndex[m.listWidget.SelectedRow] == -1 {
+			isOnHeader = true
+		}
+	}
+
+	if isOnHeader {
+		m.listWidget.SelectedRowStyle.Fg = ui.ColorMagenta
+		m.listWidget.SelectedRowStyle.Modifier = ui.ModifierBold
+	} else if keyVisible && m.currentKeyIndex >= 0 && m.currentKeyIndex < len(allKeys) {
 		currentKey := allKeys[m.currentKeyIndex]
 		if data, exists := m.targetData[currentKey.String()]; exists {
 			if data.Result.IsUp {
@@ -239,7 +293,8 @@ func (m *Manager) updateTargetList() {
 		}
 		m.listWidget.SelectedRowStyle.Modifier = ui.ModifierBold
 	} else {
-		m.listWidget.SelectedRowStyle = m.listWidget.TextStyle
+		m.listWidget.SelectedRowStyle.Fg = ui.ColorCyan
+		m.listWidget.SelectedRowStyle.Modifier = ui.ModifierBold
 	}
 }
 
@@ -253,7 +308,7 @@ func (m *Manager) SetActiveTargetKey(keyIndex int, monitors map[string]*stats.Mo
 
 func (m *Manager) updateActiveTarget(_ map[string]*stats.Monitor) {
 	allKeys := m.keyRegistry.GetAllKeys()
-	if m.currentKeyIndex >= len(allKeys) {
+	if m.currentKeyIndex < 0 || m.currentKeyIndex >= len(allKeys) {
 		return
 	}
 
@@ -300,7 +355,7 @@ func (m *Manager) UpdateTarget(data TargetData) {
 	}
 
 	allKeys := m.keyRegistry.GetAllKeys()
-	if m.currentKeyIndex < len(allKeys) {
+	if m.currentKeyIndex >= 0 && m.currentKeyIndex < len(allKeys) {
 		currentKey := allKeys[m.currentKeyIndex]
 		if currentKey.String() == targetKeyStr {
 			m.restorePlotData(targetKeyStr)
@@ -308,19 +363,17 @@ func (m *Manager) UpdateTarget(data TargetData) {
 			if m.showLogs {
 				m.updateLogsWidget(currentKey)
 			}
-			if !m.isSingle {
-				m.updateTargetList()
-			}
 			ui.Render(m.grid)
 		} else if !m.isSingle {
 			m.updateTargetList()
+			ui.Render(m.grid)
 		}
 	}
 }
 
 func (m *Manager) RefreshStats(monitors map[string]*stats.Monitor) {
 	allKeys := m.keyRegistry.GetAllKeys()
-	if m.currentKeyIndex >= len(allKeys) {
+	if m.currentKeyIndex < 0 || m.currentKeyIndex >= len(allKeys) {
 		return
 	}
 
@@ -330,9 +383,16 @@ func (m *Manager) RefreshStats(monitors map[string]*stats.Monitor) {
 
 		m.detailsManager.UptimeWidget.Text = fmt.Sprintf("%.2f%%", freshStats.UptimePercent)
 		m.detailsManager.UpForWidget.Text = utils.FormatDurationMinute(freshStats.TotalDuration)
-		m.detailsManager.AvgResponseTimeWidget.Text = utils.FormatDurationMillisecond(freshStats.AvgResponseTime)
-		m.detailsManager.MinResponseTimeWidget.Text = utils.FormatDurationMillisecond(freshStats.MinResponseTime)
-		m.detailsManager.MaxResponseTimeWidget.Text = utils.FormatDurationMillisecond(freshStats.MaxResponseTime)
+
+		if freshStats.ChecksCount > 0 && freshStats.SuccessCount > 0 {
+			m.detailsManager.AvgResponseTimeWidget.Text = utils.FormatDurationMillisecond(freshStats.AvgResponseTime)
+			m.detailsManager.MinResponseTimeWidget.Text = utils.FormatDurationMillisecond(freshStats.MinResponseTime)
+			m.detailsManager.MaxResponseTimeWidget.Text = utils.FormatDurationMillisecond(freshStats.MaxResponseTime)
+		} else {
+			m.detailsManager.AvgResponseTimeWidget.Text = notAvailable
+			m.detailsManager.MinResponseTimeWidget.Text = notAvailable
+			m.detailsManager.MaxResponseTimeWidget.Text = notAvailable
+		}
 
 		if freshStats.ChecksCount >= 2 {
 			m.detailsManager.P95ResponseTimeWidget.Text = fmt.Sprintf("%d ms", freshStats.P95.Milliseconds())
@@ -341,7 +401,15 @@ func (m *Manager) RefreshStats(monitors map[string]*stats.Monitor) {
 		}
 
 		if !m.isSingle {
-			m.updateTargetList()
+			isOnHeader := false
+			if m.listWidget != nil && m.listWidget.SelectedRow >= 0 && m.listWidget.SelectedRow < len(m.itemToKeyIndex) {
+				if m.itemToKeyIndex[m.listWidget.SelectedRow] == -1 {
+					isOnHeader = true
+				}
+			}
+			if !isOnHeader {
+				m.updateTargetList()
+			}
 		}
 		ui.Render(m.grid)
 	}
@@ -350,9 +418,16 @@ func (m *Manager) RefreshStats(monitors map[string]*stats.Monitor) {
 func (m *Manager) updateCurrentTargetWidgets(result net.WebsiteCheckResult, stats stats.Stats) {
 	m.detailsManager.UptimeWidget.Text = fmt.Sprintf("%.2f%%", stats.UptimePercent)
 	m.detailsManager.UpForWidget.Text = utils.FormatDurationMinute(stats.TotalDuration)
-	m.detailsManager.AvgResponseTimeWidget.Text = utils.FormatDurationMillisecond(stats.AvgResponseTime)
-	m.detailsManager.MinResponseTimeWidget.Text = utils.FormatDurationMillisecond(stats.MinResponseTime)
-	m.detailsManager.MaxResponseTimeWidget.Text = utils.FormatDurationMillisecond(stats.MaxResponseTime)
+
+	if stats.ChecksCount > 0 && stats.SuccessCount > 0 {
+		m.detailsManager.AvgResponseTimeWidget.Text = utils.FormatDurationMillisecond(stats.AvgResponseTime)
+		m.detailsManager.MinResponseTimeWidget.Text = utils.FormatDurationMillisecond(stats.MinResponseTime)
+		m.detailsManager.MaxResponseTimeWidget.Text = utils.FormatDurationMillisecond(stats.MaxResponseTime)
+	} else {
+		m.detailsManager.AvgResponseTimeWidget.Text = notAvailable
+		m.detailsManager.MinResponseTimeWidget.Text = notAvailable
+		m.detailsManager.MaxResponseTimeWidget.Text = notAvailable
+	}
 
 	if stats.ChecksCount >= 2 {
 		m.detailsManager.P95ResponseTimeWidget.Text = fmt.Sprintf("%d ms", stats.P95.Milliseconds())
