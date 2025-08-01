@@ -99,7 +99,6 @@ func TestSendWebhook(t *testing.T) {
 					t.Errorf("Target mismatch: expected %s, got %s", tc.payload.Target, receivedPayload.Target)
 				}
 
-				// Parse and check headers
 				expectedHeaders := make(map[string]string)
 				for _, header := range tc.headers {
 					parts := strings.SplitN(header, ":", 2)
