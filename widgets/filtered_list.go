@@ -166,9 +166,9 @@ func (fl *FilteredList) updateFiltered() {
 
 func (fl *FilteredList) GetSelectableIndices() []int {
 	selectableIndices := make([]int, 0)
-	for _, idx := range fl.filteredIndices {
-		if idx < len(fl.rowMetadata) && fl.rowMetadata[idx].IsSelectable {
-			selectableIndices = append(selectableIndices, idx)
+	for displayIdx, originalIdx := range fl.filteredIndices {
+		if originalIdx < len(fl.rowMetadata) && fl.rowMetadata[originalIdx].IsSelectable {
+			selectableIndices = append(selectableIndices, displayIdx)
 		}
 	}
 	return selectableIndices

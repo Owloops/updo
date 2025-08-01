@@ -206,9 +206,15 @@ func (m *Manager) updateTargetList() {
 				isOnHeader := false
 				if m.preserveHeaderSelection != "" {
 					isOnHeader = true
-				} else if m.listWidget != nil && m.listWidget.SelectedRow >= 0 && m.listWidget.SelectedRow < len(m.itemToKeyIndex) {
-					if m.itemToKeyIndex[m.listWidget.SelectedRow] == -1 {
-						isOnHeader = true
+				} else if m.listWidget != nil && m.listWidget.SelectedRow >= 0 {
+					if m.listWidget.IsSearchMode() {
+						if m.listWidget.IsHeaderAtIndex(m.listWidget.SelectedRow) {
+							isOnHeader = true
+						}
+					} else if m.listWidget.SelectedRow < len(m.itemToKeyIndex) {
+						if m.itemToKeyIndex[m.listWidget.SelectedRow] == -1 {
+							isOnHeader = true
+						}
 					}
 				}
 
@@ -246,16 +252,36 @@ func (m *Manager) updateTargetList() {
 	}
 
 	if preserveGroupID != "" {
-		for i := range items {
-			if i < len(metadata) && metadata[i].IsHeader && metadata[i].GroupID == preserveGroupID {
-				m.listWidget.SelectedRow = i
-				break
+		if m.listWidget.IsSearchMode() {
+			filteredIndices := m.listWidget.GetFilteredIndices()
+			for displayIdx, originalIdx := range filteredIndices {
+				if originalIdx < len(metadata) && metadata[originalIdx].IsHeader && metadata[originalIdx].GroupID == preserveGroupID {
+					m.listWidget.SelectedRow = displayIdx
+					break
+				}
+			}
+		} else {
+			for i := range items {
+				if i < len(metadata) && metadata[i].IsHeader && metadata[i].GroupID == preserveGroupID {
+					m.listWidget.SelectedRow = i
+					break
+				}
 			}
 		}
 	} else if preserveSelection && currentSelectedRow >= 0 && currentSelectedRow < len(items) {
 		m.listWidget.SelectedRow = currentSelectedRow
 	} else if currentItemIndex >= 0 {
-		m.listWidget.SelectedRow = currentItemIndex
+		if m.listWidget.IsSearchMode() {
+			filteredIndices := m.listWidget.GetFilteredIndices()
+			for displayIdx, originalIdx := range filteredIndices {
+				if originalIdx == currentItemIndex {
+					m.listWidget.SelectedRow = displayIdx
+					break
+				}
+			}
+		} else {
+			m.listWidget.SelectedRow = currentItemIndex
+		}
 	}
 
 	keyVisible := true
@@ -271,9 +297,15 @@ func (m *Manager) updateTargetList() {
 	}
 
 	isOnHeader := false
-	if m.listWidget.SelectedRow >= 0 && m.listWidget.SelectedRow < len(m.itemToKeyIndex) {
-		if m.itemToKeyIndex[m.listWidget.SelectedRow] == -1 {
-			isOnHeader = true
+	if m.listWidget.SelectedRow >= 0 {
+		if m.listWidget.IsSearchMode() {
+			if m.listWidget.IsHeaderAtIndex(m.listWidget.SelectedRow) {
+				isOnHeader = true
+			}
+		} else if m.listWidget.SelectedRow < len(m.itemToKeyIndex) {
+			if m.itemToKeyIndex[m.listWidget.SelectedRow] == -1 {
+				isOnHeader = true
+			}
 		}
 	}
 
@@ -406,9 +438,15 @@ func (m *Manager) RefreshStats(monitors map[string]*stats.Monitor) {
 
 		if !m.isSingle {
 			isOnHeader := false
-			if m.listWidget != nil && m.listWidget.SelectedRow >= 0 && m.listWidget.SelectedRow < len(m.itemToKeyIndex) {
-				if m.itemToKeyIndex[m.listWidget.SelectedRow] == -1 {
-					isOnHeader = true
+			if m.listWidget != nil && m.listWidget.SelectedRow >= 0 {
+				if m.listWidget.IsSearchMode() {
+					if m.listWidget.IsHeaderAtIndex(m.listWidget.SelectedRow) {
+						isOnHeader = true
+					}
+				} else if m.listWidget.SelectedRow < len(m.itemToKeyIndex) {
+					if m.itemToKeyIndex[m.listWidget.SelectedRow] == -1 {
+						isOnHeader = true
+					}
 				}
 			}
 			if !isOnHeader {
