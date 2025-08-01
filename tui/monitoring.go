@@ -92,7 +92,15 @@ func StartMonitoring(targets []config.Target, options Options) {
 		select {
 		case e := <-uiEvents:
 			switch e.ID {
-			case "q", "<C-c>":
+			case "q":
+				if manager.listWidget != nil && manager.listWidget.IsSearchMode() {
+					manager.listWidget.UpdateSearch("q")
+					ui.Render(manager.grid)
+				} else {
+					cancel()
+					return
+				}
+			case "<C-c>":
 				cancel()
 				return
 			case "<Resize>":
@@ -132,7 +140,11 @@ func StartMonitoring(targets []config.Target, options Options) {
 					ui.Render(manager.grid)
 				}
 			case "l":
-				manager.ToggleLogsVisibility()
+				if manager.listWidget != nil && manager.listWidget.IsSearchMode() {
+					manager.listWidget.UpdateSearch("l")
+				} else {
+					manager.ToggleLogsVisibility()
+				}
 				ui.Render(manager.grid)
 			case "/":
 				if len(targets) > 1 && manager.listWidget != nil {

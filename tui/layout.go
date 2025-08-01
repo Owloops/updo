@@ -20,11 +20,11 @@ func (m *Manager) setupGrid(width, height int) {
 	} else {
 		m.grid.Set(
 			ui.NewRow(1.0,
-				ui.NewCol(0.22,
+				ui.NewCol(0.28,
 					ui.NewRow(1.0/7, m.searchWidget),
 					ui.NewRow(6.0/7, m.listWidget),
 				),
-				ui.NewCol(0.78, m.detailsManager.ActiveGrid),
+				ui.NewCol(0.72, m.detailsManager.ActiveGrid),
 			),
 		)
 	}
@@ -39,8 +39,6 @@ func (m *Manager) Resize(width, height int) {
 }
 
 func (m *Manager) initializeMultiTargetWidgets() {
-	allKeys := m.keyRegistry.GetAllKeys()
-
 	m.searchWidget = widgets.NewParagraph()
 	m.searchWidget.Border = true
 	m.searchWidget.BorderStyle.Fg = ui.ColorCyan
@@ -51,11 +49,7 @@ func (m *Manager) initializeMultiTargetWidgets() {
 	m.searchWidget.TextStyle.Fg = ui.ColorWhite
 
 	m.listWidget = uw.NewFilteredList()
-	if len(allKeys) > 0 {
-		m.listWidget.Title = fmt.Sprintf("Targets → %s", allKeys[0].DisplayName())
-	} else {
-		m.listWidget.Title = "Targets"
-	}
+	m.listWidget.Title = "Targets"
 	m.listWidget.BorderStyle.Fg = ui.ColorCyan
 	m.listWidget.TitleStyle.Fg = ui.ColorWhite
 	m.listWidget.TitleStyle.Modifier = ui.ModifierBold
@@ -85,27 +79,50 @@ func (m *Manager) handleSearchChange(query string, filteredIndices []int) {
 
 		keyVisible := false
 		if len(filteredIndices) > 0 {
-			for i, idx := range filteredIndices {
-				if idx == m.currentKeyIndex {
-					m.listWidget.SelectedRow = i
-					keyVisible = true
-					break
+			displayMap := m.listWidget.GetFilteredDisplayIndices()
+
+			for itemIdx, keyIdx := range m.itemToKeyIndex {
+				if keyIdx == m.currentKeyIndex {
+					if displayIdx, ok := displayMap[itemIdx]; ok {
+						m.listWidget.SelectedRow = displayIdx
+						keyVisible = true
+						break
+					}
 				}
 			}
 		}
 
-		if !keyVisible {
-			m.listWidget.SelectedRow = 0
-			m.listWidget.SelectedRowStyle = m.listWidget.TextStyle
+		if !keyVisible && len(filteredIndices) > 0 {
+			selectableIndices := m.listWidget.GetSelectableIndices()
+			if len(selectableIndices) > 0 {
+				firstSelectableIdx := selectableIndices[0]
+				if firstSelectableIdx < len(m.itemToKeyIndex) {
+					m.currentKeyIndex = m.itemToKeyIndex[firstSelectableIdx]
+				}
+				displayMap := m.listWidget.GetFilteredDisplayIndices()
+				if displayIdx, ok := displayMap[firstSelectableIdx]; ok {
+					m.listWidget.SelectedRow = displayIdx
+				}
+			}
 		}
 	} else {
 		m.searchWidget.Text = "Press / to activate"
 		m.searchWidget.TextStyle.Fg = ui.ColorWhite
 		m.searchWidget.BorderStyle.Fg = ui.ColorCyan
 		if m.currentKeyIndex < len(allKeys) {
-			m.listWidget.Title = fmt.Sprintf("Targets → %s", allKeys[m.currentKeyIndex].DisplayName())
+			currentKey := allKeys[m.currentKeyIndex]
+			region := "local"
+			if !currentKey.IsLocal && currentKey.Region != "" {
+				region = currentKey.Region
+			}
+			m.listWidget.Title = fmt.Sprintf("Targets → %s [%s]", currentKey.TargetName, region)
 		}
-		m.listWidget.SelectedRow = m.currentKeyIndex
+		for i, keyIdx := range m.itemToKeyIndex {
+			if keyIdx == m.currentKeyIndex {
+				m.listWidget.SelectedRow = i
+				break
+			}
+		}
 	}
 }
 
@@ -129,35 +146,42 @@ func (m *Manager) NavigateTargetKeys(direction int, monitors map[string]*stats.M
 }
 
 func (m *Manager) navigateFilteredKeys(direction int, _ []TargetKey) {
-	filteredIndices := m.listWidget.GetFilteredIndices()
-	if len(filteredIndices) == 0 {
+	selectableIndices := m.listWidget.GetSelectableIndices()
+	if len(selectableIndices) == 0 {
 		return
 	}
 
-	currentFilteredIndex := -1
-	for i, idx := range filteredIndices {
-		if idx == m.currentKeyIndex {
-			currentFilteredIndex = i
+	currentPos := -1
+	for i, itemIdx := range selectableIndices {
+		if itemIdx < len(m.itemToKeyIndex) && m.itemToKeyIndex[itemIdx] == m.currentKeyIndex {
+			currentPos = i
 			break
 		}
 	}
 
-	if currentFilteredIndex == -1 {
-		if direction > 0 {
-			currentFilteredIndex = 0
-		} else {
-			currentFilteredIndex = len(filteredIndices) - 1
-		}
+	if currentPos == -1 {
+		currentPos = 0
 	} else {
 		if direction > 0 {
-			currentFilteredIndex = (currentFilteredIndex + 1) % len(filteredIndices)
+			currentPos = (currentPos + 1) % len(selectableIndices)
 		} else {
-			currentFilteredIndex = (currentFilteredIndex - 1 + len(filteredIndices)) % len(filteredIndices)
+			currentPos = (currentPos - 1 + len(selectableIndices)) % len(selectableIndices)
 		}
 	}
 
-	m.currentKeyIndex = filteredIndices[currentFilteredIndex]
-	m.listWidget.SelectedRow = currentFilteredIndex
+	selectedItemIdx := selectableIndices[currentPos]
+
+	if selectedItemIdx < len(m.itemToKeyIndex) {
+		newKeyIdx := m.itemToKeyIndex[selectedItemIdx]
+		if newKeyIdx >= 0 {
+			m.currentKeyIndex = newKeyIdx
+		}
+	}
+
+	displayMap := m.listWidget.GetFilteredDisplayIndices()
+	if displayIdx, ok := displayMap[selectedItemIdx]; ok {
+		m.listWidget.SelectedRow = displayIdx
+	}
 }
 
 func (m *Manager) navigateAllKeys(direction int, allKeys []TargetKey) {
@@ -166,5 +190,11 @@ func (m *Manager) navigateAllKeys(direction int, allKeys []TargetKey) {
 	} else {
 		m.currentKeyIndex = (m.currentKeyIndex - 1 + len(allKeys)) % len(allKeys)
 	}
-	m.listWidget.SelectedRow = m.currentKeyIndex
+
+	for i, keyIdx := range m.itemToKeyIndex {
+		if keyIdx == m.currentKeyIndex {
+			m.listWidget.SelectedRow = i
+			break
+		}
+	}
 }

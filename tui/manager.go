@@ -43,6 +43,8 @@ type Manager struct {
 	termHeight      int
 	focusOnLogs     bool
 	showLogs        bool
+
+	itemToKeyIndex []int
 }
 
 type PlotHistory struct {
@@ -118,41 +120,110 @@ func (m *Manager) InitializeLayout(width, height int) {
 
 func (m *Manager) updateTargetList() {
 	allKeys := m.keyRegistry.GetAllKeys()
-	items := make([]string, len(allKeys))
 
-	for i, key := range allKeys {
-		icon := statusIcon
-		statusColor := ""
+	targetGroups := make(map[string][]TargetKey)
+	targetOrder := make([]string, 0)
 
-		if data, exists := m.targetData[key.String()]; exists {
-			if data.Result.IsUp {
-				statusColor = " UP  "
+	for _, key := range allKeys {
+		if _, exists := targetGroups[key.TargetName]; !exists {
+			targetOrder = append(targetOrder, key.TargetName)
+		}
+		targetGroups[key.TargetName] = append(targetGroups[key.TargetName], key)
+	}
+
+	items := make([]string, 0)
+	metadata := make([]uw.RowMetadata, 0)
+
+	itemToKeyIndex := make([]int, 0)
+
+	keyIndex := 0
+	for _, targetName := range targetOrder {
+		keys := targetGroups[targetName]
+		groupID := targetName
+
+		header := fmt.Sprintf("━ %s", targetName)
+		items = append(items, header)
+		metadata = append(metadata, uw.RowMetadata{
+			GroupID:      groupID,
+			IsHeader:     true,
+			IsSelectable: false,
+		})
+		itemToKeyIndex = append(itemToKeyIndex, -1)
+
+		for _, key := range keys {
+
+			var icon, iconColor string
+			var responseTime string
+
+			if data, exists := m.targetData[key.String()]; exists {
+				if data.Result.IsUp {
+					icon = "◉"
+					iconColor = "green"
+				} else {
+					icon = "◉"
+					iconColor = "red"
+				}
+				ms := int(data.Result.ResponseTime.Seconds() * 1000)
+				responseTime = fmt.Sprintf("%dms", ms)
 			} else {
-				statusColor = "DOWN "
+				icon = "◉"
+				iconColor = "yellow"
+				responseTime = "..."
 			}
-		} else {
-			statusColor = "WAIT "
+
+			region := "local"
+			if !key.IsLocal && key.Region != "" {
+				region = key.Region
+			}
+
+			coloredIcon := fmt.Sprintf("[%s](fg:%s)", icon, iconColor)
+			line := fmt.Sprintf("  %s %-10s %8s", coloredIcon, region, responseTime)
+
+			if keyIndex == m.currentKeyIndex {
+				items = append(items, "▶ "+line)
+			} else {
+				items = append(items, "  "+line)
+			}
+
+			metadata = append(metadata, uw.RowMetadata{
+				GroupID:      groupID,
+				IsHeader:     false,
+				IsSelectable: true,
+			})
+
+			itemToKeyIndex = append(itemToKeyIndex, keyIndex)
+
+			keyIndex++
 		}
 
-		displayName := key.DisplayName()
-		maxLen := 25
-		if len(displayName) > maxLen {
-			displayName = displayName[:maxLen-3] + "..."
-		}
+	}
 
-		if i == m.currentKeyIndex {
-			items[i] = fmt.Sprintf("▶ %s %s %s", icon, statusColor, displayName)
-		} else {
-			items[i] = fmt.Sprintf("  %s %s %s", icon, statusColor, displayName)
+	m.itemToKeyIndex = itemToKeyIndex
+
+	m.listWidget.SetRowsWithMetadata(items, metadata)
+
+	currentItemIndex := -1
+	for i, keyIdx := range m.itemToKeyIndex {
+		if keyIdx == m.currentKeyIndex {
+			currentItemIndex = i
+			break
 		}
 	}
 
-	m.listWidget.SetRows(items)
+	if currentItemIndex >= 0 {
+		m.listWidget.SelectedRow = currentItemIndex
+	}
 
 	keyVisible := true
 	if m.listWidget.IsSearchMode() {
 		indices := m.listWidget.GetFilteredIndices()
-		keyVisible = slices.Contains(indices, m.currentKeyIndex)
+		keyVisible = false
+		for i, keyIdx := range m.itemToKeyIndex {
+			if keyIdx == m.currentKeyIndex && slices.Contains(indices, i) {
+				keyVisible = true
+				break
+			}
+		}
 	}
 
 	if keyVisible && m.currentKeyIndex < len(allKeys) {
