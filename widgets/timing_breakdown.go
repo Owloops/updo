@@ -64,7 +64,7 @@ func (tb *TimingBreakdown) Draw(buf *ui.Buffer) {
 		}
 
 		xStart := tb.Inner.Min.X + longestLabel + rw.StringWidth(roundedDuration) + 1
-		for i := 0; i < barWidth; i++ {
+		for i := range barWidth {
 			buf.SetCell(ui.NewCell(' ', ui.NewStyle(ui.ColorClear, tb.Colors[stage])), image.Pt(xStart+i, y))
 		}
 		y++

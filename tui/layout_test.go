@@ -34,22 +34,22 @@ func TestNavigateAllKeys_EdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			
+
 			visibleRows := tt.visibleRows
 			direction := tt.direction
 			currentRow := 0
-			
+
 			if visibleRows == 0 {
-				
+
 				return
 			}
-			
+
 			if direction > 0 {
 				currentRow = (currentRow + 1) % visibleRows
 			} else {
 				currentRow = (currentRow - 1 + visibleRows) % visibleRows
 			}
-			
+
 			if currentRow < 0 || currentRow >= visibleRows {
 				t.Errorf("Navigation out of bounds: currentRow=%d, visibleRows=%d", currentRow, visibleRows)
 			}
@@ -77,21 +77,21 @@ func TestNavigateFilteredKeys_EdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			
+
 			visibleRows := tt.visibleRows
 			direction := tt.direction
 			currentRow := 0
-			
+
 			if visibleRows == 0 {
 				return
 			}
-			
+
 			if direction > 0 {
 				currentRow = (currentRow + 1) % visibleRows
 			} else {
 				currentRow = (currentRow - 1 + visibleRows) % visibleRows
 			}
-			
+
 			if currentRow < 0 || currentRow >= visibleRows {
 				t.Errorf("Filtered navigation out of bounds: currentRow=%d, visibleRows=%d", currentRow, visibleRows)
 			}

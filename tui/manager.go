@@ -23,6 +23,7 @@ const (
 	checking     = "Checking..."
 	passing      = "Passing"
 	failing      = "Failing"
+	targetIcon   = "◉"
 )
 
 type Manager struct {
@@ -132,18 +133,7 @@ func (m *Manager) updateTargetList() {
 		targetGroups[key.TargetName] = append(targetGroups[key.TargetName], key)
 	}
 
-	preserveSelection := false
-	currentSelectedRow := -1
 	preserveGroupID := m.preserveHeaderSelection
-
-	if preserveGroupID == "" && m.listWidget != nil && len(m.itemToKeyIndex) > 0 {
-		currentSelectedRow = m.listWidget.SelectedRow
-		if currentSelectedRow >= 0 && currentSelectedRow < len(m.itemToKeyIndex) {
-			if m.itemToKeyIndex[currentSelectedRow] == -1 {
-				preserveSelection = true
-			}
-		}
-	}
 
 	items := make([]string, 0)
 	metadata := make([]uw.RowMetadata, 0)
@@ -177,22 +167,18 @@ func (m *Manager) updateTargetList() {
 			for _, key := range keys {
 
 				var icon, iconColor string
-				var responseTime string
 
 				if data, exists := m.targetData[key.String()]; exists {
 					if data.Result.IsUp {
-						icon = "◉"
+						icon = targetIcon
 						iconColor = "green"
 					} else {
-						icon = "◉"
+						icon = targetIcon
 						iconColor = "red"
 					}
-					ms := int(data.Result.ResponseTime.Seconds() * 1000)
-					responseTime = fmt.Sprintf("%dms", ms)
 				} else {
-					icon = "◉"
+					icon = targetIcon
 					iconColor = "yellow"
-					responseTime = "..."
 				}
 
 				region := "local"
@@ -201,28 +187,9 @@ func (m *Manager) updateTargetList() {
 				}
 
 				coloredIcon := fmt.Sprintf("[%s](fg:%s)", icon, iconColor)
-				line := fmt.Sprintf("  %s %-10s %8s", coloredIcon, region, responseTime)
+				line := fmt.Sprintf("  %s %s", coloredIcon, region)
 
-				isOnHeader := false
-				if m.preserveHeaderSelection != "" {
-					isOnHeader = true
-				} else if m.listWidget != nil && m.listWidget.SelectedRow >= 0 {
-					if m.listWidget.IsSearchMode() {
-						if m.listWidget.IsHeaderAtIndex(m.listWidget.SelectedRow) {
-							isOnHeader = true
-						}
-					} else if m.listWidget.SelectedRow < len(m.itemToKeyIndex) {
-						if m.itemToKeyIndex[m.listWidget.SelectedRow] == -1 {
-							isOnHeader = true
-						}
-					}
-				}
-
-				if keyIndex == m.currentKeyIndex && !isOnHeader {
-					items = append(items, "▶ "+line)
-				} else {
-					items = append(items, "  "+line)
-				}
+				items = append(items, "  "+line)
 
 				metadata = append(metadata, uw.RowMetadata{
 					GroupID:      groupID,
@@ -243,14 +210,6 @@ func (m *Manager) updateTargetList() {
 
 	m.listWidget.SetRowsWithMetadata(items, metadata)
 
-	currentItemIndex := -1
-	for i, keyIdx := range m.itemToKeyIndex {
-		if keyIdx == m.currentKeyIndex {
-			currentItemIndex = i
-			break
-		}
-	}
-
 	if preserveGroupID != "" {
 		if m.listWidget.IsSearchMode() {
 			filteredIndices := m.listWidget.GetFilteredIndices()
@@ -268,52 +227,78 @@ func (m *Manager) updateTargetList() {
 				}
 			}
 		}
-	} else if preserveSelection && currentSelectedRow >= 0 && currentSelectedRow < len(items) {
-		m.listWidget.SelectedRow = currentSelectedRow
-	} else if currentItemIndex >= 0 {
-		if m.listWidget.IsSearchMode() {
-			filteredIndices := m.listWidget.GetFilteredIndices()
-			for displayIdx, originalIdx := range filteredIndices {
-				if originalIdx == currentItemIndex {
-					m.listWidget.SelectedRow = displayIdx
-					break
-				}
-			}
-		} else {
-			m.listWidget.SelectedRow = currentItemIndex
-		}
 	}
 
-	keyVisible := true
+	if m.listWidget.SelectedRow >= len(items) || m.listWidget.SelectedRow < 0 {
+		m.listWidget.SelectedRow = 0
+	}
+
+	m.updateSelectionColors()
+}
+
+func (m *Manager) getCurrentTargetKey() *TargetKey {
+	if m.isSingle || m.listWidget == nil {
+		allKeys := m.keyRegistry.GetAllKeys()
+		if m.currentKeyIndex >= 0 && m.currentKeyIndex < len(allKeys) {
+			return &allKeys[m.currentKeyIndex]
+		}
+		return nil
+	}
+
+	selectedRow := m.listWidget.SelectedRow
+	if selectedRow < 0 {
+		return nil
+	}
+
+	var originalIdx int
 	if m.listWidget.IsSearchMode() {
-		indices := m.listWidget.GetFilteredIndices()
-		keyVisible = false
-		for i, keyIdx := range m.itemToKeyIndex {
-			if keyIdx == m.currentKeyIndex && slices.Contains(indices, i) {
-				keyVisible = true
-				break
+		filteredIndices := m.listWidget.GetFilteredIndices()
+		if selectedRow >= len(filteredIndices) {
+			return nil
+		}
+		originalIdx = filteredIndices[selectedRow]
+	} else {
+		originalIdx = selectedRow
+	}
+
+	if originalIdx >= 0 && originalIdx < len(m.itemToKeyIndex) {
+		keyIdx := m.itemToKeyIndex[originalIdx]
+		if keyIdx >= 0 {
+			allKeys := m.keyRegistry.GetAllKeys()
+			if keyIdx < len(allKeys) {
+				return &allKeys[keyIdx]
 			}
 		}
 	}
+	return nil
+}
 
-	isOnHeader := false
-	if m.listWidget.SelectedRow >= 0 {
-		if m.listWidget.IsSearchMode() {
-			if m.listWidget.IsHeaderAtIndex(m.listWidget.SelectedRow) {
-				isOnHeader = true
-			}
-		} else if m.listWidget.SelectedRow < len(m.itemToKeyIndex) {
-			if m.itemToKeyIndex[m.listWidget.SelectedRow] == -1 {
-				isOnHeader = true
-			}
-		}
+func (m *Manager) isSelectedRowHeader() bool {
+	if m.isSingle || m.listWidget == nil {
+		return false
 	}
 
-	if isOnHeader {
+	selectedRow := m.listWidget.SelectedRow
+	if selectedRow < 0 || selectedRow >= len(m.listWidget.Rows) {
+		return false
+	}
+
+	row := m.listWidget.Rows[selectedRow]
+	return strings.HasPrefix(row, "▼") || strings.HasPrefix(row, "▶")
+}
+
+func (m *Manager) updateSelectionColors() {
+	if m.isSingle || m.listWidget == nil {
+		return
+	}
+
+	if m.isSelectedRowHeader() {
 		m.listWidget.SelectedRowStyle.Fg = ui.ColorMagenta
 		m.listWidget.SelectedRowStyle.Modifier = ui.ModifierBold
-	} else if keyVisible && m.currentKeyIndex >= 0 && m.currentKeyIndex < len(allKeys) {
-		currentKey := allKeys[m.currentKeyIndex]
+		return
+	}
+	currentKey := m.getCurrentTargetKey()
+	if currentKey != nil {
 		if data, exists := m.targetData[currentKey.String()]; exists {
 			if data.Result.IsUp {
 				m.listWidget.SelectedRowStyle.Fg = ui.ColorGreen
@@ -323,11 +308,10 @@ func (m *Manager) updateTargetList() {
 		} else {
 			m.listWidget.SelectedRowStyle.Fg = ui.ColorYellow
 		}
-		m.listWidget.SelectedRowStyle.Modifier = ui.ModifierBold
 	} else {
 		m.listWidget.SelectedRowStyle.Fg = ui.ColorCyan
-		m.listWidget.SelectedRowStyle.Modifier = ui.ModifierBold
 	}
+	m.listWidget.SelectedRowStyle.Modifier = ui.ModifierBold
 }
 
 func (m *Manager) SetActiveTargetKey(keyIndex int, monitors map[string]*stats.Monitor) {
@@ -339,12 +323,11 @@ func (m *Manager) SetActiveTargetKey(keyIndex int, monitors map[string]*stats.Mo
 }
 
 func (m *Manager) updateActiveTarget(_ map[string]*stats.Monitor) {
-	allKeys := m.keyRegistry.GetAllKeys()
-	if m.currentKeyIndex < 0 || m.currentKeyIndex >= len(allKeys) {
+	currentKey := m.getCurrentTargetKey()
+	if currentKey == nil {
 		return
 	}
 
-	currentKey := allKeys[m.currentKeyIndex]
 	targetKeyStr := currentKey.String()
 
 	m.restorePlotData(targetKeyStr)
@@ -354,7 +337,7 @@ func (m *Manager) updateActiveTarget(_ map[string]*stats.Monitor) {
 	}
 
 	if m.showLogs {
-		m.updateLogsWidget(currentKey)
+		m.updateLogsWidget(*currentKey)
 	}
 
 	if !m.isSingle {
@@ -390,30 +373,26 @@ func (m *Manager) UpdateTarget(data TargetData) {
 		m.logBuffer.AddLogEntry(LogLevelInfo, "Request successful", "", data.TargetKey)
 	}
 
-	allKeys := m.keyRegistry.GetAllKeys()
-	if m.currentKeyIndex >= 0 && m.currentKeyIndex < len(allKeys) {
-		currentKey := allKeys[m.currentKeyIndex]
-		if currentKey.String() == targetKeyStr {
-			m.restorePlotData(targetKeyStr)
-			m.updateCurrentTargetWidgets(data.Result, data.Stats)
-			if m.showLogs {
-				m.updateLogsWidget(currentKey)
-			}
-			ui.Render(m.grid)
-		} else if !m.isSingle {
-			m.updateTargetList()
-			ui.Render(m.grid)
+	currentKey := m.getCurrentTargetKey()
+	if currentKey != nil && currentKey.String() == targetKeyStr {
+		m.restorePlotData(targetKeyStr)
+		m.updateCurrentTargetWidgets(data.Result, data.Stats)
+		if m.showLogs {
+			m.updateLogsWidget(*currentKey)
 		}
+		ui.Render(m.grid)
+	} else if !m.isSingle {
+		m.updateTargetList()
+		ui.Render(m.grid)
 	}
 }
 
 func (m *Manager) RefreshStats(monitors map[string]*stats.Monitor) {
-	allKeys := m.keyRegistry.GetAllKeys()
-	if m.currentKeyIndex < 0 || m.currentKeyIndex >= len(allKeys) {
+	currentKey := m.getCurrentTargetKey()
+	if currentKey == nil {
 		return
 	}
 
-	currentKey := allKeys[m.currentKeyIndex]
 	if monitor, exists := monitors[currentKey.String()]; exists {
 		freshStats := monitor.GetStats()
 
@@ -437,19 +416,7 @@ func (m *Manager) RefreshStats(monitors map[string]*stats.Monitor) {
 		}
 
 		if !m.isSingle {
-			isOnHeader := false
-			if m.listWidget != nil && m.listWidget.SelectedRow >= 0 {
-				if m.listWidget.IsSearchMode() {
-					if m.listWidget.IsHeaderAtIndex(m.listWidget.SelectedRow) {
-						isOnHeader = true
-					}
-				} else if m.listWidget.SelectedRow < len(m.itemToKeyIndex) {
-					if m.itemToKeyIndex[m.listWidget.SelectedRow] == -1 {
-						isOnHeader = true
-					}
-				}
-			}
-			if !isOnHeader {
+			if !m.isSelectedRowHeader() {
 				m.updateTargetList()
 			}
 		}

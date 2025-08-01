@@ -244,10 +244,9 @@ func (m *Manager) ToggleLogsVisibility() {
 		m.detailsManager.LogsWidget.BorderStyle.Fg = ui.ColorGreen
 		m.detailsManager.LogsWidget.Title = "Recent Logs (FOCUSED) - ↑↓:nav Enter:expand l:hide"
 
-		allKeys := m.keyRegistry.GetAllKeys()
-		if m.currentKeyIndex < len(allKeys) {
-			currentKey := allKeys[m.currentKeyIndex]
-			m.updateLogsWidget(currentKey)
+		currentKey := m.getCurrentTargetKey()
+		if currentKey != nil {
+			m.updateLogsWidget(*currentKey)
 		}
 
 		if m.listWidget != nil {

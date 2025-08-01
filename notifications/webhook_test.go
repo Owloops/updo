@@ -192,7 +192,7 @@ func TestHandleWebhookAlert(t *testing.T) {
 
 			alertSent := tc.initialAlertSent
 
-			HandleWebhookAlert(
+			_ = HandleWebhookAlert(
 				server.URL,
 				nil,
 				tc.isUp,
@@ -243,7 +243,7 @@ func TestHandleWebhookAlertEmptyURL(t *testing.T) {
 	}))
 	defer server.Close()
 
-	HandleWebhookAlert(
+	_ = HandleWebhookAlert(
 		"",
 		nil,
 		false,
