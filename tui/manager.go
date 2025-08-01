@@ -338,6 +338,10 @@ func (m *Manager) UpdateTarget(data TargetData) {
 
 	m.updatePlotDataForTarget(targetKeyStr, data.Result)
 
+	if data.WebhookError != nil {
+		m.logBuffer.AddLogEntry(LogLevelWarning, "Webhook failed", data.WebhookError.Error(), data.TargetKey)
+	}
+
 	if !data.Result.IsUp {
 		level := LogLevelError
 		message := "Request failed"

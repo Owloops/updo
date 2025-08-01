@@ -15,10 +15,11 @@ import (
 )
 
 type TargetData struct {
-	Target    config.Target
-	Result    net.WebsiteCheckResult
-	Stats     stats.Stats
-	TargetKey TargetKey
+	Target       config.Target
+	Result       net.WebsiteCheckResult
+	Stats        stats.Stats
+	TargetKey    TargetKey
+	WebhookError error
 }
 
 type Options struct {
@@ -275,7 +276,15 @@ func monitorTargetTUI(ctx context.Context, target config.Target, monitors map[st
 							}
 						}
 						if webhookAlertSent, exists := webhookAlertStates[targetKeyStr]; exists {
-							notifications.HandleWebhookAlert(target.WebhookURL, target.WebhookHeaders, lambdaResult.Result.IsUp, webhookAlertSent, target.Name, lambdaResult.Result.URL, lambdaResult.Result.ResponseTime, lambdaResult.Result.StatusCode, errorMsg)
+							if err := notifications.HandleWebhookAlert(target.WebhookURL, target.WebhookHeaders, lambdaResult.Result.IsUp, webhookAlertSent, target.Name, lambdaResult.Result.URL, lambdaResult.Result.ResponseTime, lambdaResult.Result.StatusCode, errorMsg); err != nil {
+								dataChannel <- TargetData{
+									Target:       target,
+									Result:       lambdaResult.Result,
+									Stats:        stats.Stats{},
+									TargetKey:    targetKey,
+									WebhookError: err,
+								}
+							}
 						}
 					}
 
@@ -311,7 +320,7 @@ func monitorTargetTUI(ctx context.Context, target config.Target, monitors map[st
 						errorMsg = fmt.Sprintf("Status code: %d", result.StatusCode)
 					}
 					if webhookAlertSent, exists := webhookAlertStates[targetKeyStr]; exists {
-						notifications.HandleWebhookAlert(
+						if err := notifications.HandleWebhookAlert(
 							target.WebhookURL,
 							target.WebhookHeaders,
 							result.IsUp,
@@ -321,7 +330,15 @@ func monitorTargetTUI(ctx context.Context, target config.Target, monitors map[st
 							result.ResponseTime,
 							result.StatusCode,
 							errorMsg,
-						)
+						); err != nil {
+							dataChannel <- TargetData{
+								Target:       target,
+								Result:       result,
+								Stats:        stats.Stats{},
+								TargetKey:    targetKey,
+								WebhookError: err,
+							}
+						}
 					}
 				}
 

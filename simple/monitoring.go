@@ -179,7 +179,9 @@ func monitorTarget(ctx context.Context, target config.Target, monitor *stats.Mon
 							errorMsg = requestFailedMsg
 						}
 					}
-					notifications.HandleWebhookAlert(target.WebhookURL, target.WebhookHeaders, lambdaResult.Result.IsUp, webhookAlertSent, target.Name, lambdaResult.Result.URL, lambdaResult.Result.ResponseTime, lambdaResult.Result.StatusCode, errorMsg)
+					if err := notifications.HandleWebhookAlert(target.WebhookURL, target.WebhookHeaders, lambdaResult.Result.IsUp, webhookAlertSent, target.Name, lambdaResult.Result.URL, lambdaResult.Result.ResponseTime, lambdaResult.Result.StatusCode, errorMsg); err != nil {
+						log.Printf("[ERROR] %v", err)
+					}
 				}
 
 				resultsChan <- TargetResult{
@@ -211,7 +213,9 @@ func monitorTarget(ctx context.Context, target config.Target, monitor *stats.Mon
 						errorMsg = requestFailedMsg
 					}
 				}
-				notifications.HandleWebhookAlert(target.WebhookURL, target.WebhookHeaders, result.IsUp, webhookAlertSent, target.Name, target.URL, result.ResponseTime, result.StatusCode, errorMsg)
+				if err := notifications.HandleWebhookAlert(target.WebhookURL, target.WebhookHeaders, result.IsUp, webhookAlertSent, target.Name, target.URL, result.ResponseTime, result.StatusCode, errorMsg); err != nil {
+					log.Printf("[ERROR] %v", err)
+				}
 			}
 
 			resultsChan <- TargetResult{

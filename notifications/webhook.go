@@ -57,7 +57,7 @@ func SendWebhook(webhookURL string, headers map[string]string, payload WebhookPa
 	return nil
 }
 
-func HandleWebhookAlert(webhookURL string, headers []string, isUp bool, alertSent *bool, targetName string, targetURL string, responseTime time.Duration, statusCode int, errorMsg string) {
+func HandleWebhookAlert(webhookURL string, headers []string, isUp bool, alertSent *bool, targetName string, targetURL string, responseTime time.Duration, statusCode int, errorMsg string) error {
 	displayName := targetName
 	if displayName == "" {
 		displayName = targetURL
@@ -77,7 +77,7 @@ func HandleWebhookAlert(webhookURL string, headers []string, isUp bool, alertSen
 	}
 
 	if !shouldSend || webhookURL == "" {
-		return
+		return nil
 	}
 
 	payload := WebhookPayload{
@@ -101,6 +101,7 @@ func HandleWebhookAlert(webhookURL string, headers []string, isUp bool, alertSen
 	}
 
 	if err := SendWebhook(webhookURL, headerMap, payload); err != nil {
-		log.Printf("Failed to send webhook: %v", err)
+		return fmt.Errorf("failed to send webhook for %s: %w", displayName, err)
 	}
+	return nil
 }
