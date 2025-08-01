@@ -20,6 +20,7 @@ type TargetData struct {
 	Stats        stats.Stats
 	TargetKey    TargetKey
 	WebhookError error
+	LambdaError  error
 }
 
 type Options struct {
@@ -240,10 +241,11 @@ func monitorTargetTUI(ctx context.Context, target config.Target, monitors map[st
 
 					targetKey := NewRegionTargetKey(target.Name, lambdaResult.Region)
 					dataChannel <- TargetData{
-						Target:    target,
-						Result:    errorResult,
-						Stats:     stats.Stats{},
-						TargetKey: targetKey,
+						Target:      target,
+						Result:      errorResult,
+						Stats:       stats.Stats{},
+						TargetKey:   targetKey,
+						LambdaError: lambdaResult.Error,
 					}
 					continue
 				}

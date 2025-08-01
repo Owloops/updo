@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -146,6 +147,43 @@ func (nv nodeValue) String() string {
 	return string(nv)
 }
 
+func wrapText(text string, maxWidth int) []string {
+	if len(text) <= maxWidth {
+		return []string{text}
+	}
+
+	var lines []string
+	words := strings.Fields(text)
+	if len(words) == 0 {
+		for i := 0; i < len(text); i += maxWidth {
+			end := min(i+maxWidth, len(text))
+			lines = append(lines, text[i:end])
+		}
+		return lines
+	}
+
+	var currentLine strings.Builder
+
+	for _, word := range words {
+		if currentLine.Len() == 0 {
+			currentLine.WriteString(word)
+		} else if currentLine.Len()+1+len(word) <= maxWidth {
+			currentLine.WriteString(" " + word)
+		} else {
+			lines = append(lines, currentLine.String())
+			currentLine.Reset()
+			currentLine.WriteString(word)
+		}
+	}
+
+	if currentLine.Len() > 0 {
+		lines = append(lines, currentLine.String())
+	}
+
+	return lines
+}
+
+
 func (m *Manager) updateLogsWidget(targetKey TargetKey) {
 	logs := m.logBuffer.GetEntriesForTarget(targetKey)
 
@@ -183,10 +221,23 @@ func (m *Manager) updateLogsWidget(targetKey TargetKey) {
 
 		var childNodes []*widgets.TreeNode
 		if log.Details != "" {
-			childNodes = append(childNodes, &widgets.TreeNode{
-				Value: nodeValue(fmt.Sprintf("Details: %s", log.Details)),
+			termWidth, _ := ui.TerminalDimensions()
+			availableWidth := max(termWidth-50, 25)
+			detailLines := wrapText(log.Details, availableWidth)
+
+			detailsParent := &widgets.TreeNode{
+				Value: nodeValue("Details:"),
 				Nodes: []*widgets.TreeNode{},
-			})
+			}
+
+			for _, line := range detailLines {
+				detailsParent.Nodes = append(detailsParent.Nodes, &widgets.TreeNode{
+					Value: nodeValue(line),
+					Nodes: []*widgets.TreeNode{},
+				})
+			}
+
+			childNodes = append(childNodes, detailsParent)
 		}
 
 		childNodes = append(childNodes, &widgets.TreeNode{

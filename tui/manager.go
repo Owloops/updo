@@ -357,13 +357,17 @@ func (m *Manager) UpdateTarget(data TargetData) {
 		m.logBuffer.AddLogEntry(LogLevelWarning, "Webhook failed", data.WebhookError.Error(), data.TargetKey)
 	}
 
+	if data.LambdaError != nil {
+		m.logBuffer.AddLogEntry(LogLevelWarning, "Lambda invocation failed", data.LambdaError.Error(), data.TargetKey)
+	}
+
 	if !data.Result.IsUp {
 		level := LogLevelError
 		message := "Request failed"
 
 		if data.Result.StatusCode > 0 {
 			message = fmt.Sprintf("Status code: %d", data.Result.StatusCode)
-		} else if !data.TargetKey.IsLocal {
+		} else if !data.TargetKey.IsLocal && data.LambdaError == nil {
 			message = "Lambda invocation failed"
 			level = LogLevelWarning
 		}
