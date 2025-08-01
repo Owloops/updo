@@ -28,13 +28,11 @@ Use this to see which regions you can specify for monitoring or destruction.`,
 			utils.Log.Plain(fmt.Sprintf("Using AWS profile: %s", profile))
 		}
 
-		// Start spinner while checking regions
 		spinnerStop := make(chan bool)
 		go utils.Log.Spinner("Checking deployed regions...", spinnerStop)
 
 		regions, err := aws.GetDeployedRegions(profile)
 
-		// Stop spinner
 		spinnerStop <- true
 		close(spinnerStop)
 
