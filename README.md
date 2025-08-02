@@ -62,6 +62,17 @@ go install github.com/Owloops/updo@latest
 
 </details>
 
+<details>
+<summary>Docker</summary>
+
+```bash
+# Build and run
+docker build -t updo https://github.com/Owloops/updo.git
+docker run updo monitor <website-url> [options]
+```
+
+</details>
+
 > [!NOTE]  
 > You may get security warnings on Windows and macOS. See [issue #4](https://github.com/Owloops/updo/issues/4) for details.
 >
@@ -85,13 +96,6 @@ go install github.com/Owloops/updo@latest
 ./updo completion bash > updo_completion.bash
 ```
 
-### Docker
-
-```bash
-# Build and run
-docker build -t updo https://github.com/Owloops/updo.git
-docker run -it updo monitor <website-url> [options]
-```
 
 ### Options
 
