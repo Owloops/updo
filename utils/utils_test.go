@@ -57,8 +57,8 @@ func TestFormatDurationMinute(t *testing.T) {
 		{"10 seconds", 10 * time.Second, "10s"},
 		{"1 minute", 1 * time.Minute, "1m0s"},
 		{"1 hour 30 minutes", 1*time.Hour + 30*time.Minute, "1h30m0s"},
-		{"Round to nearest second", 1*time.Minute + 499*time.Millisecond, "1m0s"},
-		{"Round to nearest second (up)", 1*time.Minute + 500*time.Millisecond, "1m1s"},
+		{"Truncate to nearest second", 1*time.Minute + 499*time.Millisecond, "1m0s"},
+		{"Truncate to nearest second (down)", 1*time.Minute + 500*time.Millisecond, "1m0s"},
 	}
 
 	for _, tc := range tests {
