@@ -300,6 +300,8 @@ Usage examples:
 When monitoring multiple targets:
 
 - `↑/↓`: Navigate targets
+- `Tab`: Collapse/expand all target groups
+- `Enter`: Collapse/expand individual target group
 - `/`: Search mode, `ESC` to exit
 - `l`: Toggle logs per target
 - `q` or `Ctrl+C`: Quit
@@ -310,7 +312,6 @@ When monitoring multiple targets:
 - [termui](https://github.com/gizak/termui)
 - [Terminal Trove](https://terminaltrove.com/updo)
 - [cobra](https://github.com/spf13/cobra)
-- [bubbletea](https://github.com/charmbracelet/bubbletea)
 
 ## Contributing
 
