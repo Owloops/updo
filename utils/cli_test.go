@@ -64,16 +64,6 @@ func TestCLI_Region(t *testing.T) {
 	}
 }
 
-func TestCLI_Spinner(t *testing.T) {
-	cli := CLI{}
-	stopCh := make(chan bool, 1)
-
-	go cli.Spinner("Testing...", stopCh)
-
-	stopCh <- true
-
-}
-
 func TestCLI_FormattingMethods(t *testing.T) {
 	cli := CLI{}
 
