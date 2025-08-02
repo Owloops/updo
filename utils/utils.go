@@ -17,5 +17,5 @@ func FormatDurationMillisecond(d time.Duration) string {
 }
 
 func FormatDurationMinute(d time.Duration) string {
-	return d.Round(time.Second).String()
+	return d.Truncate(time.Second).String()
 }

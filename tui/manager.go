@@ -273,6 +273,20 @@ func (m *Manager) getCurrentTargetKey() *TargetKey {
 	return nil
 }
 
+func (m *Manager) getCurrentTarget() *config.Target {
+	currentKey := m.getCurrentTargetKey()
+	if currentKey == nil {
+		return nil
+	}
+
+	for i := range m.targets {
+		if m.targets[i].Name == currentKey.TargetName {
+			return &m.targets[i]
+		}
+	}
+	return nil
+}
+
 func (m *Manager) isSelectedRowHeader() bool {
 	if m.isSingle || m.listWidget == nil {
 		return false
@@ -322,17 +336,34 @@ func (m *Manager) SetActiveTargetKey(keyIndex int, monitors map[string]*stats.Mo
 	}
 }
 
-func (m *Manager) updateActiveTarget(_ map[string]*stats.Monitor) {
+func (m *Manager) updateActiveTarget(monitors map[string]*stats.Monitor) {
 	currentKey := m.getCurrentTargetKey()
 	if currentKey == nil {
 		return
+	}
+
+	currentTarget := m.getCurrentTarget()
+	if currentTarget != nil && m.detailsManager.RefreshWidget != nil {
+		refreshInterval := currentTarget.RefreshInterval
+		if refreshInterval == 0 {
+			refreshInterval = 5
+		}
+		m.detailsManager.RefreshWidget.Text = fmt.Sprintf("%d seconds", refreshInterval)
 	}
 
 	targetKeyStr := currentKey.String()
 
 	m.restorePlotData(targetKeyStr)
 
-	if data, exists := m.targetData[targetKeyStr]; exists {
+	if monitor, exists := monitors[targetKeyStr]; exists {
+		freshStats := monitor.GetStats()
+		if data, exists := m.targetData[targetKeyStr]; exists {
+			m.updateCurrentTargetWidgets(data.Result, freshStats)
+		} else {
+			m.detailsManager.UpForWidget.Text = utils.FormatDurationMinute(freshStats.TotalDuration)
+			m.detailsManager.UptimeWidget.Text = fmt.Sprintf("%.2f%%", freshStats.UptimePercent)
+		}
+	} else if data, exists := m.targetData[targetKeyStr]; exists {
 		m.updateCurrentTargetWidgets(data.Result, data.Stats)
 	}
 
@@ -395,6 +426,15 @@ func (m *Manager) RefreshStats(monitors map[string]*stats.Monitor) {
 	currentKey := m.getCurrentTargetKey()
 	if currentKey == nil {
 		return
+	}
+
+	currentTarget := m.getCurrentTarget()
+	if currentTarget != nil && m.detailsManager.RefreshWidget != nil {
+		refreshInterval := currentTarget.RefreshInterval
+		if refreshInterval == 0 {
+			refreshInterval = 5
+		}
+		m.detailsManager.RefreshWidget.Text = fmt.Sprintf("%d seconds", refreshInterval)
 	}
 
 	if monitor, exists := monitors[currentKey.String()]; exists {
