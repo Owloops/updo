@@ -5,12 +5,14 @@ follow_redirects = true
 receive_alert = true
 count = 0
 skip = ["GitHub-API"]
+# regions = ["us-east-1", "eu-west-1"]  # Uncomment to use AWS Lambda remote executors
 
 [[targets]]
 url = "https://www.google.com"
 name = "Google"
 refresh_interval = 3
 assert_text = "Google"
+# regions = ["us-east-1", "ap-southeast-1"]  # Target-specific regions (overrides global)
 
 [[targets]]
 url = "https://www.github.com"

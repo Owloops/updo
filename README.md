@@ -15,18 +15,12 @@ Updo is a command-line tool for monitoring website uptime and performance. It pr
 
 ## Features
 
-- Real-time monitoring of website uptime and performance
-- **Multi-target monitoring** - Monitor multiple URLs concurrently
-- Displays various metrics like uptime percentage, average response time, and SSL certificate expiry
-- Desktop alert notifications for website status changes
-- **Webhook notifications** - Send alerts to Slack, Discord, or any webhook endpoint
-- Customizable refresh intervals and request timeouts per target
-- Supports HTTP and HTTPS, with options to skip SSL verification
-- Assertion on response body content
-- TOML configuration file support for complex setups
-- Command-line interface with simple usage
-- Simple mode with text output
-- Automatic terminal capability detection
+- **Real-time monitoring** with uptime percentage, response times, and SSL certificate tracking
+- **Multi-target monitoring** - Monitor multiple URLs concurrently from the command line or config files
+- **Multi-region AWS Lambda** - Deploy across 13 global regions for worldwide monitoring coverage
+- **Alert notifications** - Desktop notifications and webhook integration (Slack, Discord, custom endpoints)
+- **Flexible HTTP support** - Custom headers, POST/PUT requests, SSL verification options, response assertions
+- **Multiple output modes** - Interactive TUI, simple text output, or structured JSON logging
 
 ## Demo
 
@@ -37,94 +31,55 @@ Updo is a command-line tool for monitoring website uptime and performance. It pr
 <details>
 <summary>Quick install script (Linux, macOS, Windows/MSYS)</summary>
 
-#### One-line install command
-
 ```bash
 curl -sSL https://raw.githubusercontent.com/Owloops/updo/main/install.sh | bash
 ```
-
-This script automatically:
-
-- Detects your OS and architecture
-- Downloads the latest release
-- Makes the binary executable
-- Installs to /usr/local/bin (or ~/.local/bin if permission denied)
-- Removes quarantine attribute on macOS
 
 </details>
 
 <details>
 <summary>Download executable binaries</summary>
 
-#### You can download executable binaries from the latest release page
-
-> [![Latest Release](https://img.shields.io/github/v/release/Owloops/updo?style=flat-square)](https://github.com/Owloops/updo/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/Owloops/updo?style=flat-square)](https://github.com/Owloops/updo/releases/latest)
 </details>
 
 <details>
 <summary>Build from source</summary>
 
-#### You can install Updo by cloning the repository and building the binary
-
-Make sure your system has Go [installed](https://go.dev/doc/install).
-
-> ```bash
-> git clone https://github.com/Owloops/updo.git
-> cd updo
-> go build
-> ```
->
-#### Build with version information
-
-To include version information in the binary, use ldflags:
+Requires Go [installed](https://go.dev/doc/install).
 
 ```bash
-go build -ldflags="-X 'main.version=v1.0.0' -X 'main.commit=$(git rev-parse HEAD)' -X 'main.date=$(date)'"
+git clone https://github.com/Owloops/updo.git
+cd updo
+go build
 ```
 
-Check the version with:
+Or install directly:
 
 ```bash
-./updo --version
-```
-
-#### Another way to install it if you have go in your machine just
-
-```sh
-GOBIN="absolute_path_where_you_want_binaries_to_be_installed" go install github.com/Owloops/updo@latest
+go install github.com/Owloops/updo@latest
 ```
 
 </details>
 
 > [!NOTE]  
-> You may get a warning message on Windows and MacOS, which is discussed in this issue <https://github.com/Owloops/updo/issues/4>
+> You may get security warnings on Windows and macOS. See [issue #4](https://github.com/Owloops/updo/issues/4) for details.
 >
-> ### macOS Security
->
-> macOS may prevent running downloaded binaries due to security measures. If you get a warning message like "cannot be opened because the developer cannot be verified", you can remove the quarantine attribute with this command:
+> **macOS:** If you get "cannot be opened because the developer cannot be verified":
 >
 > ```bash
 > xattr -d com.apple.quarantine /path/to/updo
 > ```
->
-> Replace `/path/to/updo` with the actual path to the downloaded binary (e.g. `~/Downloads/updo_Darwin_arm64/updo`)
 
 ## Usage
 
-Run Updo using the following command:
-
 ```bash
-# Monitor single URL
-./updo monitor [options] <website-url>
-
-# Monitor multiple URLs
+# Monitor URLs
+./updo monitor <website-url> [options]
 ./updo monitor <url1> <url2> <url3>
 
 # Using configuration file
 ./updo monitor --config <config-file>
-
-# Alternative syntax using --url flag
-./updo monitor --url <website-url> [options]
 
 # Generate shell completions
 ./updo completion bash > updo_completion.bash
@@ -132,194 +87,144 @@ Run Updo using the following command:
 
 ### Docker
 
-You can run Updo using Docker:
-
-```console
-# Build Docker image from locally cloned repo
-docker build -t updo .
-# ... or build straight from repo URL (no cloning needed):
+```bash
+# Build and run
 docker build -t updo https://github.com/Owloops/updo.git
-
-# And now you can run Updo from the built image:
-docker run -it updo monitor [options] <website-url>
-# Or with the --url flag:
-docker run -it updo monitor --url <website-url> [options]
+docker run -it updo monitor <website-url> [options]
 ```
 
 ### Options
 
-- `-u, --url`: URL of the website to monitor
-- `-C, --config`: Config file path (TOML format) for multi-target monitoring
-- `-r, --refresh`: Refresh interval in seconds (default: 5)
-- `-f, --should-fail`: Invert status code success (default: false)
-- `-t, --timeout`: HTTP request timeout in seconds (default: 10)
-- `-l, --follow-redirects`: Follow redirects (default: true)
-- `-s, --skip-ssl`: Skip SSL certificate verification (default: false)
-- `-a, --assert-text`: Text to assert in the response body
-- `-n, --receive-alert`: Enable alert notifications (default: true)
-- `--simple`: Use simple output instead of TUI
-- `-H, --header`: HTTP header to send (can be used multiple times, format: 'Header-Name: value')
-- `-X, --request`: HTTP request method to use (default: GET)
-- `-d, --data`: HTTP request body data
-- `--log`: Output structured logs in JSON format (includes requests, responses, and metrics)
-- `-c, --count`: Number of checks to perform (0 = infinite, applies per target)
-- `--only`: Only monitor specific targets (by name or URL, comma-separated)
-- `--skip`: Skip specific targets (by name or URL, comma-separated)
-- `--webhook-url`: Webhook URL for notifications (applies to all targets)
-- `--webhook-header`: Webhook headers (can be used multiple times, applies to all targets)
-- `-h, --help`: Display help message
+**Basic:**
+
+- `--url, --config`: Target URL or TOML config file
+- `--refresh`: Check interval in seconds (default: 5)
+- `--timeout`: Request timeout in seconds (default: 10)  
+- `--count`: Number of checks (0 = infinite)
+- `--simple`: Text output instead of TUI
+
+**HTTP:**
+
+- `--header`: Custom HTTP headers (repeatable)
+- `--request`: HTTP method (default: GET)
+- `--data`: Request body data
+- `--skip-ssl, --follow-redirects`: SSL and redirect options
+- `--assert-text`: Expected response text
+
+**Multi-region:**
+
+- `--regions`: AWS regions (comma-separated or 'all')
+- `--profile`: AWS profile for remote executors
+
+**Output & Alerts:**
+
+- `--log`: JSON structured logging
+- `--webhook-url, --webhook-header`: Webhook notifications
+- `--only, --skip`: Target filtering
 
 > **Note:** When using CLI flags, all settings (headers, webhook URL, timeouts, etc.) apply globally to all monitored targets. For per-target configuration, use a TOML configuration file.
 
 ### Examples
 
 ```bash
-# Basic monitoring with defaults (URL as argument)
+# Basic monitoring
 ./updo monitor https://example.com
 
-# Alternative syntax using --url flag
-./updo monitor --url https://example.com
-
-# Root command with --url flag (implicit monitor command)
-./updo --url https://example.com
-
 # Set custom refresh and timeout
-./updo monitor -r 10 -t 5 https://example.com
+./updo monitor --refresh 10 --timeout 5 https://example.com
 
-# Use simple mode with a set number of checks
-./updo monitor --simple -c 10 https://example.com
+# Simple mode and logging
+./updo monitor --simple --count 10 https://example.com
+./updo monitor --log --count 10 https://example.com > output.json
 
-# Simple mode 
-./updo monitor --simple https://example.com
+# Custom requests
+./updo monitor --header "Authorization: Bearer token" --assert-text "Welcome" https://example.com
+./updo monitor --request POST --header "Content-Type: application/json" --data '{"test":"data"}' https://api.example.com
 
-# Assert text in the response
-./updo monitor -a "Welcome" https://example.com
-
-# Output structured logs in JSON format
-./updo monitor --log https://example.com
-
-# Run 10 checks with structured logging and save to a file
-./updo monitor --log --count=10 https://example.com > output.json
-
-# Monitoring with custom HTTP headers (long form)
-./updo monitor --header "Authorization: Bearer token123" --header "User-Agent: updo-test" https://example.com
-
-# Monitoring with custom HTTP headers (short form)
-./updo monitor -H "Authorization: Bearer token123" -H "Content-Type: application/json" https://example.com
-
-# Using a different HTTP method (POST, PUT, DELETE, etc.)
-./updo monitor -X POST -H "Content-Type: application/json" https://api.example.com/endpoint
-
-# Sending a request with body data
-./updo monitor -X POST -H "Content-Type: application/json" -d '{"name":"test"}' https://api.example.com/data
-
-# Sending requests with body data and viewing structured logs
-./updo monitor --log -X POST -H "Content-Type: application/json" -d '{"name":"test"}' https://api.example.com/data
-
-# Multi-target monitoring examples
-# Monitor multiple URLs from command line
+# Multi-target monitoring
 ./updo monitor https://google.com https://github.com https://cloudflare.com
-
-# Using TOML configuration file
-./updo monitor -C example-config.toml
-
-# Multi-target with custom count
-./updo monitor --count=5 https://google.com https://github.com
-
-# Target filtering examples
-# Only monitor specific targets from config file
 ./updo monitor --config example-config.toml --only Google,GitHub
 
-# Skip specific targets 
-./updo monitor --config example-config.toml --skip "slow-api,maintenance-site"
+# Multi-region monitoring
+./updo monitor --regions us-east-1,eu-west-1 https://example.com
+./updo monitor --regions all --profile production https://example.com
 
-# Combine filtering with other options
-./updo monitor --config example-config.toml --only Google --simple --count=5
-
-# Webhook notifications examples
-# Monitor with webhook notifications (applies to all targets)
-./updo monitor --webhook-url "https://hooks.slack.com/services/YOUR/WEBHOOK/URL" https://example.com https://api.example.com
-
-# Webhook with custom headers
-./updo monitor --webhook-url "https://alerts.internal.com/webhook" --webhook-header "Authorization: Bearer token" --webhook-header "X-Service: updo" https://example.com
+# Webhook notifications
+./updo monitor --webhook-url "https://hooks.slack.com/services/YOUR/WEBHOOK" https://example.com
 ```
 
 ## Configuration File
 
-Updo supports TOML configuration files for complex monitoring setups. This is especially useful for monitoring multiple targets with different settings.
+Use TOML configuration for complex monitoring setups with multiple targets.
 
-### Example Configuration (example-config.toml)
+### Example Configuration
 
 ```toml
 [global]
 refresh_interval = 5
 timeout = 10
-follow_redirects = true
-receive_alert = true
-count = 0  # 0 means infinite
-# Global webhook settings (optional - applies to all targets)
-webhook_url = "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
-webhook_headers = ["X-Team: ops"]
-# Target filtering (optional)
-only = ["Google", "GitHub"]  # Only monitor these targets
-skip = ["slow-api"]          # Skip these targets
+webhook_url = "https://hooks.slack.com/services/YOUR/WEBHOOK"
+only = ["Google", "API"]  # Monitor only these targets
 
 [[targets]]
 url = "https://www.google.com"
 name = "Google"
-refresh_interval = 3  # Override global setting
+refresh_interval = 3
 assert_text = "Google"
 
 [[targets]]
-url = "https://api.github.com/repos/octocat/Hello-World"
-name = "GitHub-API"
-timeout = 15  # Override global timeout
-method = "GET"
-headers = ["User-Agent: updo-monitor/1.0", "Accept: application/vnd.github.v3+json"]
-
-[[targets]]
-url = "https://www.cloudflare.com"
-name = "Cloudflare"
-refresh_interval = 5
-follow_redirects = false  # Override global setting
-receive_alert = false  # Disable alerts for this target
-
-[[targets]]
-url = "https://critical-api.example.com/health"
-name = "Critical API"
-webhook_url = "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
-webhook_headers = ["X-Custom-Header: updo-monitor"]
+url = "https://api.example.com/health"
+name = "API"
+method = "POST"
+headers = ["Authorization: Bearer token"]
 ```
 
 ### Configuration Options
 
-**Global settings:**
+**Global settings** (apply to all targets unless overridden):
 
-- `only`: Array of target names/URLs to monitor exclusively
-- `skip`: Array of target names/URLs to skip
-- `webhook_url`: Default webhook URL for all targets
-- `webhook_headers`: Default webhook headers for all targets
-- Other global settings apply to all targets unless overridden
+- `refresh_interval`, `timeout`, `follow_redirects`, `receive_alert`, `count`
+- `webhook_url`, `webhook_headers`: Default webhook settings
+- `only`, `skip`: Target filtering arrays
+- `regions`: AWS regions for remote executors
 
-> **Note:** Command line `--only` and `--skip` flags override config file settings.
+**Target settings** (can override global):
 
-**Target settings:**
-Each target can override global settings and supports:
+- `url` (required), `name`: Target identification  
+- `method`, `headers`, `body`: HTTP request options
+- `assert_text`, `should_fail`: Response validation
+- `skip_ssl`, `follow_redirects`: Connection options
+- `webhook_url`, `webhook_headers`: Per-target notifications
+- `regions`: Target-specific AWS regions
 
-- `url`: Target URL (required)
-- `name`: Display name for the target
-- `refresh_interval`: Check interval in seconds
-- `timeout`: Request timeout in seconds
-- `method`: HTTP method (GET, POST, etc.)
-- `headers`: Array of HTTP headers
-- `body`: Request body for POST/PUT requests
-- `assert_text`: Text to find in response body
-- `should_fail`: Invert success status codes
-- `skip_ssl`: Skip SSL certificate verification
-- `follow_redirects`: Follow HTTP redirects
-- `receive_alert`: Enable desktop alerts
-- `webhook_url`: Webhook endpoint for notifications
-- `webhook_headers`: Custom headers for webhook requests (as array)
+## Multi-Region Monitoring
+
+Deploy remote executors as AWS Lambda functions across 13 global regions for distributed monitoring from multiple geographic locations.
+
+```bash
+# Deploy remote executors to AWS regions
+updo aws deploy --regions us-east-1,eu-west-1
+
+# Monitor using remote executors
+updo monitor --regions us-east-1,eu-west-1 https://example.com
+
+# Cleanup when done
+updo aws destroy --regions all
+```
+
+### Prerequisites
+
+**AWS CLI configured** with appropriate credentials and the following permissions:
+
+| Service | Required Permissions |
+|---------|---------------------|
+| Lambda | CreateFunction, UpdateFunctionCode, DeleteFunction, GetFunction, InvokeFunction |
+| IAM | CreateRole, AttachRolePolicy, DetachRolePolicy, DeleteRole, GetRole |
+| STS | GetCallerIdentity |
+
+**Supported regions:** us-east-1, us-west-1, us-west-2, eu-west-1, eu-central-1, eu-west-2, ap-southeast-1, ap-southeast-2, ap-northeast-1, ap-northeast-2, ap-south-1, sa-east-1, ca-central-1
+
+**Troubleshooting:** If you get credential errors, run `aws sso login --profile your-profile` to refresh expired sessions.
 
 ## Webhook Notifications
 
@@ -390,12 +295,10 @@ Usage examples:
 
 When monitoring multiple targets:
 
-- `↑`: Move to previous target
-- `↓`: Move to next target
-- `/`: Activate search mode to filter targets
-- `ESC`: Exit search mode
-- `Backspace`: Delete characters while searching
-- `q` or `Ctrl+C`: Quit the application
+- `↑/↓`: Navigate targets
+- `/`: Search mode, `ESC` to exit
+- `l`: Toggle logs per target
+- `q` or `Ctrl+C`: Quit
 
 ## Mentions
 
