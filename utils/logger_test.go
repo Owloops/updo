@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -35,21 +36,35 @@ func TestLogMetrics(t *testing.T) {
 			}
 
 			oldStdout := os.Stdout
-			r, w, _ := os.Pipe()
+			r, w, err := os.Pipe()
+			if err != nil {
+				t.Fatalf("Failed to create pipe: %v", err)
+			}
 			os.Stdout = w
 
 			LogMetrics(tt.stats, tt.url, tt.region...)
 
-			_ = w.Close()
+			err = w.Close()
+			if err != nil {
+				t.Fatalf("Failed to close write pipe: %v", err)
+			}
 			os.Stdout = oldStdout
 
-			buf := make([]byte, 1024)
-			n, _ := r.Read(buf)
+			buf := make([]byte, 2048)
+			n, err := r.Read(buf)
+			if err != nil && n == 0 {
+				t.Fatalf("Failed to read from pipe: %v", err)
+			}
 			output := string(buf[:n])
+			output = strings.TrimSpace(output)
+
+			if output == "" {
+				t.Fatalf("No output captured from LogMetrics")
+			}
 
 			var result map[string]interface{}
 			if err := json.Unmarshal([]byte(output), &result); err != nil {
-				t.Fatalf("Invalid JSON: %v", err)
+				t.Fatalf("Invalid JSON: %v. Raw output: %q (length: %d)", err, output, len(output))
 			}
 
 			if result["type"] != "metrics" {
