@@ -17,6 +17,8 @@ main
 # Go directories
 bin/
 dist/
+aws/bootstrap
+aws/bootstrap.zip
 
 # Go workspace
 go.work
@@ -31,3 +33,5 @@ vendor/
 # Local files
 CLAUDE.local.md
 **/.claude/settings.local.json
+*.local.md
+*.local.toml

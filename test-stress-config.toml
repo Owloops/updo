@@ -1,0 +1,159 @@
+# Comprehensive test configuration with 20 monitors
+# Tests various scenarios including multi-region, assertions, methods, and edge cases
+
+[global]
+refresh_interval = 30
+timeout = 10
+
+# 1. Basic health check - Multi-region
+[[targets]]
+url = "https://httpbin.org/status/200"
+name = "HTTPBin Health Check"
+regions = ["us-east-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
+refresh_interval = 10
+
+# 2. Status code testing - Different expected codes
+[[targets]]
+url = "https://httpbin.org/status/201"
+name = "API Create Endpoint"
+expected_status_code = 201
+refresh_interval = 15
+
+# 3. Local monitoring with assertion
+[[targets]]
+url = "https://example.com"
+name = "Example.com Homepage"
+assert_text = "Example Domain"
+refresh_interval = 20
+
+# 4. POST request with body
+[[targets]]
+url = "https://httpbin.org/post"
+name = "POST API Test"
+method = "POST"
+body = '{"test": "data", "monitor": "updo"}'
+headers = ["Content-Type: application/json"]
+refresh_interval = 30
+
+# 5. Slow endpoint test
+[[targets]]
+url = "https://httpbin.org/delay/3"
+name = "Slow Response Test"
+timeout = 10
+refresh_interval = 60
+
+# 6. Basic auth test
+[[targets]]
+url = "https://httpbin.org/basic-auth/user/pass"
+name = "Basic Auth Endpoint"
+headers = ["Authorization: Basic dXNlcjpwYXNz"]
+refresh_interval = 45
+
+# 7. Multi-region with custom headers
+[[targets]]
+url = "https://httpbin.org/headers"
+name = "Header Echo Service"
+headers = ["X-Custom-Header: updo-monitor", "X-Region-Test: multi"]
+regions = ["us-east-1", "eu-central-1"]
+refresh_interval = 25
+
+# 8. Redirect following test
+[[targets]]
+url = "https://httpbin.org/redirect/3"
+name = "Triple Redirect Test"
+follow_redirects = true
+refresh_interval = 35
+
+# 9. No redirect test (should fail)
+[[targets]]
+url = "https://httpbin.org/redirect/1"
+name = "Redirect No Follow"
+follow_redirects = false
+expected_status_code = 302
+refresh_interval = 40
+
+# 10. JSON response validation
+[[targets]]
+url = "https://httpbin.org/json"
+name = "JSON API Response"
+assert_text = '"slideshow"'
+refresh_interval = 15
+
+# 11. User agent test
+[[targets]]
+url = "https://httpbin.org/user-agent"
+name = "User Agent Check"
+headers = ["User-Agent: updo-monitor/1.0"]
+assert_text = "updo-monitor"
+refresh_interval = 20
+
+# 12. HTTPS/SSL test - Multi-region
+[[targets]]
+url = "https://badssl.com/"
+name = "SSL Certificate Check"
+regions = ["us-west-1", "us-east-2", "ca-central-1"]
+refresh_interval = 60
+
+# 13. PUT request test
+[[targets]]
+url = "https://httpbin.org/put"
+name = "PUT Method Test"
+method = "PUT"
+body = '{"updated": true}'
+headers = ["Content-Type: application/json"]
+refresh_interval = 50
+
+# 14. DELETE request test
+[[targets]]
+url = "https://httpbin.org/delete"
+name = "DELETE Method Test"
+method = "DELETE"
+refresh_interval = 55
+
+# 15. Large response test
+[[targets]]
+url = "https://httpbin.org/bytes/10240"
+name = "Large Response (10KB)"
+timeout = 15
+refresh_interval = 45
+
+# 16. Multi-region stress test
+[[targets]]
+url = "https://httpbin.org/uuid"
+name = "UUID Generator"
+regions = ["us-east-1", "us-west-2", "eu-west-1", "eu-central-1", "ap-southeast-1", "ap-northeast-1"]
+refresh_interval = 10
+
+# 17. Webhook test (will fail unless you set up a webhook)
+[[targets]]
+url = "https://httpbin.org/status/500"
+name = "Failure Alert Test"
+webhook_url = "https://example.com/webhook"
+webhook_headers = ["X-Webhook-Secret: test-secret"]
+receive_alert = true
+refresh_interval = 120
+
+# 18. IP address check
+[[targets]]
+url = "https://httpbin.org/ip"
+name = "IP Address Check"
+assert_text = "origin"
+refresh_interval = 30
+
+# 19. Compressed response test
+[[targets]]
+url = "https://httpbin.org/gzip"
+name = "GZIP Response Test"
+assert_text = "gzipped"
+refresh_interval = 25
+
+# 20. Multi-region with mixed intervals
+[[targets]]
+url = "https://httpbin.org/anything"
+name = "Kitchen Sink Test"
+method = "PATCH"
+body = '{"test": "multi-region", "features": ["collapse", "expand", "search"]}'
+headers = ["X-Test-Header: updo", "Accept: application/json"]
+regions = ["us-east-1", "us-west-2", "eu-west-1"]
+refresh_interval = 15
+timeout = 8

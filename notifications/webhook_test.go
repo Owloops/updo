@@ -99,7 +99,6 @@ func TestSendWebhook(t *testing.T) {
 					t.Errorf("Target mismatch: expected %s, got %s", tc.payload.Target, receivedPayload.Target)
 				}
 
-				// Parse and check headers
 				expectedHeaders := make(map[string]string)
 				for _, header := range tc.headers {
 					parts := strings.SplitN(header, ":", 2)
@@ -193,7 +192,7 @@ func TestHandleWebhookAlert(t *testing.T) {
 
 			alertSent := tc.initialAlertSent
 
-			HandleWebhookAlert(
+			_ = HandleWebhookAlert(
 				server.URL,
 				nil,
 				tc.isUp,
@@ -244,7 +243,7 @@ func TestHandleWebhookAlertEmptyURL(t *testing.T) {
 	}))
 	defer server.Close()
 
-	HandleWebhookAlert(
+	_ = HandleWebhookAlert(
 		"",
 		nil,
 		false,

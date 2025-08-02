@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 type Config struct {
@@ -49,6 +50,16 @@ and a simple text-based output mode.`,
 
 func Execute() error {
 	return RootCmd.Execute()
+}
+
+func HideMonitoringFlags(cmd *cobra.Command) {
+	cmd.SetHelpFunc(func(c *cobra.Command, args []string) {
+		c.InheritedFlags().VisitAll(func(flag *pflag.Flag) {
+			flag.Hidden = true
+		})
+
+		c.Print(c.UsageString())
+	})
 }
 
 func init() {
