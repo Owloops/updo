@@ -36,6 +36,11 @@ func (c CLI) Region(region string) string {
 }
 
 func (c CLI) Progress(current, total int, prefix string) {
+	if total == 0 {
+		fmt.Printf("\r%s [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] %d/%d (0.0%%)", prefix, current, total)
+		return
+	}
+
 	percent := float64(current) / float64(total) * 100
 	barWidth := 40
 	filledWidth := int(float64(barWidth) * float64(current) / float64(total))
