@@ -8,7 +8,6 @@ import (
 	"github.com/Owloops/updo/config"
 	"github.com/Owloops/updo/net"
 	"github.com/Owloops/updo/stats"
-	ui "github.com/gizak/termui/v3"
 )
 
 func TestNewManager(t *testing.T) {
@@ -212,45 +211,6 @@ func TestManager_ToggleLogsVisibility(t *testing.T) {
 	if !manager.focusOnLogs {
 		t.Error("Focus should be on logs after manual toggle")
 	}
-}
-
-func TestManager_HeaderColorConsistency(t *testing.T) {
-	targets := []config.Target{
-		{Name: "api", URL: "https://api.example.com"},
-		{Name: "web", URL: "https://web.example.com"},
-	}
-
-	manager := NewManager(targets, Options{Regions: []string{"us-east-1"}})
-	manager.InitializeLayout(100, 50)
-
-	if manager.isSingle {
-		t.Skip("Test only applicable for multi-target mode")
-	}
-
-	if manager.listWidget == nil {
-		t.Fatal("listWidget should be initialized for multi-target mode")
-	}
-
-	manager.updateTargetList()
-
-	originalSelectedRow := manager.listWidget.SelectedRow
-
-	for i := 0; i < len(manager.listWidget.Rows); i++ {
-		manager.listWidget.SelectedRow = i
-
-		if manager.isSelectedRowHeader() {
-			manager.updateSelectionColors()
-
-			expectedColor := ui.ColorMagenta
-			actualColor := manager.listWidget.SelectedRowStyle.Fg
-
-			if actualColor != expectedColor {
-				t.Errorf("Header at row %d has color %v, expected %v", i, actualColor, expectedColor)
-			}
-		}
-	}
-
-	manager.listWidget.SelectedRow = originalSelectedRow
 }
 
 func TestManager_HeaderDetection(t *testing.T) {

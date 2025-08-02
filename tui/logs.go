@@ -165,11 +165,12 @@ func wrapText(text string, maxWidth int) []string {
 	var currentLine strings.Builder
 
 	for _, word := range words {
-		if currentLine.Len() == 0 {
+		switch {
+		case currentLine.Len() == 0:
 			currentLine.WriteString(word)
-		} else if currentLine.Len()+1+len(word) <= maxWidth {
+		case currentLine.Len()+1+len(word) <= maxWidth:
 			currentLine.WriteString(" " + word)
-		} else {
+		default:
 			lines = append(lines, currentLine.String())
 			currentLine.Reset()
 			currentLine.WriteString(word)
@@ -182,7 +183,6 @@ func wrapText(text string, maxWidth int) []string {
 
 	return lines
 }
-
 
 func (m *Manager) updateLogsWidget(targetKey TargetKey) {
 	logs := m.logBuffer.GetEntriesForTarget(targetKey)
