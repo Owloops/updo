@@ -81,7 +81,7 @@ func (fl *FilteredList) UpdateSearch(char string) {
 		} else {
 			newChar = char
 		}
-		
+
 		var builder strings.Builder
 		builder.Grow(len(fl.searchQuery) + len(newChar))
 		builder.WriteString(fl.searchQuery)

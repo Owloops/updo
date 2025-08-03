@@ -20,7 +20,7 @@ func encodeAndPrint(data interface{}, writer io.Writer) {
 	if err := encoder.Encode(data); err != nil {
 		return
 	}
-	fmt.Fprint(writer, buf.String())
+	_, _ = fmt.Fprint(writer, buf.String())
 }
 
 type MetricsData struct {
