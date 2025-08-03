@@ -136,17 +136,19 @@ func (m *OutputManager) PrintStatistics(monitors map[string]*stats.Monitor) {
 		fmt.Printf("uptime: %.1f%%\n", stats.UptimePercent)
 
 		if stats.ChecksCount > 0 {
-			responseTimeStr := fmt.Sprintf("response time min/avg/max/stddev = %d/%d/%d/%.1f ms",
+			var builder strings.Builder
+			builder.Grow(100) // Estimate capacity for typical response time string
+			builder.WriteString(fmt.Sprintf("response time min/avg/max/stddev = %d/%d/%d/%.1f ms",
 				stats.MinResponseTime.Milliseconds(),
 				stats.AvgResponseTime.Milliseconds(),
 				stats.MaxResponseTime.Milliseconds(),
-				stats.StdDev)
+				stats.StdDev))
 
 			if stats.ChecksCount >= 2 && stats.P95 > 0 {
-				responseTimeStr += fmt.Sprintf(", 95th percentile: %d ms", stats.P95.Milliseconds())
+				builder.WriteString(fmt.Sprintf(", 95th percentile: %d ms", stats.P95.Milliseconds()))
 			}
 
-			fmt.Println(responseTimeStr)
+			fmt.Println(builder.String())
 		}
 
 		if sslDays := m.getSSLExpiry(target.URL); sslDays > 0 {

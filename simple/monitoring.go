@@ -19,9 +19,28 @@ import (
 )
 
 const (
+	_resultsChannelMultiplier = 2
+	_signalChannelBuffer      = 1
+)
+
+const (
 	requestFailedMsg   = "Request failed"
 	assertionFailedMsg = "Assertion failed"
 )
+
+func getErrorMessage(result net.WebsiteCheckResult) string {
+	if result.IsUp {
+		return ""
+	}
+	switch {
+	case result.StatusCode > 0:
+		return fmt.Sprintf("Non-success status code: %d", result.StatusCode)
+	case result.AssertText != "" && !result.AssertionPassed:
+		return assertionFailedMsg
+	default:
+		return requestFailedMsg
+	}
+}
 
 type TargetResult struct {
 	Target   config.Target
@@ -43,10 +62,10 @@ func StartMultiTargetMonitoring(targets []config.Target, options MonitoringOptio
 		log.Fatal("No targets provided")
 	}
 
-	monitors := make(map[string]*stats.Monitor)
-	sequences := make(map[string]*int)
-	alertStates := make(map[string]*bool)
-	webhookAlertStates := make(map[string]*bool)
+	monitors := make(map[string]*stats.Monitor, len(targets))
+	sequences := make(map[string]*int, len(targets))
+	alertStates := make(map[string]*bool, len(targets))
+	webhookAlertStates := make(map[string]*bool, len(targets))
 
 	for _, target := range targets {
 		monitor, err := stats.NewMonitor()
@@ -54,9 +73,9 @@ func StartMultiTargetMonitoring(targets []config.Target, options MonitoringOptio
 			log.Fatalf("Failed to initialize stats monitor for %s: %v", target.Name, err)
 		}
 		monitors[target.Name] = monitor
-		seq := 0
-		alert := false
-		webhookAlert := false
+		var seq int
+		var alert bool
+		var webhookAlert bool
 		sequences[target.Name] = &seq
 		alertStates[target.Name] = &alert
 		webhookAlertStates[target.Name] = &webhookAlert
@@ -65,7 +84,7 @@ func StartMultiTargetMonitoring(targets []config.Target, options MonitoringOptio
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	resultsChan := make(chan TargetResult, len(targets)*2)
+	resultsChan := make(chan TargetResult, len(targets)*_resultsChannelMultiplier)
 	var wg sync.WaitGroup
 
 	logMode := options.Log != ""
@@ -88,7 +107,7 @@ func StartMultiTargetMonitoring(targets []config.Target, options MonitoringOptio
 		close(resultsChan)
 	}()
 
-	sigChan := make(chan os.Signal, 1)
+	sigChan := make(chan os.Signal, _signalChannelBuffer)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 	totalChecks := 0
@@ -105,12 +124,7 @@ func StartMultiTargetMonitoring(targets []config.Target, options MonitoringOptio
 			} else {
 				utils.LogCheck(result.Result, result.Sequence, options.Log, result.Region)
 				if !result.Result.IsUp {
-					errorMsg := requestFailedMsg
-					if result.Result.StatusCode > 0 {
-						errorMsg = fmt.Sprintf("Non-success status code: %d", result.Result.StatusCode)
-					} else if result.Result.AssertText != "" && !result.Result.AssertionPassed {
-						errorMsg = assertionFailedMsg
-					}
+					errorMsg := getErrorMessage(result.Result)
 					utils.LogWarning(result.Target.URL, errorMsg, result.Region)
 				}
 			}
@@ -168,17 +182,7 @@ func monitorTarget(ctx context.Context, target config.Target, monitor *stats.Mon
 				}
 
 				if target.WebhookURL != "" {
-					errorMsg := ""
-					if !lambdaResult.Result.IsUp {
-						switch {
-						case lambdaResult.Result.StatusCode > 0:
-							errorMsg = fmt.Sprintf("Non-success status code: %d", lambdaResult.Result.StatusCode)
-						case lambdaResult.Result.AssertText != "" && !lambdaResult.Result.AssertionPassed:
-							errorMsg = assertionFailedMsg
-						default:
-							errorMsg = requestFailedMsg
-						}
-					}
+					errorMsg := getErrorMessage(lambdaResult.Result)
 					if err := notifications.HandleWebhookAlert(target.WebhookURL, target.WebhookHeaders, lambdaResult.Result.IsUp, webhookAlertSent, target.Name, lambdaResult.Result.URL, lambdaResult.Result.ResponseTime, lambdaResult.Result.StatusCode, errorMsg); err != nil {
 						log.Printf("[ERROR] %v", err)
 					}
@@ -202,17 +206,7 @@ func monitorTarget(ctx context.Context, target config.Target, monitor *stats.Mon
 			}
 
 			if target.WebhookURL != "" {
-				errorMsg := ""
-				if !result.IsUp {
-					switch {
-					case result.StatusCode > 0:
-						errorMsg = fmt.Sprintf("Non-success status code: %d", result.StatusCode)
-					case result.AssertText != "" && !result.AssertionPassed:
-						errorMsg = assertionFailedMsg
-					default:
-						errorMsg = requestFailedMsg
-					}
-				}
+				errorMsg := getErrorMessage(result)
 				if err := notifications.HandleWebhookAlert(target.WebhookURL, target.WebhookHeaders, result.IsUp, webhookAlertSent, target.Name, target.URL, result.ResponseTime, result.StatusCode, errorMsg); err != nil {
 					log.Printf("[ERROR] %v", err)
 				}
