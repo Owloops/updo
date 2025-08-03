@@ -6,6 +6,12 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	_defaultRefreshInterval = 5
+	_defaultTimeout         = 10
+	_defaultMethod          = "GET"
+)
+
 type Target struct {
 	URL             string   `mapstructure:"url"`
 	Name            string   `mapstructure:"name"`
@@ -50,12 +56,12 @@ func LoadConfig(configFile string) (*Config, error) {
 	viper.SetConfigFile(configFile)
 	viper.SetConfigType("toml")
 
-	viper.SetDefault("global.refresh_interval", 5)
-	viper.SetDefault("global.timeout", 10)
+	viper.SetDefault("global.refresh_interval", _defaultRefreshInterval)
+	viper.SetDefault("global.timeout", _defaultTimeout)
 	viper.SetDefault("global.follow_redirects", true)
 	viper.SetDefault("global.receive_alert", true)
 	viper.SetDefault("global.count", 0)
-	viper.SetDefault("global.method", "GET")
+	viper.SetDefault("global.method", _defaultMethod)
 
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, err
@@ -75,7 +81,7 @@ func LoadConfig(configFile string) (*Config, error) {
 			target.Timeout = config.Global.Timeout
 		}
 		if target.Method == "" {
-			target.Method = "GET"
+			target.Method = _defaultMethod
 		}
 		if !target.FollowRedirects && config.Global.FollowRedirects {
 			target.FollowRedirects = config.Global.FollowRedirects
@@ -131,39 +137,34 @@ func (c *Config) FilterTargets(onlyFlags, skipFlags []string) []Target {
 	var filtered []Target
 
 	for _, target := range c.Targets {
-		targetName := target.Name
-		if targetName == "" {
-			targetName = target.URL
+		targetName := getTargetName(target)
+
+		if len(only) > 0 && !containsTarget(only, targetName, target.URL) {
+			continue
 		}
 
-		if len(only) > 0 {
-			found := false
-			for _, name := range only {
-				if name == targetName || name == target.URL {
-					found = true
-					break
-				}
-			}
-			if !found {
-				continue
-			}
-		}
-
-		if len(skip) > 0 {
-			shouldSkip := false
-			for _, name := range skip {
-				if name == targetName || name == target.URL {
-					shouldSkip = true
-					break
-				}
-			}
-			if shouldSkip {
-				continue
-			}
+		if len(skip) > 0 && containsTarget(skip, targetName, target.URL) {
+			continue
 		}
 
 		filtered = append(filtered, target)
 	}
 
 	return filtered
+}
+
+func getTargetName(target Target) string {
+	if target.Name != "" {
+		return target.Name
+	}
+	return target.URL
+}
+
+func containsTarget(list []string, targetName, targetURL string) bool {
+	for _, name := range list {
+		if name == targetName || name == targetURL {
+			return true
+		}
+	}
+	return false
 }
