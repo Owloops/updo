@@ -137,7 +137,7 @@ func (m *OutputManager) PrintStatistics(monitors map[string]*stats.Monitor) {
 
 		if stats.ChecksCount > 0 {
 			var builder strings.Builder
-			builder.Grow(100) // Estimate capacity for typical response time string
+			builder.Grow(100)
 			builder.WriteString(fmt.Sprintf("response time min/avg/max/stddev = %d/%d/%d/%.1f ms",
 				stats.MinResponseTime.Milliseconds(),
 				stats.AvgResponseTime.Milliseconds(),

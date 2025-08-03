@@ -10,6 +10,23 @@ import (
 	"time"
 )
 
+const (
+	_webhookTimeout = 10 * time.Second
+)
+
+func parseHeaders(headers []string) map[string]string {
+	headerMap := make(map[string]string, len(headers))
+	for _, header := range headers {
+		parts := strings.SplitN(header, ":", 2)
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			headerMap[key] = value
+		}
+	}
+	return headerMap
+}
+
 type WebhookPayload struct {
 	Event          string    `json:"event"`
 	Target         string    `json:"target"`
@@ -37,7 +54,7 @@ func SendWebhook(webhookURL string, headers map[string]string, payload WebhookPa
 	}
 
 	client := &http.Client{
-		Timeout: 10 * time.Second,
+		Timeout: _webhookTimeout,
 	}
 
 	resp, err := client.Do(req)
@@ -90,15 +107,7 @@ func HandleWebhookAlert(webhookURL string, headers []string, isUp bool, alertSen
 		Error:          errorMsg,
 	}
 
-	headerMap := make(map[string]string)
-	for _, header := range headers {
-		parts := strings.SplitN(header, ":", 2)
-		if len(parts) == 2 {
-			key := strings.TrimSpace(parts[0])
-			value := strings.TrimSpace(parts[1])
-			headerMap[key] = value
-		}
-	}
+	headerMap := parseHeaders(headers)
 
 	if err := SendWebhook(webhookURL, headerMap, payload); err != nil {
 		return fmt.Errorf("failed to send webhook for %s: %w", displayName, err)

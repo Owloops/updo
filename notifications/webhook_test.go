@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 )
@@ -72,15 +71,7 @@ func TestSendWebhook(t *testing.T) {
 			}))
 			defer server.Close()
 
-			headerMap := make(map[string]string)
-			for _, header := range tc.headers {
-				parts := strings.SplitN(header, ":", 2)
-				if len(parts) == 2 {
-					key := strings.TrimSpace(parts[0])
-					value := strings.TrimSpace(parts[1])
-					headerMap[key] = value
-				}
-			}
+			headerMap := parseHeaders(tc.headers)
 
 			err := SendWebhook(server.URL, headerMap, tc.payload)
 
@@ -99,15 +90,7 @@ func TestSendWebhook(t *testing.T) {
 					t.Errorf("Target mismatch: expected %s, got %s", tc.payload.Target, receivedPayload.Target)
 				}
 
-				expectedHeaders := make(map[string]string)
-				for _, header := range tc.headers {
-					parts := strings.SplitN(header, ":", 2)
-					if len(parts) == 2 {
-						key := strings.TrimSpace(parts[0])
-						value := strings.TrimSpace(parts[1])
-						expectedHeaders[key] = value
-					}
-				}
+				expectedHeaders := parseHeaders(tc.headers)
 
 				for key, value := range expectedHeaders {
 					if receivedHeaders.Get(key) != value {

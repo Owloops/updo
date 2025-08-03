@@ -1,6 +1,7 @@
 package notifications
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/gen2brain/beeep"
@@ -20,10 +21,10 @@ func HandleAlerts(isUp bool, alertSent *bool, targetName string, targetURL strin
 	}
 
 	if !isUp && !*alertSent {
-		alert(displayName + " is down!")
+		alert(fmt.Sprintf("%s is down!", displayName))
 		*alertSent = true
 	} else if isUp && *alertSent {
-		alert(displayName + " is back up!")
+		alert(fmt.Sprintf("%s is back up!", displayName))
 		*alertSent = false
 	}
 }
