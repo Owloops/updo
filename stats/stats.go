@@ -8,6 +8,11 @@ import (
 	"github.com/caio/go-tdigest/v4"
 )
 
+const (
+	_defaultCompression = 100
+	_p95Quantile        = 0.95
+)
+
 type Monitor struct {
 	ChecksCount       int
 	SuccessCount      int
@@ -28,7 +33,7 @@ type Monitor struct {
 }
 
 func NewMonitor() (*Monitor, error) {
-	td, err := tdigest.New(tdigest.Compression(100))
+	td, err := tdigest.New(tdigest.Compression(_defaultCompression))
 	if err != nil {
 		return nil, err
 	}
@@ -121,8 +126,6 @@ func (m *Monitor) GetStats() Stats {
 	totalMonitoredTime := time.Since(m.StartTime)
 	if totalMonitoredTime > 0 {
 		stats.UptimePercent = (float64(currentUptime) / float64(totalMonitoredTime)) * 100
-	} else {
-		stats.UptimePercent = 0
 	}
 
 	if m.ChecksCount > 0 {
@@ -135,7 +138,7 @@ func (m *Monitor) GetStats() Stats {
 	}
 
 	if m.TDigest != nil && m.ChecksCount >= 2 {
-		p95Seconds := m.TDigest.Quantile(0.95)
+		p95Seconds := m.TDigest.Quantile(_p95Quantile)
 		stats.P95 = time.Duration(p95Seconds * float64(time.Second))
 	}
 

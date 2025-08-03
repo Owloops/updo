@@ -74,7 +74,10 @@ func TestMonitor_AddResult(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			monitor, _ := NewMonitor()
+			monitor, err := NewMonitor()
+			if err != nil {
+				t.Fatalf("NewMonitor failed: %v", err)
+			}
 
 			for _, result := range tt.results {
 				monitor.AddResult(result)
@@ -140,7 +143,10 @@ func TestMonitor_GetStats(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			monitor, _ := NewMonitor()
+			monitor, err := NewMonitor()
+			if err != nil {
+				t.Fatalf("NewMonitor failed: %v", err)
+			}
 
 			for _, result := range tt.results {
 				monitor.AddResult(result)
@@ -174,7 +180,10 @@ func TestMonitor_GetStats(t *testing.T) {
 }
 
 func TestMonitor_UptimeCalculation(t *testing.T) {
-	monitor, _ := NewMonitor()
+	monitor, err := NewMonitor()
+	if err != nil {
+		t.Fatalf("NewMonitor failed: %v", err)
+	}
 
 	monitor.AddResult(net.WebsiteCheckResult{IsUp: true, ResponseTime: 100 * time.Millisecond})
 
@@ -191,7 +200,10 @@ func TestMonitor_UptimeCalculation(t *testing.T) {
 }
 
 func TestMonitor_ResponseTimeStats(t *testing.T) {
-	monitor, _ := NewMonitor()
+	monitor, err := NewMonitor()
+	if err != nil {
+		t.Fatalf("NewMonitor failed: %v", err)
+	}
 
 	monitor.AddResult(net.WebsiteCheckResult{IsUp: true, ResponseTime: 100 * time.Millisecond})
 	monitor.AddResult(net.WebsiteCheckResult{IsUp: true, ResponseTime: 200 * time.Millisecond})
@@ -231,7 +243,10 @@ func TestMonitor_SuccessRate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			monitor, _ := NewMonitor()
+			monitor, err := NewMonitor()
+			if err != nil {
+				t.Fatalf("NewMonitor failed: %v", err)
+			}
 
 			for range tt.successResults {
 				monitor.AddResult(net.WebsiteCheckResult{IsUp: true, ResponseTime: 100 * time.Millisecond})
@@ -257,7 +272,10 @@ func TestMonitor_SuccessRate(t *testing.T) {
 
 func TestMonitor_EdgeCases(t *testing.T) {
 	t.Run("zero response time", func(t *testing.T) {
-		monitor, _ := NewMonitor()
+		monitor, err := NewMonitor()
+		if err != nil {
+			t.Fatalf("NewMonitor failed: %v", err)
+		}
 		monitor.AddResult(net.WebsiteCheckResult{IsUp: true, ResponseTime: 0})
 
 		stats := monitor.GetStats()
@@ -270,7 +288,10 @@ func TestMonitor_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("very large response time", func(t *testing.T) {
-		monitor, _ := NewMonitor()
+		monitor, err := NewMonitor()
+		if err != nil {
+			t.Fatalf("NewMonitor failed: %v", err)
+		}
 		largeTime := 30 * time.Second
 		monitor.AddResult(net.WebsiteCheckResult{IsUp: true, ResponseTime: largeTime})
 
