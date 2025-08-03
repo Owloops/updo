@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -10,6 +11,17 @@ import (
 	"github.com/Owloops/updo/net"
 	"github.com/Owloops/updo/stats"
 )
+
+func encodeAndPrint(data interface{}, writer io.Writer) {
+	var buf strings.Builder
+	encoder := json.NewEncoder(&buf)
+	encoder.SetEscapeHTML(false)
+
+	if err := encoder.Encode(data); err != nil {
+		return
+	}
+	fmt.Fprint(writer, buf.String())
+}
 
 type MetricsData struct {
 	Type           string    `json:"type"`
@@ -85,13 +97,7 @@ func LogMetrics(stats *stats.Stats, url string, region ...string) {
 		data.P95ResponseMS = stats.P95.Milliseconds()
 	}
 
-	var buf strings.Builder
-	encoder := json.NewEncoder(&buf)
-	encoder.SetEscapeHTML(false)
-
-	if err := encoder.Encode(data); err == nil {
-		fmt.Print(buf.String())
-	}
+	encodeAndPrint(data, os.Stdout)
 }
 
 func LogCheck(result net.WebsiteCheckResult, seq int, jsonFormat string, region ...string) {
@@ -117,13 +123,7 @@ func LogCheck(result net.WebsiteCheckResult, seq int, jsonFormat string, region 
 		data.Region = region[0]
 	}
 
-	var buf strings.Builder
-	encoder := json.NewEncoder(&buf)
-	encoder.SetEscapeHTML(false)
-
-	if err := encoder.Encode(data); err == nil {
-		fmt.Print(buf.String())
-	}
+	encodeAndPrint(data, os.Stdout)
 }
 
 func LogError(url string, msg string, err error, region ...string) {
@@ -143,13 +143,7 @@ func LogError(url string, msg string, err error, region ...string) {
 		data.Error = err.Error()
 	}
 
-	var buf strings.Builder
-	encoder := json.NewEncoder(&buf)
-	encoder.SetEscapeHTML(false)
-
-	if err := encoder.Encode(data); err == nil {
-		fmt.Fprint(os.Stderr, buf.String())
-	}
+	encodeAndPrint(data, os.Stderr)
 }
 
 func LogWarning(url string, msg string, region ...string) {
@@ -165,11 +159,5 @@ func LogWarning(url string, msg string, region ...string) {
 		data.Region = region[0]
 	}
 
-	var buf strings.Builder
-	encoder := json.NewEncoder(&buf)
-	encoder.SetEscapeHTML(false)
-
-	if err := encoder.Encode(data); err == nil {
-		fmt.Fprint(os.Stderr, buf.String())
-	}
+	encodeAndPrint(data, os.Stderr)
 }

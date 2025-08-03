@@ -72,7 +72,7 @@ func TestTimingBreakdown_calculateTotalDuration(t *testing.T) {
 func TestTimingBreakdown_longestLabel(t *testing.T) {
 	tb := NewTimingBreakdown()
 
-	expected := 9
+	expected := 10
 	got := tb.longestLabel()
 
 	if got != expected {

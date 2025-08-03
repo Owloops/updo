@@ -6,6 +6,13 @@ import (
 	"github.com/gizak/termui/v3/widgets"
 )
 
+const (
+	_maxSearchLength = 50
+	_backspaceKey    = "<Backspace>"
+	_ctrlBackspace   = "<C-8>"
+	_spaceKey        = "<Space>"
+)
+
 type RowMetadata struct {
 	GroupID      string
 	IsHeader     bool
@@ -25,15 +32,8 @@ type FilteredList struct {
 }
 
 func NewFilteredList() *FilteredList {
-	list := widgets.NewList()
 	return &FilteredList{
-		List:            list,
-		searchMode:      false,
-		searchQuery:     "",
-		allRows:         []string{},
-		rowMetadata:     []RowMetadata{},
-		filteredIndices: []int{},
-		filteredRows:    []string{},
+		List:            widgets.NewList(),
 		collapsedGroups: make(map[string]bool),
 	}
 }
@@ -43,8 +43,6 @@ func (fl *FilteredList) SetRows(rows []string) {
 	fl.rowMetadata = make([]RowMetadata, len(rows))
 	for i := range fl.rowMetadata {
 		fl.rowMetadata[i] = RowMetadata{
-			GroupID:      "",
-			IsHeader:     false,
 			IsSelectable: true,
 		}
 	}
@@ -70,19 +68,25 @@ func (fl *FilteredList) UpdateSearch(char string) {
 		return
 	}
 
-	const maxSearchLength = 50
 	prevQuery := fl.searchQuery
 
-	if char == "<Backspace>" || char == "<C-8>" {
+	if char == _backspaceKey || char == _ctrlBackspace {
 		if len(fl.searchQuery) > 0 {
 			fl.searchQuery = fl.searchQuery[:len(fl.searchQuery)-1]
 		}
-	} else if len(fl.searchQuery) < maxSearchLength && (len(char) == 1 || char == "<Space>") {
-		if char == "<Space>" {
-			fl.searchQuery += " "
+	} else if len(fl.searchQuery) < _maxSearchLength && (len(char) == 1 || char == _spaceKey) {
+		var newChar string
+		if char == _spaceKey {
+			newChar = " "
 		} else {
-			fl.searchQuery += char
+			newChar = char
 		}
+		
+		var builder strings.Builder
+		builder.Grow(len(fl.searchQuery) + len(newChar))
+		builder.WriteString(fl.searchQuery)
+		builder.WriteString(newChar)
+		fl.searchQuery = builder.String()
 	}
 
 	if prevQuery != fl.searchQuery {
@@ -150,7 +154,7 @@ func (fl *FilteredList) updateFiltered() {
 
 	if fl.searchMode && len(fl.filteredRows) == 0 && fl.searchQuery != "" {
 		fl.Rows = []string{"  No matches found"}
-		fl.filteredIndices = []int{}
+		fl.filteredIndices = nil
 	} else {
 		fl.Rows = fl.filteredRows
 	}
@@ -165,7 +169,7 @@ func (fl *FilteredList) updateFiltered() {
 }
 
 func (fl *FilteredList) GetSelectableIndices() []int {
-	selectableIndices := make([]int, 0)
+	selectableIndices := make([]int, 0, len(fl.filteredIndices))
 	for displayIdx, originalIdx := range fl.filteredIndices {
 		if originalIdx < len(fl.rowMetadata) && fl.rowMetadata[originalIdx].IsSelectable {
 			selectableIndices = append(selectableIndices, displayIdx)
@@ -175,7 +179,7 @@ func (fl *FilteredList) GetSelectableIndices() []int {
 }
 
 func (fl *FilteredList) GetFilteredDisplayIndices() map[int]int {
-	displayMap := make(map[int]int)
+	displayMap := make(map[int]int, len(fl.filteredIndices))
 	for displayIdx, originalIdx := range fl.filteredIndices {
 		displayMap[originalIdx] = displayIdx
 	}
