@@ -16,6 +16,26 @@ import (
 	"time"
 )
 
+const (
+	_hoursPerDay    = 24
+	_defaultTimeout = 5 * time.Second
+	_userAgent      = "updo/1.0"
+	_httpsPort      = ":443"
+)
+
+func parseHeaders(headers []string) map[string]string {
+	headerMap := make(map[string]string, len(headers))
+	for _, header := range headers {
+		parts := strings.SplitN(header, ":", 2)
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			headerMap[key] = value
+		}
+	}
+	return headerMap
+}
+
 type WebsiteCheckResult struct {
 	URL             string
 	ResolvedIP      string
@@ -82,18 +102,13 @@ func CheckWebsite(urlStr string, config NetworkConfig) WebsiteCheckResult {
 
 	options := HTTPRequestOptions{
 		Method:  method,
-		Headers: make(map[string]string),
+		Headers: make(map[string]string, len(config.Headers)),
 		Body:    config.Body,
 	}
 
 	if len(config.Headers) > 0 {
-		for _, header := range config.Headers {
-			parts := strings.SplitN(header, ":", 2)
-			if len(parts) == 2 {
-				key := strings.TrimSpace(parts[0])
-				value := strings.TrimSpace(parts[1])
-				options.Headers[key] = value
-			}
+		for key, value := range parseHeaders(config.Headers) {
+			options.Headers[key] = value
 		}
 	}
 
@@ -136,15 +151,15 @@ func CheckWebsite(urlStr string, config NetworkConfig) WebsiteCheckResult {
 	return result
 }
 
-func GetSSLCertExpiry(siteUrl string) int {
-	u, err := url.Parse(siteUrl)
+func GetSSLCertExpiry(siteURL string) int {
+	u, err := url.Parse(siteURL)
 	if err != nil {
 		return -1
 	}
 
 	host := u.Host
 	if !strings.Contains(host, ":") {
-		host += ":443"
+		host += _httpsPort
 	}
 
 	conn, err := tls.Dial("tcp", host, &tls.Config{
@@ -161,7 +176,7 @@ func GetSSLCertExpiry(siteUrl string) int {
 
 	if len(conn.ConnectionState().PeerCertificates) > 0 {
 		cert := conn.ConnectionState().PeerCertificates[0]
-		daysUntilExpiry := int(time.Until(cert.NotAfter).Hours() / 24)
+		daysUntilExpiry := int(time.Until(cert.NotAfter).Hours() / _hoursPerDay)
 		return daysUntilExpiry
 	}
 
@@ -179,9 +194,8 @@ func isIPAddress(host string) bool {
 }
 
 func TryHTTPSConnection(urlString string) (*http.Response, error) {
-	const defaultTimeout = 5 * time.Second
 	client := http.Client{
-		Timeout: defaultTimeout,
+		Timeout: _defaultTimeout,
 	}
 	resp, err := client.Head(urlString)
 	if err != nil {
@@ -299,8 +313,8 @@ func makeHTTPRequest(urlStr string, options HTTPRequestOptions, config NetworkCo
 	}
 
 	if req.Header.Get("User-Agent") == "" {
-		req.Header.Set("User-Agent", "updo/1.0")
-		result.RequestHeaders.Set("User-Agent", "updo/1.0")
+		req.Header.Set("User-Agent", _userAgent)
+		result.RequestHeaders.Set("User-Agent", _userAgent)
 	}
 
 	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))

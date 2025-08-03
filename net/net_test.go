@@ -1,7 +1,10 @@
 package net
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestIsUrl(t *testing.T) {
@@ -145,5 +148,194 @@ func TestAutoDetectProtocol(t *testing.T) {
 				t.Errorf("AutoDetectProtocol(%q) = %v, want %v", tt.input, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestParseHeaders(t *testing.T) {
+	tests := []struct {
+		name     string
+		headers  []string
+		expected map[string]string
+	}{
+		{
+			name:     "valid headers",
+			headers:  []string{"Content-Type: application/json", "Authorization: Bearer token"},
+			expected: map[string]string{"Content-Type": "application/json", "Authorization": "Bearer token"},
+		},
+		{
+			name:     "headers with spaces",
+			headers:  []string{" Content-Type : application/json "},
+			expected: map[string]string{"Content-Type": "application/json"},
+		},
+		{
+			name:     "malformed header skipped",
+			headers:  []string{"valid: header", "invalid-header", "another: valid"},
+			expected: map[string]string{"valid": "header", "another": "valid"},
+		},
+		{
+			name:     "empty headers",
+			headers:  []string{},
+			expected: map[string]string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseHeaders(tt.headers)
+			if len(got) != len(tt.expected) {
+				t.Errorf("parseHeaders() returned %d headers, want %d", len(got), len(tt.expected))
+			}
+			for key, expectedValue := range tt.expected {
+				if gotValue, exists := got[key]; !exists {
+					t.Errorf("parseHeaders() missing key %q", key)
+				} else if gotValue != expectedValue {
+					t.Errorf("parseHeaders() key %q = %q, want %q", key, gotValue, expectedValue)
+				}
+			}
+		})
+	}
+}
+
+func TestFormatURL(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "add https to domain",
+			input: "example.com",
+			want:  "https://example.com",
+		},
+		{
+			name:  "preserve existing protocol",
+			input: "http://example.com",
+			want:  "http://example.com",
+		},
+		{
+			name:  "trim whitespace",
+			input: "  example.com  ",
+			want:  "https://example.com",
+		},
+		{
+			name:  "localhost with port",
+			input: "localhost:3000",
+			want:  "https://localhost:3000",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := formatURL(tt.input)
+			if err != nil {
+				t.Errorf("formatURL(%q) returned error: %v", tt.input, err)
+			}
+			if got != tt.want {
+				t.Errorf("formatURL(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCheckWebsite(t *testing.T) {
+	tests := []struct {
+		name            string
+		statusCode      int
+		responseBody    string
+		config          NetworkConfig
+		expectSuccess   bool
+		expectAssertion bool
+	}{
+		{
+			name:            "successful request",
+			statusCode:      200,
+			responseBody:    "OK",
+			config:          NetworkConfig{Timeout: 5 * time.Second},
+			expectSuccess:   true,
+			expectAssertion: true,
+		},
+		{
+			name:            "server error",
+			statusCode:      500,
+			responseBody:    "Internal Server Error",
+			config:          NetworkConfig{Timeout: 5 * time.Second},
+			expectSuccess:   false,
+			expectAssertion: true,
+		},
+		{
+			name:            "assertion success",
+			statusCode:      200,
+			responseBody:    "Hello World",
+			config:          NetworkConfig{AssertText: "Hello", Timeout: 5 * time.Second},
+			expectSuccess:   true,
+			expectAssertion: true,
+		},
+		{
+			name:            "assertion failure",
+			statusCode:      200,
+			responseBody:    "Hello World",
+			config:          NetworkConfig{AssertText: "Goodbye", Timeout: 5 * time.Second},
+			expectSuccess:   false,
+			expectAssertion: false,
+		},
+		{
+			name:            "should fail inverted",
+			statusCode:      500,
+			responseBody:    "Error",
+			config:          NetworkConfig{ShouldFail: true, Timeout: 5 * time.Second},
+			expectSuccess:   true,
+			expectAssertion: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tt.statusCode)
+				_, _ = w.Write([]byte(tt.responseBody))
+			}))
+			defer server.Close()
+
+			result := CheckWebsite(server.URL, tt.config)
+
+			if result.IsUp != tt.expectSuccess {
+				t.Errorf("CheckWebsite() IsUp = %v, want %v", result.IsUp, tt.expectSuccess)
+			}
+			if result.AssertionPassed != tt.expectAssertion {
+				t.Errorf("CheckWebsite() AssertionPassed = %v, want %v", result.AssertionPassed, tt.expectAssertion)
+			}
+			if result.StatusCode != tt.statusCode {
+				t.Errorf("CheckWebsite() StatusCode = %d, want %d", result.StatusCode, tt.statusCode)
+			}
+			if result.ResponseTime <= 0 {
+				t.Error("CheckWebsite() ResponseTime should be positive")
+			}
+		})
+	}
+}
+
+func TestCheckWebsiteWithHeaders(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer test-token" {
+			w.WriteHeader(401)
+			return
+		}
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte("Authorized"))
+	}))
+	defer server.Close()
+
+	config := NetworkConfig{
+		Timeout: 5 * time.Second,
+		Headers: []string{"Authorization: Bearer test-token", "Content-Type: application/json"},
+	}
+
+	result := CheckWebsite(server.URL, config)
+
+	if !result.IsUp {
+		t.Error("CheckWebsite() with headers should succeed")
+	}
+	if result.StatusCode != 200 {
+		t.Errorf("CheckWebsite() StatusCode = %d, want 200", result.StatusCode)
 	}
 }
