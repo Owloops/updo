@@ -8,24 +8,33 @@ import (
 	"strings"
 	"time"
 
+	"maps"
+
 	"github.com/Owloops/updo/net"
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
+const (
+	_defaultTimeout = 10 * time.Second
+	_maxTimeout     = 25 * time.Second
+	_bufferTime     = 1 * time.Second
+	_unknownRegion  = "unknown"
+)
+
 var (
-	awsRegion string
+	_awsRegion string
 )
 
 func init() {
-	awsRegion = os.Getenv("AWS_REGION")
-	if awsRegion == "" {
-		awsRegion = os.Getenv("AWS_DEFAULT_REGION")
+	_awsRegion = os.Getenv("AWS_REGION")
+	if _awsRegion == "" {
+		_awsRegion = os.Getenv("AWS_DEFAULT_REGION")
 	}
-	if awsRegion == "" {
-		awsRegion = "unknown"
+	if _awsRegion == "" {
+		_awsRegion = _unknownRegion
 		log.Printf("Warning: AWS region not found in environment variables")
 	}
-	log.Printf("Lambda function initialized in region: %s", awsRegion)
+	log.Printf("Lambda function initialized in region: %s", _awsRegion)
 }
 
 type CheckRequest struct {
@@ -65,24 +74,24 @@ type HttpTraceInfoSimple struct {
 
 func handleRequest(ctx context.Context, req CheckRequest) (CheckResponse, error) {
 	if req.URL == "" {
-		return CheckResponse{Region: awsRegion}, fmt.Errorf("URL is required")
+		return CheckResponse{Region: _awsRegion}, fmt.Errorf("URL is required")
 	}
 
 	resp := CheckResponse{
-		Region: awsRegion,
+		Region: _awsRegion,
 	}
 
 	timeout := time.Duration(req.Timeout) * time.Second
 	if req.Timeout <= 0 {
-		timeout = 10 * time.Second
+		timeout = _defaultTimeout
 	}
-	if timeout > 25*time.Second {
-		timeout = 25 * time.Second
+	if timeout > _maxTimeout {
+		timeout = _maxTimeout
 		log.Printf("Warning: Timeout capped at 25s to prevent Lambda timeout")
 	}
 
 	if deadline, ok := ctx.Deadline(); ok {
-		remainingTime := time.Until(deadline) - (1 * time.Second)
+		remainingTime := time.Until(deadline) - _bufferTime
 		if remainingTime > 0 && remainingTime < timeout {
 			timeout = remainingTime
 			log.Printf("Adjusting timeout to %v to respect Lambda deadline", timeout)
@@ -109,24 +118,18 @@ func handleRequest(ctx context.Context, req CheckRequest) (CheckResponse, error)
 	resp.ResponseBody = result.ResponseBody
 
 	if result.RequestHeaders != nil {
-		resp.RequestHeaders = map[string][]string(result.RequestHeaders)
+		resp.RequestHeaders = make(map[string][]string, len(result.RequestHeaders))
+		for k, v := range result.RequestHeaders {
+			resp.RequestHeaders[k] = v
+		}
 	}
 	if result.ResponseHeaders != nil {
-		resp.ResponseHeaders = map[string][]string(result.ResponseHeaders)
+		resp.ResponseHeaders = make(map[string][]string, len(result.ResponseHeaders))
+		maps.Copy(resp.ResponseHeaders, result.ResponseHeaders)
 	}
 
-	if strings.HasPrefix(strings.ToLower(req.URL), "https://") {
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					log.Printf("Warning: SSL check failed for %s: %v", req.URL, r)
-				}
-			}()
-			sslDays := net.GetSSLCertExpiry(req.URL)
-			if sslDays >= 0 {
-				resp.SSLExpiry = &sslDays
-			}
-		}()
+	if isHTTPS(req.URL) {
+		checkSSLExpiry(req.URL, &resp)
 	}
 
 	resp.Success = result.IsUp
@@ -152,6 +155,22 @@ func handleRequest(ctx context.Context, req CheckRequest) (CheckResponse, error)
 	}
 
 	return resp, nil
+}
+
+func isHTTPS(url string) bool {
+	return strings.HasPrefix(strings.ToLower(url), "https://")
+}
+
+func checkSSLExpiry(url string, resp *CheckResponse) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Warning: SSL check failed for %s: %v", url, r)
+		}
+	}()
+	sslDays := net.GetSSLCertExpiry(url)
+	if sslDays >= 0 {
+		resp.SSLExpiry = &sslDays
+	}
 }
 
 func main() {
