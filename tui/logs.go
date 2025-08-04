@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Owloops/updo/stats"
 	ui "github.com/gizak/termui/v3"
 	"github.com/gizak/termui/v3/widgets"
 )
@@ -23,7 +24,7 @@ type LogEntry struct {
 	Level     LogLevel
 	Message   string
 	Details   string
-	TargetKey TargetKey
+	TargetKey stats.TargetKey
 }
 
 type LogBuffer struct {
@@ -122,7 +123,7 @@ func (lb *LogBuffer) MaxSize() int {
 	return lb.maxSize
 }
 
-func (lb *LogBuffer) GetEntriesForTarget(targetKey TargetKey) []LogEntry {
+func (lb *LogBuffer) GetEntriesForTarget(targetKey stats.TargetKey) []LogEntry {
 	entries := lb.GetEntries()
 	var filtered []LogEntry
 
@@ -135,7 +136,7 @@ func (lb *LogBuffer) GetEntriesForTarget(targetKey TargetKey) []LogEntry {
 	return filtered
 }
 
-func (lb *LogBuffer) AddLogEntry(level LogLevel, message, details string, targetKey TargetKey) {
+func (lb *LogBuffer) AddLogEntry(level LogLevel, message, details string, targetKey stats.TargetKey) {
 	entry := LogEntry{
 		Timestamp: time.Now(),
 		Level:     level,
@@ -189,7 +190,7 @@ func wrapText(text string, maxWidth int) []string {
 	return lines
 }
 
-func (m *Manager) updateLogsWidget(targetKey TargetKey) {
+func (m *Manager) updateLogsWidget(targetKey stats.TargetKey) {
 	logs := m.logBuffer.GetEntriesForTarget(targetKey)
 
 	if len(logs) == 0 {

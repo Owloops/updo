@@ -2,6 +2,8 @@ package tui
 
 import (
 	"testing"
+
+	"github.com/Owloops/updo/stats"
 )
 
 func TestLogBuffer(t *testing.T) {
@@ -42,7 +44,7 @@ func TestLogBuffer(t *testing.T) {
 			buffer := NewLogBuffer(tt.bufSize)
 
 			for i := 0; i < tt.addCount; i++ {
-				buffer.AddLogEntry(LogLevelInfo, "test", "message", TargetKey{})
+				buffer.AddLogEntry(LogLevelInfo, "test", "message", stats.TargetKey{})
 			}
 
 			entries := buffer.GetEntries()
@@ -56,10 +58,10 @@ func TestLogBuffer(t *testing.T) {
 func TestLogBuffer_CircularBehavior(t *testing.T) {
 	buffer := NewLogBuffer(3)
 
-	buffer.AddLogEntry(LogLevelInfo, "test", "msg1", TargetKey{})
-	buffer.AddLogEntry(LogLevelWarning, "test", "msg2", TargetKey{})
-	buffer.AddLogEntry(LogLevelError, "test", "msg3", TargetKey{})
-	buffer.AddLogEntry(LogLevelInfo, "test", "msg4", TargetKey{})
+	buffer.AddLogEntry(LogLevelInfo, "test", "msg1", stats.TargetKey{})
+	buffer.AddLogEntry(LogLevelWarning, "test", "msg2", stats.TargetKey{})
+	buffer.AddLogEntry(LogLevelError, "test", "msg3", stats.TargetKey{})
+	buffer.AddLogEntry(LogLevelInfo, "test", "msg4", stats.TargetKey{})
 
 	entries := buffer.GetEntries()
 	if len(entries) != 3 {
@@ -77,8 +79,8 @@ func TestLogBuffer_CircularBehavior(t *testing.T) {
 func TestLogBuffer_Clear(t *testing.T) {
 	buffer := NewLogBuffer(5)
 
-	buffer.AddLogEntry(LogLevelInfo, "test", "msg1", TargetKey{})
-	buffer.AddLogEntry(LogLevelInfo, "test", "msg2", TargetKey{})
+	buffer.AddLogEntry(LogLevelInfo, "test", "msg1", stats.TargetKey{})
+	buffer.AddLogEntry(LogLevelInfo, "test", "msg2", stats.TargetKey{})
 
 	if len(buffer.GetEntries()) != 2 {
 		t.Error("Expected 2 entries before clear")
@@ -95,7 +97,7 @@ func TestLogBuffer_GetRecentEntries(t *testing.T) {
 	buffer := NewLogBuffer(10)
 
 	for i := 0; i < 10; i++ {
-		buffer.AddLogEntry(LogLevelInfo, "test", "msg"+string(rune('0'+i)), TargetKey{})
+		buffer.AddLogEntry(LogLevelInfo, "test", "msg"+string(rune('0'+i)), stats.TargetKey{})
 	}
 
 	recent := buffer.GetRecentEntries(3)
@@ -121,8 +123,8 @@ func TestLogBuffer_GetRecentEntries(t *testing.T) {
 func TestLogBuffer_GetEntriesForTarget(t *testing.T) {
 	buffer := NewLogBuffer(10)
 
-	target1 := NewLocalTargetKey("api")
-	target2 := NewRegionTargetKey("web", "us-east-1")
+	target1 := stats.NewLocalTargetKey("api", 0)
+	target2 := stats.NewRegionTargetKey("web", "us-east-1", 1)
 
 	buffer.AddLogEntry(LogLevelInfo, "test", "msg1", target1)
 	buffer.AddLogEntry(LogLevelInfo, "test", "msg2", target2)
@@ -139,7 +141,7 @@ func TestLogBuffer_GetEntriesForTarget(t *testing.T) {
 		t.Errorf("Expected 2 entries for target2, got %d", len(target2Entries))
 	}
 
-	emptyTarget := NewLocalTargetKey("empty")
+	emptyTarget := stats.NewLocalTargetKey("empty", 2)
 	emptyEntries := buffer.GetEntriesForTarget(emptyTarget)
 	if len(emptyEntries) != 0 {
 		t.Errorf("Expected 0 entries for empty target, got %d", len(emptyEntries))
@@ -167,14 +169,14 @@ func TestLogBuffer_EdgeCases(t *testing.T) {
 
 		go func() {
 			for i := 0; i < 50; i++ {
-				buffer.AddLogEntry(LogLevelInfo, "writer1", "msg", TargetKey{})
+				buffer.AddLogEntry(LogLevelInfo, "writer1", "msg", stats.TargetKey{})
 			}
 			done <- true
 		}()
 
 		go func() {
 			for i := 0; i < 50; i++ {
-				buffer.AddLogEntry(LogLevelInfo, "writer2", "msg", TargetKey{})
+				buffer.AddLogEntry(LogLevelInfo, "writer2", "msg", stats.TargetKey{})
 			}
 			done <- true
 		}()

@@ -33,6 +33,7 @@ type Config struct {
 	Skip            []string
 	WebhookURL      string
 	WebhookHeaders  []string
+	PrometheusURL   string
 }
 
 var AppConfig Config
@@ -87,6 +88,7 @@ func init() {
 	RootCmd.PersistentFlags().StringSliceVar(&AppConfig.Skip, "skip", nil, "Skip specific targets (by name or URL)")
 	RootCmd.PersistentFlags().StringVar(&AppConfig.WebhookURL, "webhook-url", "", "Webhook URL for notifications")
 	RootCmd.PersistentFlags().StringArrayVar(&AppConfig.WebhookHeaders, "webhook-header", nil, "Webhook headers (can be used multiple times, format: 'Header-Name: value')")
+	RootCmd.PersistentFlags().StringVar(&AppConfig.PrometheusURL, "prometheus-url", "", "Prometheus remote write endpoint URL (e.g., http://localhost:9090/api/v1/write)")
 
 	var logEnabled bool
 	RootCmd.PersistentFlags().BoolVar(&logEnabled, "log", false, "Output structured logs in JSON format (includes requests, responses, and metrics)")

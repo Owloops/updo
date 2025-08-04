@@ -95,18 +95,20 @@ You can monitor multiple targets by:
 
 		if useSimpleMode {
 			options := simple.MonitoringOptions{
-				Count:   appConfig.Count,
-				Log:     appConfig.Log,
-				Regions: regions,
-				Profile: profile,
+				Count:         appConfig.Count,
+				Log:           appConfig.Log,
+				Regions:       regions,
+				Profile:       profile,
+				PrometheusURL: appConfig.PrometheusURL,
 			}
 			simple.StartMultiTargetMonitoring(targets, options)
 		} else {
 			options := tui.Options{
-				Count:   appConfig.Count,
-				Log:     appConfig.Log,
-				Regions: regions,
-				Profile: profile,
+				Count:         appConfig.Count,
+				Log:           appConfig.Log,
+				Regions:       regions,
+				Profile:       profile,
+				PrometheusURL: appConfig.PrometheusURL,
 			}
 			tui.StartMonitoring(targets, options)
 		}

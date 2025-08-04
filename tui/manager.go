@@ -30,12 +30,11 @@ const (
 	_logBufferSize         = 1000
 	_dataChannelMultiplier = 2
 	_targetsTitle          = "Targets"
-	_localRegion           = "local"
 )
 
 type Manager struct {
 	targets         []config.Target
-	keyRegistry     *TargetKeyRegistry
+	keyRegistry     *stats.TargetKeyRegistry
 	targetData      map[string]TargetData
 	plotData        map[string]PlotHistory
 	logBuffer       *LogBuffer
@@ -62,7 +61,7 @@ type PlotHistory struct {
 }
 
 func NewManager(targets []config.Target, options Options) *Manager {
-	keyRegistry := NewTargetKeyRegistry(targets, options.Regions)
+	keyRegistry := stats.NewTargetKeyRegistry(targets, options.Regions)
 	allKeys := keyRegistry.GetAllKeys()
 
 	m := &Manager{
@@ -130,14 +129,19 @@ func (m *Manager) InitializeLayout(width, height int) {
 func (m *Manager) updateTargetList() {
 	allKeys := m.keyRegistry.GetAllKeys()
 
-	targetGroups := make(map[string][]TargetKey, len(allKeys))
+	targetGroups := make(map[string][]stats.TargetKey, len(allKeys))
 	var targetOrder []string
 
 	for _, key := range allKeys {
-		if _, exists := targetGroups[key.TargetName]; !exists {
-			targetOrder = append(targetOrder, key.TargetName)
+		displayName := key.TargetName
+		if idx := strings.LastIndex(key.TargetName, "#"); idx != -1 {
+			displayName = key.TargetName[:idx]
 		}
-		targetGroups[key.TargetName] = append(targetGroups[key.TargetName], key)
+
+		if _, exists := targetGroups[displayName]; !exists {
+			targetOrder = append(targetOrder, displayName)
+		}
+		targetGroups[displayName] = append(targetGroups[displayName], key)
 	}
 
 	preserveGroupID := m.preserveHeaderSelection
@@ -242,7 +246,7 @@ func (m *Manager) updateTargetList() {
 	m.updateSelectionColors()
 }
 
-func (m *Manager) getCurrentTargetKey() *TargetKey {
+func (m *Manager) getCurrentTargetKey() *stats.TargetKey {
 	if m.isSingle || m.listWidget == nil {
 		allKeys := m.keyRegistry.GetAllKeys()
 		if m.currentKeyIndex >= 0 && m.currentKeyIndex < len(allKeys) {
@@ -285,10 +289,8 @@ func (m *Manager) getCurrentTarget() *config.Target {
 		return nil
 	}
 
-	for i := range m.targets {
-		if m.targets[i].Name == currentKey.TargetName {
-			return &m.targets[i]
-		}
+	if currentKey.TargetIndex >= 0 && currentKey.TargetIndex < len(m.targets) {
+		return &m.targets[currentKey.TargetIndex]
 	}
 	return nil
 }
@@ -355,6 +357,10 @@ func (m *Manager) updateActiveTarget(monitors map[string]*stats.Monitor) {
 			refreshInterval = _defaultRefresh
 		}
 		m.detailsManager.RefreshWidget.Text = fmt.Sprintf("%d seconds", refreshInterval)
+	}
+
+	if currentTarget != nil && m.detailsManager.URLWidget != nil {
+		m.detailsManager.URLWidget.Text = currentTarget.URL
 	}
 
 	targetKeyStr := currentKey.String()

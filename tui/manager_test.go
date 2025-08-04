@@ -76,7 +76,7 @@ func TestManager_RefreshStats(t *testing.T) {
 	})
 
 	monitors := map[string]*stats.Monitor{
-		"test": monitor,
+		"test#0": monitor,
 	}
 
 	allKeys := manager.keyRegistry.GetAllKeys()
@@ -146,7 +146,7 @@ func TestManager_LogBuffer(t *testing.T) {
 		t.Error("Log buffer should be empty initially")
 	}
 
-	manager.logBuffer.AddLogEntry(LogLevelInfo, "test", "Test message", NewLocalTargetKey("test"))
+	manager.logBuffer.AddLogEntry(LogLevelInfo, "test", "Test message", stats.NewLocalTargetKey("test", 0))
 
 	if manager.logBuffer.Size() != 1 {
 		t.Errorf("Log buffer size = %d, want 1", manager.logBuffer.Size())
