@@ -35,9 +35,14 @@ type LogBuffer struct {
 	mu      sync.RWMutex
 }
 
+const (
+	_defaultLogBufferSize = 100
+	_maxLogsToShow        = 10
+)
+
 func NewLogBuffer(maxSize int) *LogBuffer {
 	if maxSize <= 0 {
-		maxSize = 100
+		maxSize = _defaultLogBufferSize
 	}
 	return &LogBuffer{
 		entries: make([]LogEntry, maxSize),
@@ -65,7 +70,7 @@ func (lb *LogBuffer) GetEntries() []LogEntry {
 	defer lb.mu.RUnlock()
 
 	if lb.size == 0 {
-		return []LogEntry{}
+		return nil
 	}
 
 	result := make([]LogEntry, lb.size)
@@ -197,7 +202,7 @@ func (m *Manager) updateLogsWidget(targetKey TargetKey) {
 		return
 	}
 
-	maxLogs := 10
+	maxLogs := _maxLogsToShow
 	startIdx := 0
 	if len(logs) > maxLogs {
 		startIdx = len(logs) - maxLogs

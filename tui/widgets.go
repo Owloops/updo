@@ -55,27 +55,27 @@ func (m *DetailsManager) InitializeWidgets(url string, refreshInterval time.Dura
 
 	m.AvgResponseTimeWidget = widgets.NewParagraph()
 	m.AvgResponseTimeWidget.Title = "Average"
-	m.AvgResponseTimeWidget.Text = notAvailable
+	m.AvgResponseTimeWidget.Text = _notAvailable
 	m.AvgResponseTimeWidget.BorderStyle.Fg = ui.ColorCyan
 
 	m.MinResponseTimeWidget = widgets.NewParagraph()
 	m.MinResponseTimeWidget.Title = "Min"
-	m.MinResponseTimeWidget.Text = notAvailable
+	m.MinResponseTimeWidget.Text = _notAvailable
 	m.MinResponseTimeWidget.BorderStyle.Fg = ui.ColorCyan
 
 	m.MaxResponseTimeWidget = widgets.NewParagraph()
 	m.MaxResponseTimeWidget.Title = "Max"
-	m.MaxResponseTimeWidget.Text = notAvailable
+	m.MaxResponseTimeWidget.Text = _notAvailable
 	m.MaxResponseTimeWidget.BorderStyle.Fg = ui.ColorCyan
 
 	m.P95ResponseTimeWidget = widgets.NewParagraph()
 	m.P95ResponseTimeWidget.Title = "95p"
-	m.P95ResponseTimeWidget.Text = notAvailable
+	m.P95ResponseTimeWidget.Text = _notAvailable
 	m.P95ResponseTimeWidget.BorderStyle.Fg = ui.ColorCyan
 
 	m.SSLOkWidget = widgets.NewParagraph()
 	m.SSLOkWidget.Title = "SSL Certificate"
-	m.SSLOkWidget.Text = notAvailable
+	m.SSLOkWidget.Text = _notAvailable
 	m.SSLOkWidget.BorderStyle.Fg = ui.ColorGreen
 
 	m.UptimePlot = widgets.NewPlot()
@@ -83,7 +83,7 @@ func (m *DetailsManager) InitializeWidgets(url string, refreshInterval time.Dura
 	m.UptimePlot.Marker = widgets.MarkerDot
 	m.UptimePlot.BorderStyle.Fg = ui.ColorCyan
 	m.UptimePlot.Data = make([][]float64, 1)
-	m.UptimePlot.Data[0] = make([]float64, 0)
+	m.UptimePlot.Data[0] = nil
 	m.UptimePlot.LineColors[0] = ui.ColorCyan
 
 	m.ResponseTimePlot = widgets.NewPlot()
@@ -106,7 +106,7 @@ func (m *DetailsManager) InitializeWidgets(url string, refreshInterval time.Dura
 
 	m.AssertionWidget = widgets.NewParagraph()
 	m.AssertionWidget.Title = "Assertion Result"
-	m.AssertionWidget.Text = notAvailable
+	m.AssertionWidget.Text = _notAvailable
 	m.AssertionWidget.BorderStyle.Fg = ui.ColorCyan
 
 	m.TimingBreakdownWidget = uw.NewTimingBreakdown()

@@ -43,10 +43,10 @@ func StartMonitoring(targets []config.Target, options Options) {
 	keyRegistry := NewTargetKeyRegistry(targets, options.Regions)
 	allKeys := keyRegistry.GetAllKeys()
 
-	monitors := make(map[string]*stats.Monitor)
-	sequences := make(map[string]*int)
-	alertStates := make(map[string]*bool)
-	webhookAlertStates := make(map[string]*bool)
+	monitors := make(map[string]*stats.Monitor, len(allKeys))
+	sequences := make(map[string]*int, len(allKeys))
+	alertStates := make(map[string]*bool, len(allKeys))
+	webhookAlertStates := make(map[string]*bool, len(allKeys))
 
 	for _, key := range allKeys {
 		monitor, err := stats.NewMonitor()
@@ -65,7 +65,7 @@ func StartMonitoring(targets []config.Target, options Options) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	dataChannel := make(chan TargetData, len(targets)*2)
+	dataChannel := make(chan TargetData, len(targets)*_dataChannelMultiplier)
 	var wg sync.WaitGroup
 
 	for _, target := range targets {
@@ -174,7 +174,7 @@ func StartMonitoring(targets []config.Target, options Options) {
 					}
 					ui.Render(manager.grid)
 				}
-			case "<Backspace>", "<C-8>", "<Space>":
+			case _backspaceKey, _ctrlBackspace, "<Space>":
 				if manager.listWidget != nil && manager.listWidget.IsSearchMode() {
 					manager.listWidget.UpdateSearch(e.ID)
 					ui.Render(manager.grid)

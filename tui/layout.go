@@ -9,10 +9,6 @@ import (
 	"github.com/gizak/termui/v3/widgets"
 )
 
-const (
-	targetsTitle = "Targets"
-)
-
 func (m *Manager) setupGrid(width, height int) {
 	m.grid = ui.NewGrid()
 	m.grid.SetRect(0, 0, width, height)
@@ -53,7 +49,7 @@ func (m *Manager) initializeMultiTargetWidgets() {
 	m.searchWidget.TextStyle.Fg = ui.ColorWhite
 
 	m.listWidget = uw.NewFilteredList()
-	m.listWidget.Title = targetsTitle
+	m.listWidget.Title = _targetsTitle
 	m.listWidget.BorderStyle.Fg = ui.ColorCyan
 	m.listWidget.TitleStyle.Fg = ui.ColorWhite
 	m.listWidget.TitleStyle.Modifier = ui.ModifierBold
@@ -84,7 +80,7 @@ func (m *Manager) handleSearchChange(query string, filteredIndices []int) {
 			m.searchWidget.Text = "Type to filter..."
 			m.searchWidget.TextStyle.Fg = ui.ColorYellow
 			m.searchWidget.BorderStyle.Fg = ui.ColorYellow
-			m.listWidget.Title = targetsTitle
+			m.listWidget.Title = _targetsTitle
 		}
 
 		visibleRows := len(m.listWidget.Rows)
@@ -106,7 +102,7 @@ func (m *Manager) handleSearchChange(query string, filteredIndices []int) {
 			}
 			m.listWidget.Title = fmt.Sprintf("Targets → %s [%s]", currentKey.TargetName, region)
 		} else {
-			m.listWidget.Title = targetsTitle
+			m.listWidget.Title = _targetsTitle
 		}
 	}
 }

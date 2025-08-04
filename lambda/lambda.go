@@ -145,11 +145,12 @@ func handleRequest(ctx context.Context, req CheckRequest) (CheckResponse, error)
 	}
 
 	if !result.IsUp {
-		if !result.AssertionPassed && req.AssertText != "" {
+		switch {
+		case !result.AssertionPassed && req.AssertText != "":
 			resp.Error = fmt.Sprintf("assertion failed: text '%s' not found in response", req.AssertText)
-		} else if result.StatusCode == 0 {
+		case result.StatusCode == 0:
 			resp.Error = "connection failed: unable to reach host"
-		} else {
+		default:
 			resp.Error = fmt.Sprintf("HTTP %d response received", result.StatusCode)
 		}
 	}

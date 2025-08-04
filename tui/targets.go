@@ -7,8 +7,6 @@ import (
 	"github.com/Owloops/updo/config"
 )
 
-const localRegion = "local"
-
 type TargetKey struct {
 	TargetName string
 	Region     string
@@ -16,21 +14,21 @@ type TargetKey struct {
 }
 
 func (tk TargetKey) String() string {
-	if tk.IsLocal || tk.Region == "" || tk.Region == localRegion {
+	if tk.IsLocal || tk.Region == "" || tk.Region == _localRegion {
 		return tk.TargetName
 	}
 	return fmt.Sprintf("%s@%s", tk.TargetName, tk.Region)
 }
 
 func (tk TargetKey) DisplayName() string {
-	if tk.IsLocal || tk.Region == "" || tk.Region == localRegion {
+	if tk.IsLocal || tk.Region == "" || tk.Region == _localRegion {
 		return tk.TargetName
 	}
 	return fmt.Sprintf("%s (%s)", tk.TargetName, tk.Region)
 }
 
 func NewTargetKey(targetName, region string) TargetKey {
-	isLocal := region == "" || region == localRegion
+	isLocal := region == "" || region == _localRegion
 	return TargetKey{
 		TargetName: targetName,
 		Region:     region,
@@ -41,7 +39,7 @@ func NewTargetKey(targetName, region string) TargetKey {
 func NewLocalTargetKey(targetName string) TargetKey {
 	return TargetKey{
 		TargetName: targetName,
-		Region:     localRegion,
+		Region:     _localRegion,
 		IsLocal:    true,
 	}
 }
@@ -88,8 +86,7 @@ type TargetKeyRegistry struct {
 
 func NewTargetKeyRegistry(targets []config.Target, globalRegions []string) *TargetKeyRegistry {
 	registry := &TargetKeyRegistry{
-		allKeys:    make([]TargetKey, 0),
-		keysByName: make(map[string][]TargetKey),
+		keysByName: make(map[string][]TargetKey, len(targets)),
 	}
 
 	for _, target := range targets {
@@ -109,7 +106,7 @@ func (r *TargetKeyRegistry) GetKeysForTarget(targetName string) []TargetKey {
 	if keys, exists := r.keysByName[targetName]; exists {
 		return keys
 	}
-	return []TargetKey{}
+	return nil
 }
 
 func (r *TargetKeyRegistry) HasMultipleKeys() bool {

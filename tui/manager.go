@@ -18,12 +18,19 @@ import (
 )
 
 const (
-	notAvailable = "N/A"
-	statusIcon   = "●"
-	checking     = "Checking..."
-	passing      = "Passing"
-	failing      = "Failing"
-	targetIcon   = "◉"
+	_notAvailable          = "N/A"
+	_statusIcon            = "●"
+	_checking              = "Checking..."
+	_passing               = "Passing"
+	_failing               = "Failing"
+	_targetIcon            = "◉"
+	_backspaceKey          = "<Backspace>"
+	_ctrlBackspace         = "<C-8>"
+	_defaultRefresh        = 5
+	_logBufferSize         = 1000
+	_dataChannelMultiplier = 2
+	_targetsTitle          = "Targets"
+	_localRegion           = "local"
 )
 
 type Manager struct {
@@ -61,10 +68,10 @@ func NewManager(targets []config.Target, options Options) *Manager {
 	m := &Manager{
 		targets:         targets,
 		keyRegistry:     keyRegistry,
-		targetData:      make(map[string]TargetData),
-		plotData:        make(map[string]PlotHistory),
-		logBuffer:       NewLogBuffer(1000),
-		sslExpiry:       make(map[string]int),
+		targetData:      make(map[string]TargetData, len(allKeys)),
+		plotData:        make(map[string]PlotHistory, len(allKeys)),
+		logBuffer:       NewLogBuffer(_logBufferSize),
+		sslExpiry:       make(map[string]int, len(targets)),
 		currentKeyIndex: 0,
 		isSingle:        len(allKeys) == 1,
 		detailsManager:  NewDetailsManager(),
@@ -123,8 +130,8 @@ func (m *Manager) InitializeLayout(width, height int) {
 func (m *Manager) updateTargetList() {
 	allKeys := m.keyRegistry.GetAllKeys()
 
-	targetGroups := make(map[string][]TargetKey)
-	targetOrder := make([]string, 0)
+	targetGroups := make(map[string][]TargetKey, len(allKeys))
+	var targetOrder []string
 
 	for _, key := range allKeys {
 		if _, exists := targetGroups[key.TargetName]; !exists {
@@ -135,10 +142,9 @@ func (m *Manager) updateTargetList() {
 
 	preserveGroupID := m.preserveHeaderSelection
 
-	items := make([]string, 0)
-	metadata := make([]uw.RowMetadata, 0)
-
-	itemToKeyIndex := make([]int, 0)
+	var items []string
+	var metadata []uw.RowMetadata
+	var itemToKeyIndex []int
 
 	keyIndex := 0
 	for _, targetName := range targetOrder {
@@ -170,14 +176,14 @@ func (m *Manager) updateTargetList() {
 
 				if data, exists := m.targetData[key.String()]; exists {
 					if data.Result.IsUp {
-						icon = targetIcon
+						icon = _targetIcon
 						iconColor = "green"
 					} else {
-						icon = targetIcon
+						icon = _targetIcon
 						iconColor = "red"
 					}
 				} else {
-					icon = targetIcon
+					icon = _targetIcon
 					iconColor = "yellow"
 				}
 
@@ -346,7 +352,7 @@ func (m *Manager) updateActiveTarget(monitors map[string]*stats.Monitor) {
 	if currentTarget != nil && m.detailsManager.RefreshWidget != nil {
 		refreshInterval := currentTarget.RefreshInterval
 		if refreshInterval == 0 {
-			refreshInterval = 5
+			refreshInterval = _defaultRefresh
 		}
 		m.detailsManager.RefreshWidget.Text = fmt.Sprintf("%d seconds", refreshInterval)
 	}
@@ -432,7 +438,7 @@ func (m *Manager) RefreshStats(monitors map[string]*stats.Monitor) {
 	if currentTarget != nil && m.detailsManager.RefreshWidget != nil {
 		refreshInterval := currentTarget.RefreshInterval
 		if refreshInterval == 0 {
-			refreshInterval = 5
+			refreshInterval = _defaultRefresh
 		}
 		m.detailsManager.RefreshWidget.Text = fmt.Sprintf("%d seconds", refreshInterval)
 	}
@@ -448,15 +454,15 @@ func (m *Manager) RefreshStats(monitors map[string]*stats.Monitor) {
 			m.detailsManager.MinResponseTimeWidget.Text = utils.FormatDurationMillisecond(freshStats.MinResponseTime)
 			m.detailsManager.MaxResponseTimeWidget.Text = utils.FormatDurationMillisecond(freshStats.MaxResponseTime)
 		} else {
-			m.detailsManager.AvgResponseTimeWidget.Text = notAvailable
-			m.detailsManager.MinResponseTimeWidget.Text = notAvailable
-			m.detailsManager.MaxResponseTimeWidget.Text = notAvailable
+			m.detailsManager.AvgResponseTimeWidget.Text = _notAvailable
+			m.detailsManager.MinResponseTimeWidget.Text = _notAvailable
+			m.detailsManager.MaxResponseTimeWidget.Text = _notAvailable
 		}
 
 		if freshStats.ChecksCount >= 2 {
 			m.detailsManager.P95ResponseTimeWidget.Text = fmt.Sprintf("%d ms", freshStats.P95.Milliseconds())
 		} else {
-			m.detailsManager.P95ResponseTimeWidget.Text = notAvailable
+			m.detailsManager.P95ResponseTimeWidget.Text = _notAvailable
 		}
 
 		if !m.isSingle {
@@ -477,31 +483,31 @@ func (m *Manager) updateCurrentTargetWidgets(result net.WebsiteCheckResult, stat
 		m.detailsManager.MinResponseTimeWidget.Text = utils.FormatDurationMillisecond(stats.MinResponseTime)
 		m.detailsManager.MaxResponseTimeWidget.Text = utils.FormatDurationMillisecond(stats.MaxResponseTime)
 	} else {
-		m.detailsManager.AvgResponseTimeWidget.Text = notAvailable
-		m.detailsManager.MinResponseTimeWidget.Text = notAvailable
-		m.detailsManager.MaxResponseTimeWidget.Text = notAvailable
+		m.detailsManager.AvgResponseTimeWidget.Text = _notAvailable
+		m.detailsManager.MinResponseTimeWidget.Text = _notAvailable
+		m.detailsManager.MaxResponseTimeWidget.Text = _notAvailable
 	}
 
 	if stats.ChecksCount >= 2 {
 		m.detailsManager.P95ResponseTimeWidget.Text = fmt.Sprintf("%d ms", stats.P95.Milliseconds())
 	} else {
-		m.detailsManager.P95ResponseTimeWidget.Text = notAvailable
+		m.detailsManager.P95ResponseTimeWidget.Text = _notAvailable
 	}
 
 	sslExpiry := m.getSSLExpiry(result.URL)
 	if sslExpiry > 0 {
 		m.detailsManager.SSLOkWidget.Text = fmt.Sprintf("%d days remaining", sslExpiry)
 	} else {
-		m.detailsManager.SSLOkWidget.Text = checking
+		m.detailsManager.SSLOkWidget.Text = _checking
 	}
 
 	switch {
 	case result.AssertText == "":
-		m.detailsManager.AssertionWidget.Text = notAvailable
+		m.detailsManager.AssertionWidget.Text = _notAvailable
 	case result.AssertionPassed:
-		m.detailsManager.AssertionWidget.Text = passing
+		m.detailsManager.AssertionWidget.Text = _passing
 	default:
-		m.detailsManager.AssertionWidget.Text = failing
+		m.detailsManager.AssertionWidget.Text = _failing
 	}
 
 	if result.TraceInfo != nil {
@@ -522,7 +528,7 @@ func (m *Manager) restorePlotData(targetName string) {
 		m.detailsManager.UptimePlot.Data[0] = slices.Clone(history.UptimeData)
 		m.detailsManager.ResponseTimePlot.Data[0] = slices.Clone(history.ResponseTimeData)
 	} else {
-		m.detailsManager.UptimePlot.Data[0] = make([]float64, 0)
+		m.detailsManager.UptimePlot.Data[0] = nil
 		m.detailsManager.ResponseTimePlot.Data[0] = []float64{0.0, 0.0}
 	}
 }
@@ -531,7 +537,6 @@ func (m *Manager) updatePlotDataForTarget(targetName string, result net.WebsiteC
 	history, exists := m.plotData[targetName]
 	if !exists {
 		history = PlotHistory{
-			UptimeData:       make([]float64, 0),
 			ResponseTimeData: []float64{0.0, 0.0},
 		}
 	}
