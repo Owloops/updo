@@ -10,6 +10,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var _defaultRegions = []string{
+	"us-east-1", "us-west-1", "us-west-2", "eu-west-1", "eu-central-1",
+	"ap-southeast-1", "ap-southeast-2", "ap-northeast-1", "ap-northeast-2",
+	"ap-south-1", "sa-east-1", "ca-central-1", "eu-west-2",
+}
+
 var DeployCmd = &cobra.Command{
 	Use:   "deploy",
 	Short: "Deploy Lambda functions for multi-region monitoring",
@@ -62,19 +68,7 @@ Requires AWS credentials to be configured (AWS CLI, environment variables, or IA
 			Sequential: sequential,
 		})
 
-		successful := 0
-		failed := 0
-		var failedRegions []string
-
-		for _, result := range results {
-			if result.Success {
-				successful++
-			} else {
-				failed++
-				failedRegions = append(failedRegions, result.Region)
-				utils.Log.Error(fmt.Sprintf("%s %s", utils.Log.Region(result.Region), result.Error))
-			}
-		}
+		successful, failed, failedRegions := processResults(results)
 
 		if failed > 0 {
 			utils.Log.Plain(fmt.Sprintf("\nDeployment completed: %d successful, %d failed", successful, failed))
@@ -91,13 +85,21 @@ Requires AWS credentials to be configured (AWS CLI, environment variables, or IA
 	},
 }
 
-func init() {
-	defaultRegions := []string{
-		"us-east-1", "us-west-1", "us-west-2", "eu-west-1", "eu-central-1",
-		"ap-southeast-1", "ap-southeast-2", "ap-northeast-1", "ap-northeast-2",
-		"ap-south-1", "sa-east-1", "ca-central-1", "eu-west-2",
+func processResults(results []aws.DeploymentResult) (successful, failed int, failedRegions []string) {
+	for _, result := range results {
+		if result.Success {
+			successful++
+		} else {
+			failed++
+			failedRegions = append(failedRegions, result.Region)
+			utils.Log.Error(fmt.Sprintf("%s %s", utils.Log.Region(result.Region), result.Error))
+		}
 	}
-	DeployCmd.Flags().StringSlice("regions", defaultRegions, "AWS regions to deploy to")
+	return
+}
+
+func init() {
+	DeployCmd.Flags().StringSlice("regions", _defaultRegions, "AWS regions to deploy to")
 	DeployCmd.Flags().String("profile", "", "AWS profile to use")
 	DeployCmd.Flags().Bool("dry-run", false, "Show what would be deployed without executing")
 	DeployCmd.Flags().Bool("sequential", false, "Deploy regions sequentially instead of parallel")

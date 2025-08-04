@@ -26,12 +26,18 @@ method = "POST"
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
-	defer os.Remove(tmpFile.Name())
+	defer func() {
+		if err := os.Remove(tmpFile.Name()); err != nil {
+			t.Logf("Failed to remove temp file: %v", err)
+		}
+	}()
 
 	if _, err := tmpFile.WriteString(configContent); err != nil {
 		t.Fatalf("Failed to write config: %v", err)
 	}
-	tmpFile.Close()
+	if err := tmpFile.Close(); err != nil {
+		t.Fatalf("Failed to close temp file: %v", err)
+	}
 
 	config, err := LoadConfig(tmpFile.Name())
 	if err != nil {
@@ -74,12 +80,18 @@ url = "https://example.com"
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
-	defer os.Remove(tmpFile.Name())
+	defer func() {
+		if err := os.Remove(tmpFile.Name()); err != nil {
+			t.Logf("Failed to remove temp file: %v", err)
+		}
+	}()
 
 	if _, err := tmpFile.WriteString(configContent); err != nil {
 		t.Fatalf("Failed to write config: %v", err)
 	}
-	tmpFile.Close()
+	if err := tmpFile.Close(); err != nil {
+		t.Fatalf("Failed to close temp file: %v", err)
+	}
 
 	config, err := LoadConfig(tmpFile.Name())
 	if err != nil {
@@ -227,11 +239,11 @@ func TestGetTargetName(t *testing.T) {
 
 func TestContainsTarget(t *testing.T) {
 	tests := []struct {
-		name      string
-		list      []string
-		target    string
-		url       string
-		expected  bool
+		name     string
+		list     []string
+		target   string
+		url      string
+		expected bool
 	}{
 		{
 			name:     "found by target name",

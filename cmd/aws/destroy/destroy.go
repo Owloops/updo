@@ -10,6 +10,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var _defaultRegions = []string{
+	"us-east-1", "us-west-1", "us-west-2", "eu-west-1", "eu-central-1",
+	"ap-southeast-1", "ap-southeast-2", "ap-northeast-1", "ap-northeast-2",
+	"ap-south-1", "sa-east-1", "ca-central-1", "eu-west-2",
+}
+
 var DestroyCmd = &cobra.Command{
 	Use:   "destroy",
 	Short: "Destroy Lambda functions from regions",
@@ -41,7 +47,6 @@ Use --regions all to destroy from all currently deployed regions.`,
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 		sequential, _ := cmd.Flags().GetBool("sequential")
 
-		// Handle --regions all
 		if len(regions) == 1 && regions[0] == "all" {
 			deployedRegions, err := aws.GetDeployedRegions(profile)
 			if err != nil {
@@ -81,19 +86,7 @@ Use --regions all to destroy from all currently deployed regions.`,
 			Sequential: sequential,
 		})
 
-		successful := 0
-		failed := 0
-		var failedRegions []string
-
-		for _, result := range results {
-			if result.Success {
-				successful++
-			} else {
-				failed++
-				failedRegions = append(failedRegions, result.Region)
-				utils.Log.Error(fmt.Sprintf("%s %s", utils.Log.Region(result.Region), result.Error))
-			}
-		}
+		successful, failed, failedRegions := processResults(results)
 
 		if failed > 0 {
 			utils.Log.Plain(fmt.Sprintf("\nDestroy completed: %d successful, %d failed", successful, failed))
@@ -110,13 +103,21 @@ Use --regions all to destroy from all currently deployed regions.`,
 	},
 }
 
-func init() {
-	defaultRegions := []string{
-		"us-east-1", "us-west-1", "us-west-2", "eu-west-1", "eu-central-1",
-		"ap-southeast-1", "ap-southeast-2", "ap-northeast-1", "ap-northeast-2",
-		"ap-south-1", "sa-east-1", "ca-central-1", "eu-west-2",
+func processResults(results []aws.DeploymentResult) (successful, failed int, failedRegions []string) {
+	for _, result := range results {
+		if result.Success {
+			successful++
+		} else {
+			failed++
+			failedRegions = append(failedRegions, result.Region)
+			utils.Log.Error(fmt.Sprintf("%s %s", utils.Log.Region(result.Region), result.Error))
+		}
 	}
-	DestroyCmd.Flags().StringSlice("regions", defaultRegions, "AWS regions to destroy from (use 'all' to destroy from all deployed regions)")
+	return
+}
+
+func init() {
+	DestroyCmd.Flags().StringSlice("regions", _defaultRegions, "AWS regions to destroy from (use 'all' to destroy from all deployed regions)")
 	DestroyCmd.Flags().String("profile", "", "AWS profile to use")
 	DestroyCmd.Flags().Bool("dry-run", false, "Show what would be destroyed without executing")
 	DestroyCmd.Flags().Bool("sequential", false, "Destroy from regions sequentially instead of parallel")

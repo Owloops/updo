@@ -63,9 +63,9 @@ You can monitor multiple targets by:
 				os.Exit(1)
 			}
 
-			targets = make([]config.Target, len(urls))
+			targets = make([]config.Target, 0, len(urls))
 			for i, url := range urls {
-				targets[i] = config.Target{
+				target := config.Target{
 					URL:             net.AutoDetectProtocol(url),
 					Name:            fmt.Sprintf("Target-%d", i+1),
 					RefreshInterval: int(appConfig.RefreshInterval.Seconds()),
@@ -81,6 +81,7 @@ You can monitor multiple targets by:
 					WebhookURL:      appConfig.WebhookURL,
 					WebhookHeaders:  appConfig.WebhookHeaders,
 				}
+				targets = append(targets, target)
 			}
 		}
 

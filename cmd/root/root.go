@@ -7,6 +7,12 @@ import (
 	"github.com/spf13/pflag"
 )
 
+const (
+	_defaultRefresh = 5
+	_defaultTimeout = 10
+	_defaultMethod  = "GET"
+)
+
 type Config struct {
 	URL             string
 	ConfigFile      string
@@ -65,8 +71,8 @@ func HideMonitoringFlags(cmd *cobra.Command) {
 func init() {
 	RootCmd.PersistentFlags().StringVarP(&AppConfig.URL, "url", "u", "", "URL or IP address to monitor")
 	RootCmd.PersistentFlags().StringVarP(&AppConfig.ConfigFile, "config", "C", "", "Config file (TOML format)")
-	RootCmd.PersistentFlags().IntP("refresh", "r", 5, "Refresh interval in seconds")
-	RootCmd.PersistentFlags().IntP("timeout", "t", 10, "HTTP request timeout in seconds")
+	RootCmd.PersistentFlags().IntP("refresh", "r", _defaultRefresh, "Refresh interval in seconds")
+	RootCmd.PersistentFlags().IntP("timeout", "t", _defaultTimeout, "HTTP request timeout in seconds")
 	RootCmd.PersistentFlags().BoolVarP(&AppConfig.ShouldFail, "should-fail", "f", false, "Invert success code range")
 	RootCmd.PersistentFlags().BoolVarP(&AppConfig.FollowRedirects, "follow-redirects", "l", true, "Follow redirects")
 	RootCmd.PersistentFlags().BoolVarP(&AppConfig.SkipSSL, "skip-ssl", "s", false, "Skip SSL certificate verification")
@@ -75,7 +81,7 @@ func init() {
 	RootCmd.PersistentFlags().BoolVar(&AppConfig.Simple, "simple", false, "Use simple output instead of TUI")
 	RootCmd.PersistentFlags().IntVarP(&AppConfig.Count, "count", "c", 0, "Number of checks to perform (0 = infinite)")
 	RootCmd.PersistentFlags().StringArrayVarP(&AppConfig.Headers, "header", "H", nil, "HTTP header to send (can be used multiple times, format: 'Header-Name: value')")
-	RootCmd.PersistentFlags().StringVarP(&AppConfig.Method, "request", "X", "GET", "HTTP request method to use")
+	RootCmd.PersistentFlags().StringVarP(&AppConfig.Method, "request", "X", _defaultMethod, "HTTP request method to use")
 	RootCmd.PersistentFlags().StringVarP(&AppConfig.Body, "data", "d", "", "HTTP request body data")
 	RootCmd.PersistentFlags().StringSliceVar(&AppConfig.Only, "only", nil, "Only monitor specific targets (by name or URL)")
 	RootCmd.PersistentFlags().StringSliceVar(&AppConfig.Skip, "skip", nil, "Skip specific targets (by name or URL)")
