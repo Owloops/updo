@@ -76,7 +76,7 @@ func InvokeMultiRegion(url string, config net.NetworkConfig, regions []string, p
 	wg.Wait()
 	close(resultsChan)
 
-	var results []RegionResult
+	results := make([]RegionResult, 0, len(regions))
 	for result := range resultsChan {
 		results = append(results, result)
 	}
@@ -85,7 +85,7 @@ func InvokeMultiRegion(url string, config net.NetworkConfig, regions []string, p
 }
 
 func invokeLambdaInRegion(url string, config net.NetworkConfig, region string, profile string) RegionResult {
-	ctx, cancel := context.WithTimeout(context.Background(), awsOperationTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), _awsOperationTimeout)
 	defer cancel()
 
 	cfg, err := loadAWSConfig(ctx, region, profile)
@@ -118,7 +118,7 @@ func invokeLambdaInRegion(url string, config net.NetworkConfig, region string, p
 		}
 	}
 
-	functionName := fmt.Sprintf("%s-%s", functionName, region)
+	functionName := fmt.Sprintf("%s-%s", _functionName, region)
 
 	input := &lambda.InvokeInput{
 		FunctionName: aws.String(functionName),

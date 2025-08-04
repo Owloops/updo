@@ -23,15 +23,16 @@ import (
 var embeddedLambdaZip []byte
 
 const (
-	functionName        = "updo-executor"
-	roleName            = "updo-lambda-execution-role"
-	iamRoleWaitTime     = 10 * time.Second
-	lambdaTimeout       = 30
-	lambdaMemoryMB      = 128
-	awsOperationTimeout = 30 * time.Second
+	_functionName         = "updo-executor"
+	_roleName             = "updo-lambda-execution-role"
+	_iamRoleWaitTime      = 10 * time.Second
+	_lambdaTimeout        = 30
+	_lambdaMemoryMB       = 128
+	_awsOperationTimeout  = 30 * time.Second
+	_functionCheckTimeout = 5 * time.Second
 )
 
-var defaultRegions = []string{
+var _defaultRegions = []string{
 	"us-east-1",      // N. Virginia
 	"us-west-1",      // N. California
 	"us-west-2",      // Oregon
@@ -72,7 +73,7 @@ func NewDeployer(region string, profile string) (*Deployer, error) {
 	if profile != "" {
 		configOpts = append(configOpts, config.WithSharedConfigProfile(profile))
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), awsOperationTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), _awsOperationTimeout)
 	defer cancel()
 	cfg, err := config.LoadDefaultConfig(ctx, configOpts...)
 	if err != nil {
@@ -97,7 +98,7 @@ func NewDeployer(region string, profile string) (*Deployer, error) {
 
 func DeployToRegions(regions []string, options ...DeploymentOptions) []DeploymentResult {
 	if len(regions) == 0 {
-		regions = defaultRegions
+		regions = _defaultRegions
 	}
 
 	validatedRegions := validateRegions(regions)
@@ -132,7 +133,7 @@ func deployToRegion(region, profile string) DeploymentResult {
 
 func DestroyFromRegions(regions []string, options ...DeploymentOptions) []DeploymentResult {
 	if len(regions) == 0 {
-		regions = defaultRegions
+		regions = _defaultRegions
 	}
 
 	var opts DeploymentOptions
@@ -230,16 +231,16 @@ func shouldCleanupIAMRole(regions []string, results []DeploymentResult) bool {
 }
 
 func IsDestroyingAllDefaultRegions(regions []string) bool {
-	if len(regions) != len(defaultRegions) {
+	if len(regions) != len(_defaultRegions) {
 		return false
 	}
 
-	regionSet := make(map[string]bool)
+	regionSet := make(map[string]bool, len(regions))
 	for _, region := range regions {
 		regionSet[region] = true
 	}
 
-	for _, defaultRegion := range defaultRegions {
+	for _, defaultRegion := range _defaultRegions {
 		if !regionSet[defaultRegion] {
 			return false
 		}
@@ -292,8 +293,8 @@ func (d *Deployer) Deploy() (string, error) {
 }
 
 func (d *Deployer) Destroy() error {
-	funcName := fmt.Sprintf("%s-%s", functionName, d.region)
-	ctx, cancel := context.WithTimeout(context.Background(), awsOperationTimeout)
+	funcName := fmt.Sprintf("%s-%s", _functionName, d.region)
+	ctx, cancel := context.WithTimeout(context.Background(), _awsOperationTimeout)
 	defer cancel()
 	_, err := d.lambdaClient.DeleteFunction(ctx, &lambda.DeleteFunctionInput{
 		FunctionName: aws.String(funcName),
@@ -308,17 +309,17 @@ func (d *Deployer) Destroy() error {
 }
 
 func (d *Deployer) destroyIAMRole() error {
-	ctx, cancel := context.WithTimeout(context.Background(), awsOperationTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), _awsOperationTimeout)
 	defer cancel()
 	if _, err := d.iamClient.DetachRolePolicy(ctx, &iam.DetachRolePolicyInput{
-		RoleName:  aws.String(roleName),
+		RoleName:  aws.String(_roleName),
 		PolicyArn: aws.String("arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"),
 	}); err != nil {
 		utils.Log.Warn(fmt.Sprintf("Failed to detach policy from role: %v", err))
 	}
 
 	_, err := d.iamClient.DeleteRole(ctx, &iam.DeleteRoleInput{
-		RoleName: aws.String(roleName),
+		RoleName: aws.String(_roleName),
 	})
 	if err != nil && !strings.Contains(err.Error(), "NoSuchEntity") {
 		return fmt.Errorf("failed to delete IAM role: %w", err)
@@ -327,7 +328,7 @@ func (d *Deployer) destroyIAMRole() error {
 }
 
 func (d *Deployer) getAccountID() (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), awsOperationTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), _awsOperationTimeout)
 	defer cancel()
 	result, err := d.stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
 	if err != nil {
@@ -337,18 +338,18 @@ func (d *Deployer) getAccountID() (string, error) {
 }
 
 func (d *Deployer) ensureIAMRole() (string, error) {
-	roleArn := fmt.Sprintf("arn:aws:iam::%s:role/%s", d.accountID, roleName)
+	roleArn := fmt.Sprintf("arn:aws:iam::%s:role/%s", d.accountID, _roleName)
 
-	ctx, cancel := context.WithTimeout(context.Background(), awsOperationTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), _awsOperationTimeout)
 	defer cancel()
 	if _, err := d.iamClient.GetRole(ctx, &iam.GetRoleInput{
-		RoleName: aws.String(roleName),
+		RoleName: aws.String(_roleName),
 	}); err == nil {
 		return roleArn, nil
 	}
 	trustPolicyDoc := `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"lambda.amazonaws.com"},"Action":"sts:AssumeRole"}]}`
 	_, err := d.iamClient.CreateRole(ctx, &iam.CreateRoleInput{
-		RoleName:                 aws.String(roleName),
+		RoleName:                 aws.String(_roleName),
 		AssumeRolePolicyDocument: aws.String(trustPolicyDoc),
 		Description:              aws.String("Execution role for updo Lambda function"),
 		Tags: []iamtypes.Tag{
@@ -361,21 +362,21 @@ func (d *Deployer) ensureIAMRole() (string, error) {
 	}
 
 	_, err = d.iamClient.AttachRolePolicy(ctx, &iam.AttachRolePolicyInput{
-		RoleName:  aws.String(roleName),
+		RoleName:  aws.String(_roleName),
 		PolicyArn: aws.String("arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"),
 	})
 	if err != nil {
 		return "", err
 	}
 
-	time.Sleep(iamRoleWaitTime)
+	time.Sleep(_iamRoleWaitTime)
 	return roleArn, nil
 }
 
 func (d *Deployer) deployLambdaFunction(roleArn string, lambdaZip []byte) (string, error) {
 	zipData := lambdaZip
-	funcName := fmt.Sprintf("%s-%s", functionName, d.region)
-	ctx, cancel := context.WithTimeout(context.Background(), awsOperationTimeout)
+	funcName := fmt.Sprintf("%s-%s", _functionName, d.region)
+	ctx, cancel := context.WithTimeout(context.Background(), _awsOperationTimeout)
 	defer cancel()
 
 	if getOutput, err := d.lambdaClient.GetFunction(ctx, &lambda.GetFunctionInput{
@@ -399,8 +400,8 @@ func (d *Deployer) deployLambdaFunction(roleArn string, lambdaZip []byte) (strin
 			ZipFile: zipData,
 		},
 		Architectures: []lambdatypes.Architecture{lambdatypes.ArchitectureArm64},
-		MemorySize:    aws.Int32(lambdaMemoryMB),
-		Timeout:       aws.Int32(lambdaTimeout),
+		MemorySize:    aws.Int32(_lambdaMemoryMB),
+		Timeout:       aws.Int32(_lambdaTimeout),
 		Description:   aws.String("updo website executor function"),
 		Tags: map[string]string{
 			"CreatedBy": "updo",
@@ -417,7 +418,7 @@ func (d *Deployer) deployLambdaFunction(roleArn string, lambdaZip []byte) (strin
 func GetDeployedRegions(profile string) ([]string, error) {
 	var deployedRegions []string
 
-	allRegions := defaultRegions
+	allRegions := _defaultRegions
 
 	type regionResult struct {
 		region string
@@ -449,8 +450,8 @@ func checkFunctionExists(region, profile string) (bool, error) {
 		return false, err
 	}
 
-	funcName := fmt.Sprintf("%s-%s", functionName, region)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	funcName := fmt.Sprintf("%s-%s", _functionName, region)
+	ctx, cancel := context.WithTimeout(context.Background(), _functionCheckTimeout)
 	defer cancel()
 
 	_, err = deployer.lambdaClient.GetFunction(ctx, &lambda.GetFunctionInput{
@@ -468,8 +469,8 @@ func validateRegions(regions []string) []string {
 	var validRegions []string
 	var unsupportedRegions []string
 
-	defaultRegionSet := make(map[string]bool)
-	for _, region := range defaultRegions {
+	defaultRegionSet := make(map[string]bool, len(_defaultRegions))
+	for _, region := range _defaultRegions {
 		defaultRegionSet[region] = true
 	}
 
