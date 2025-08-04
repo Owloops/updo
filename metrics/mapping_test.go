@@ -84,7 +84,7 @@ func TestConvertCheckToTimeSeries(t *testing.T) {
 			metrics := make(map[string]float64)
 			for _, series := range timeSeries {
 				for _, label := range series.Labels {
-					if label.Name == "__name__" {
+					if label.Name == _nameLbl {
 						metricName := strings.TrimPrefix(label.Value, "updo_")
 						if len(series.Samples) > 0 {
 							metrics[metricName] = series.Samples[0].Value

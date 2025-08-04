@@ -13,6 +13,11 @@ import (
 	"github.com/Owloops/updo/net"
 )
 
+const (
+	testUser = "user"
+	testPass = "pass"
+)
+
 func TestWriteClient(t *testing.T) {
 	cfg := NewConfig()
 	client := NewWriteClient(cfg)
@@ -148,7 +153,7 @@ func TestHTTPRequests(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if tt.auth {
-					if user, pass, ok := r.BasicAuth(); !ok || user != "user" || pass != "pass" {
+					if user, pass, ok := r.BasicAuth(); !ok || user != testUser || pass != testPass {
 						t.Error("Auth failed")
 					}
 				}
@@ -156,14 +161,14 @@ func TestHTTPRequests(t *testing.T) {
 					t.Error("Header missing")
 				}
 				w.WriteHeader(tt.status)
-				w.Write([]byte(tt.body))
+				_, _ = w.Write([]byte(tt.body))
 			}))
 			defer server.Close()
 
 			cfg := NewConfig()
 			cfg.ServerURL = server.URL
 			if tt.auth {
-				cfg.Username, cfg.Password = "user", "pass"
+				cfg.Username, cfg.Password = testUser, testPass
 			}
 			if tt.header {
 				cfg.Headers = map[string]string{"X-Test": "value"}
