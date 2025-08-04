@@ -26,10 +26,18 @@ func (tk TargetKey) String() string {
 }
 
 func (tk TargetKey) DisplayName() string {
+	cleanName := tk.GetCleanName()
 	if tk.IsLocal || tk.Region == "" || tk.Region == _localRegion {
-		return tk.TargetName
+		return cleanName
 	}
-	return fmt.Sprintf("%s (%s)", tk.TargetName, tk.Region)
+	return fmt.Sprintf("%s (%s)", cleanName, tk.Region)
+}
+
+func (tk TargetKey) GetCleanName() string {
+	if idx := strings.LastIndex(tk.TargetName, "#"); idx != -1 {
+		return tk.TargetName[:idx]
+	}
+	return tk.TargetName
 }
 
 func NewTargetKey(targetName, region string) TargetKey {

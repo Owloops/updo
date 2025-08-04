@@ -133,10 +133,7 @@ func (m *Manager) updateTargetList() {
 	var targetOrder []string
 
 	for _, key := range allKeys {
-		displayName := key.TargetName
-		if idx := strings.LastIndex(key.TargetName, "#"); idx != -1 {
-			displayName = key.TargetName[:idx]
-		}
+		displayName := key.GetCleanName()
 
 		if _, exists := targetGroups[displayName]; !exists {
 			targetOrder = append(targetOrder, displayName)

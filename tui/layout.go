@@ -96,11 +96,7 @@ func (m *Manager) handleSearchChange(query string, filteredIndices []int) {
 
 		currentKey := m.getCurrentTargetKey()
 		if currentKey != nil {
-			region := "local"
-			if !currentKey.IsLocal && currentKey.Region != "" {
-				region = currentKey.Region
-			}
-			m.listWidget.Title = fmt.Sprintf("Targets → %s [%s]", currentKey.TargetName, region)
+			m.listWidget.Title = fmt.Sprintf("Targets → %s", currentKey.GetCleanName())
 		} else {
 			m.listWidget.Title = _targetsTitle
 		}
