@@ -1,0 +1,40 @@
+# Updo Configuration Example for Prometheus Integration
+# Use with: updo monitor --config updo-example.toml --prometheus-url http://localhost:9090/api/v1/write
+
+[global]
+count = 0  # Run continuously (0 = infinite)
+refresh_interval = 1  # Check every 30 seconds
+timeout = 10
+
+# [[targets]]
+# name = "Test Service"
+# url = "https://httpbin.org/status/200"
+# refresh_interval = 15  # Override global interval (seconds)
+
+# [[targets]]
+# name = "Test Service"
+# url = "https://httpbin.org/delay/2"
+# assert_text = "origin"  # Assert response contains this text
+
+[[targets]]
+name = "Test Service"
+refresh_interval = 5
+url = "https://httpbin.org/status/404"
+# This target is expected to fail
+
+[[targets]]
+name = "Google"
+url = "https://www.google.com"
+assert_text = "Google"
+
+[[targets]]
+name = "GitHub API"
+url = "https://api.github.com/users/octocat"
+headers = ["User-Agent: updo-monitoring", "Accept: application/vnd.github.v3+json"]
+assert_text = "The Octocat"
+
+# Example with multiple regions (requires AWS credentials)
+# [[targets]]
+# name = "Multi-Region Example"
+# url = "https://example.com"
+# regions = ["us-east-1", "eu-west-1", "ap-southeast-1"]

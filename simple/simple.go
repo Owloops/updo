@@ -115,6 +115,173 @@ func (m *OutputManager) PrintFinalStatistics(monitors map[string]*stats.Monitor,
 	}
 }
 
+func (m *OutputManager) PrintFinalStatisticsWithKeys(monitors map[string]*stats.Monitor, keyRegistry *stats.TargetKeyRegistry, logMode bool) {
+	if !logMode {
+		m.PrintStatisticsWithKeys(monitors, keyRegistry)
+	} else {
+		targetMonitors := make(map[string]*stats.Monitor)
+		for _, target := range m.targets {
+			keys := keyRegistry.GetKeysForTarget(target.Name)
+			if len(keys) > 0 {
+				firstKey := keys[0]
+				if monitor, exists := monitors[firstKey.String()]; exists {
+					targetMonitors[target.Name] = monitor
+				}
+			}
+		}
+
+		for _, target := range m.targets {
+			if monitor, exists := targetMonitors[target.Name]; exists {
+				stats := monitor.GetStats()
+				utils.LogMetrics(&stats, target.URL)
+			}
+		}
+	}
+}
+
+func (m *OutputManager) PrintStatisticsWithKeys(monitors map[string]*stats.Monitor, keyRegistry *stats.TargetKeyRegistry) {
+	if m.isSingle {
+		target := m.targets[0]
+		keys := keyRegistry.GetKeysForTarget(target.Name)
+		if len(keys) == 0 {
+			return
+		}
+
+		var aggregatedStats stats.Stats
+		var hasStats bool
+
+		for _, key := range keys {
+			if monitor, exists := monitors[key.String()]; exists {
+				keyStats := monitor.GetStats()
+				if !hasStats {
+					aggregatedStats = keyStats
+					hasStats = true
+				} else {
+					aggregatedStats.ChecksCount += keyStats.ChecksCount
+					aggregatedStats.SuccessCount += keyStats.SuccessCount
+					if keyStats.MinResponseTime < aggregatedStats.MinResponseTime || aggregatedStats.MinResponseTime == 0 {
+						aggregatedStats.MinResponseTime = keyStats.MinResponseTime
+					}
+					if keyStats.MaxResponseTime > aggregatedStats.MaxResponseTime {
+						aggregatedStats.MaxResponseTime = keyStats.MaxResponseTime
+					}
+					if aggregatedStats.ChecksCount > 0 {
+						aggregatedStats.UptimePercent = float64(aggregatedStats.SuccessCount) / float64(aggregatedStats.ChecksCount) * 100
+					}
+				}
+			}
+		}
+
+		if hasStats {
+			fmt.Printf("\n--- %s statistics ---\n", target.URL)
+
+			successPercent := 0.0
+			if aggregatedStats.ChecksCount > 0 {
+				successPercent = float64(aggregatedStats.SuccessCount) / float64(aggregatedStats.ChecksCount) * 100
+			}
+
+			fmt.Printf("%d checks, %d successful (%.1f%%)\n",
+				aggregatedStats.ChecksCount,
+				aggregatedStats.SuccessCount,
+				successPercent)
+
+			fmt.Printf("uptime: %.1f%%\n", aggregatedStats.UptimePercent)
+
+			if aggregatedStats.ChecksCount > 0 {
+				var builder strings.Builder
+				builder.Grow(100)
+				builder.WriteString(fmt.Sprintf("response time min/avg/max/stddev = %d/%d/%d/%.1f ms",
+					aggregatedStats.MinResponseTime.Milliseconds(),
+					aggregatedStats.AvgResponseTime.Milliseconds(),
+					aggregatedStats.MaxResponseTime.Milliseconds(),
+					aggregatedStats.StdDev))
+
+				if aggregatedStats.ChecksCount >= 2 && aggregatedStats.P95 > 0 {
+					builder.WriteString(fmt.Sprintf(", 95th percentile: %d ms", aggregatedStats.P95.Milliseconds()))
+				}
+
+				fmt.Println(builder.String())
+			}
+
+			if sslDays := m.getSSLExpiry(target.URL); sslDays > 0 {
+				fmt.Printf("SSL certificate expires in %d days\n", sslDays)
+			}
+		}
+	} else {
+		fmt.Println("\n--- statistics ---")
+		allKeys := keyRegistry.GetAllKeys()
+		for _, key := range allKeys {
+			if key.TargetIndex >= 0 && key.TargetIndex < len(m.targets) {
+				target := m.targets[key.TargetIndex]
+
+				fmt.Printf("\n%s (%s):\n", target.Name, target.URL)
+
+				if monitor, exists := monitors[key.String()]; exists {
+					stats := monitor.GetStats()
+					if !key.IsLocal {
+						fmt.Printf("  Region [%s]:\n", key.Region)
+						m.printTargetStatsIndented(stats, target.URL)
+					} else {
+						m.printTargetStats(stats, target.URL)
+					}
+				}
+			}
+		}
+	}
+}
+
+func (m *OutputManager) printTargetStats(stats stats.Stats, url string) {
+	successPercent := 0.0
+	if stats.ChecksCount > 0 {
+		successPercent = float64(stats.SuccessCount) / float64(stats.ChecksCount) * 100
+	}
+
+	fmt.Printf("  %d checks, %d successful (%.1f%%), uptime: %.1f%%\n",
+		stats.ChecksCount, stats.SuccessCount, successPercent, stats.UptimePercent)
+
+	if stats.ChecksCount > 0 {
+		fmt.Printf("  response time min/avg/max = %d/%d/%d ms",
+			stats.MinResponseTime.Milliseconds(),
+			stats.AvgResponseTime.Milliseconds(),
+			stats.MaxResponseTime.Milliseconds())
+
+		if stats.ChecksCount >= 2 && stats.P95 > 0 {
+			fmt.Printf(", 95p: %d ms", stats.P95.Milliseconds())
+		}
+		fmt.Println()
+	}
+
+	if sslDays := m.getSSLExpiry(url); sslDays > 0 {
+		fmt.Printf("  SSL certificate expires in %d days\n", sslDays)
+	}
+}
+
+func (m *OutputManager) printTargetStatsIndented(stats stats.Stats, url string) {
+	successPercent := 0.0
+	if stats.ChecksCount > 0 {
+		successPercent = float64(stats.SuccessCount) / float64(stats.ChecksCount) * 100
+	}
+
+	fmt.Printf("    %d checks, %d successful (%.1f%%), uptime: %.1f%%\n",
+		stats.ChecksCount, stats.SuccessCount, successPercent, stats.UptimePercent)
+
+	if stats.ChecksCount > 0 {
+		fmt.Printf("    response time min/avg/max = %d/%d/%d ms",
+			stats.MinResponseTime.Milliseconds(),
+			stats.AvgResponseTime.Milliseconds(),
+			stats.MaxResponseTime.Milliseconds())
+
+		if stats.ChecksCount >= 2 && stats.P95 > 0 {
+			fmt.Printf(", 95p: %d ms", stats.P95.Milliseconds())
+		}
+		fmt.Println()
+	}
+
+	if sslDays := m.getSSLExpiry(url); sslDays > 0 {
+		fmt.Printf("    SSL certificate expires in %d days\n", sslDays)
+	}
+}
+
 func (m *OutputManager) PrintStatistics(monitors map[string]*stats.Monitor) {
 	if m.isSingle {
 		target := m.targets[0]

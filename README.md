@@ -18,6 +18,7 @@ Updo is a command-line tool for monitoring website uptime and performance. It pr
 - **Real-time monitoring** with uptime percentage, response times, and SSL certificate tracking
 - **Multi-target monitoring** - Monitor multiple URLs concurrently from the command line or config files
 - **Multi-region AWS Lambda** - Deploy across 13 global regions for worldwide monitoring coverage
+- **Prometheus & Grafana integration** - Export metrics for visualization and long-term storage
 - **Alert notifications** - Desktop notifications and webhook integration (Slack, Discord, custom endpoints)
 - **Flexible HTTP support** - Custom headers, POST/PUT requests, SSL verification options, response assertions
 - **Multiple output modes** - Interactive TUI, simple text output, or structured JSON logging
@@ -95,7 +96,6 @@ docker run updo monitor <website-url> [options]
 # Generate shell completions
 ./updo completion bash > updo_completion.bash
 ```
-
 
 ### Options
 
@@ -273,6 +273,40 @@ webhook_headers = [
   "X-Service: updo-monitor"
 ]
 ```
+
+## Prometheus & Grafana Integration
+
+Export updo metrics to Prometheus for long-term storage, visualization, and alerting:
+
+```bash
+# Basic Prometheus integration
+./updo monitor --prometheus-url http://localhost:9090/api/v1/write https://example.com
+
+# Via environment variables (CLI flag optional if URL provided via env)
+export UPDO_PROMETHEUS_RW_SERVER_URL="https://prometheus.example.com/api/v1/write"
+export UPDO_PROMETHEUS_USERNAME="admin"
+export UPDO_PROMETHEUS_PASSWORD="secret"
+./updo monitor https://example.com
+```
+
+**Available metrics:**
+
+- Target uptime and response times
+- HTTP status codes and timing breakdown (DNS, TCP, TTFB, download)
+- SSL certificate expiry and assertion results
+
+**Quick start with Docker:**
+
+```bash
+# Clone and start the monitoring stack
+git clone https://github.com/Owloops/updo.git
+cd updo/examples/prometheus-grafana
+docker compose up -d
+```
+
+Access Grafana at [http://localhost:3000](http://localhost:3000) for pre-built dashboards.
+
+> **📖 Full Documentation:** See [examples/prometheus-grafana/README.md](examples/prometheus-grafana/README.md) for complete setup, authentication options, metrics reference, and PromQL examples.
 
 ## Structured Logging
 

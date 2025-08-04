@@ -1,0 +1,38 @@
+networks:
+  updo:
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.2.0
+    command:
+      - --web.enable-remote-write-receiver
+      - --enable-feature=native-histograms
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/tmp/prometheus
+      - --storage.tsdb.retention.time=1d
+      - --storage.tsdb.retention.size=100MB
+    networks:
+      - updo
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    mem_limit: 512m
+    tmpfs:
+      - /tmp/prometheus:size=200M
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    networks:
+      - updo
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_BASIC_ENABLED=false
+    volumes:
+      - ./grafana:/etc/grafana/provisioning
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+

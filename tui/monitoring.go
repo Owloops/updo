@@ -3,11 +3,14 @@ package tui
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/Owloops/updo/aws"
 	"github.com/Owloops/updo/config"
+	"github.com/Owloops/updo/metrics"
 	"github.com/Owloops/updo/net"
 	"github.com/Owloops/updo/notifications"
 	"github.com/Owloops/updo/stats"
@@ -18,16 +21,17 @@ type TargetData struct {
 	Target       config.Target
 	Result       net.WebsiteCheckResult
 	Stats        stats.Stats
-	TargetKey    TargetKey
+	TargetKey    stats.TargetKey
 	WebhookError error
 	LambdaError  error
 }
 
 type Options struct {
-	Count   int
-	Log     string
-	Regions []string
-	Profile string
+	Count         int
+	Log           string
+	Regions       []string
+	Profile       string
+	PrometheusURL string
 }
 
 func StartMonitoring(targets []config.Target, options Options) {
@@ -40,7 +44,43 @@ func StartMonitoring(targets []config.Target, options Options) {
 	}
 	defer ui.Close()
 
-	keyRegistry := NewTargetKeyRegistry(targets, options.Regions)
+	prometheusURL := options.PrometheusURL
+	if prometheusURL == "" {
+		if updoURL := os.Getenv("UPDO_PROMETHEUS_RW_SERVER_URL"); updoURL != "" {
+			prometheusURL = updoURL
+		}
+	}
+
+	if prometheusURL != "" {
+		metricsConfig := metrics.NewConfig()
+		metricsConfig.ServerURL = prometheusURL
+
+		if username := os.Getenv("UPDO_PROMETHEUS_USERNAME"); username != "" {
+			metricsConfig.Username = username
+		}
+		if password := os.Getenv("UPDO_PROMETHEUS_PASSWORD"); password != "" {
+			metricsConfig.Password = password
+		}
+		if bearerToken := os.Getenv("UPDO_PROMETHEUS_BEARER_TOKEN"); bearerToken != "" {
+			metricsConfig.Headers["Authorization"] = "Bearer " + bearerToken
+		}
+		if authHeader := os.Getenv("UPDO_PROMETHEUS_AUTH_HEADER"); authHeader != "" {
+			parts := strings.SplitN(authHeader, ":", 2)
+			if len(parts) == 2 {
+				metricsConfig.Headers[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+			}
+		}
+		if pushInterval := os.Getenv("UPDO_PROMETHEUS_PUSH_INTERVAL"); pushInterval != "" {
+			if duration, err := time.ParseDuration(pushInterval); err == nil {
+				metricsConfig.PushInterval = duration
+			}
+		}
+
+		metrics.InitRemoteWrite(metricsConfig)
+		defer metrics.StopRemoteWrite()
+	}
+
+	keyRegistry := stats.NewTargetKeyRegistry(targets, options.Regions)
 	allKeys := keyRegistry.GetAllKeys()
 
 	monitors := make(map[string]*stats.Monitor, len(allKeys))
@@ -68,12 +108,12 @@ func StartMonitoring(targets []config.Target, options Options) {
 	dataChannel := make(chan TargetData, len(targets)*_dataChannelMultiplier)
 	var wg sync.WaitGroup
 
-	for _, target := range targets {
+	for i, target := range targets {
 		wg.Add(1)
-		go func(t config.Target) {
+		go func(t config.Target, index int) {
 			defer wg.Done()
-			monitorTargetTUI(ctx, t, monitors, sequences, alertStates, webhookAlertStates, dataChannel, options)
-		}(target)
+			monitorTargetTUI(ctx, t, index, monitors, sequences, alertStates, webhookAlertStates, dataChannel, options)
+		}(target, i)
 	}
 
 	go func() {
@@ -198,13 +238,27 @@ func StartMonitoring(targets []config.Target, options Options) {
 			}
 			manager.UpdateTarget(data)
 
+			if options.PrometheusURL != "" {
+				region := ""
+				if !data.TargetKey.IsLocal {
+					region = data.TargetKey.Region
+				}
+				metrics.RecordCheck(data.Target, data.Result, region)
+
+				if strings.HasPrefix(data.Target.URL, "https://") {
+					if sslExpiry := net.GetSSLCertExpiry(data.Target.URL); sslExpiry >= 0 {
+						metrics.RecordSSLExpiry(data.Target, sslExpiry)
+					}
+				}
+			}
+
 		case <-uiRefreshTicker.C:
 			manager.RefreshStats(monitors)
 		}
 	}
 }
 
-func monitorTargetTUI(ctx context.Context, target config.Target, monitors map[string]*stats.Monitor, sequences map[string]*int, alertStates map[string]*bool, webhookAlertStates map[string]*bool, dataChannel chan<- TargetData, options Options) {
+func monitorTargetTUI(ctx context.Context, target config.Target, targetIndex int, monitors map[string]*stats.Monitor, sequences map[string]*int, alertStates map[string]*bool, webhookAlertStates map[string]*bool, dataChannel chan<- TargetData, options Options) {
 	ticker := time.NewTicker(target.GetRefreshInterval())
 	defer ticker.Stop()
 
@@ -239,7 +293,8 @@ func monitorTargetTUI(ctx context.Context, target config.Target, monitors map[st
 						LastCheckTime: time.Now(),
 					}
 
-					targetKey := NewRegionTargetKey(target.Name, lambdaResult.Region)
+					indexedName := fmt.Sprintf("%s#%d", target.Name, targetIndex)
+					targetKey := stats.NewRegionTargetKey(indexedName, lambdaResult.Region, targetIndex)
 					dataChannel <- TargetData{
 						Target:      target,
 						Result:      errorResult,
@@ -250,7 +305,8 @@ func monitorTargetTUI(ctx context.Context, target config.Target, monitors map[st
 					continue
 				}
 
-				targetKey := NewRegionTargetKey(target.Name, lambdaResult.Region)
+				indexedName := fmt.Sprintf("%s#%d", target.Name, targetIndex)
+				targetKey := stats.NewRegionTargetKey(indexedName, lambdaResult.Region, targetIndex)
 				targetKeyStr := targetKey.String()
 
 				if monitor, exists := monitors[targetKeyStr]; exists {
@@ -301,7 +357,8 @@ func monitorTargetTUI(ctx context.Context, target config.Target, monitors map[st
 			}
 		} else {
 			result := net.CheckWebsite(target.URL, netConfig)
-			targetKey := NewLocalTargetKey(target.Name)
+			indexedName := fmt.Sprintf("%s#%d", target.Name, targetIndex)
+			targetKey := stats.NewLocalTargetKey(indexedName, targetIndex)
 			targetKeyStr := targetKey.String()
 
 			if monitor, exists := monitors[targetKeyStr]; exists {

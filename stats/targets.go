@@ -1,4 +1,4 @@
-package tui
+package stats
 
 import (
 	"fmt"
@@ -7,10 +7,15 @@ import (
 	"github.com/Owloops/updo/config"
 )
 
+const (
+	_localRegion = "local"
+)
+
 type TargetKey struct {
-	TargetName string
-	Region     string
-	IsLocal    bool
+	TargetName  string
+	Region      string
+	IsLocal     bool
+	TargetIndex int
 }
 
 func (tk TargetKey) String() string {
@@ -36,32 +41,36 @@ func NewTargetKey(targetName, region string) TargetKey {
 	}
 }
 
-func NewLocalTargetKey(targetName string) TargetKey {
+func NewLocalTargetKey(targetName string, targetIndex int) TargetKey {
 	return TargetKey{
-		TargetName: targetName,
-		Region:     _localRegion,
-		IsLocal:    true,
+		TargetName:  targetName,
+		Region:      _localRegion,
+		IsLocal:     true,
+		TargetIndex: targetIndex,
 	}
 }
 
-func NewRegionTargetKey(targetName, region string) TargetKey {
+func NewRegionTargetKey(targetName, region string, targetIndex int) TargetKey {
 	return TargetKey{
-		TargetName: targetName,
-		Region:     region,
-		IsLocal:    false,
+		TargetName:  targetName,
+		Region:      region,
+		IsLocal:     false,
+		TargetIndex: targetIndex,
 	}
 }
 
 func ParseTargetKey(keyStr string) TargetKey {
 	if strings.Contains(keyStr, "@") {
 		parts := strings.SplitN(keyStr, "@", 2)
-		return NewRegionTargetKey(parts[0], parts[1])
+		return NewRegionTargetKey(parts[0], parts[1], -1)
 	}
-	return NewLocalTargetKey(keyStr)
+	return NewLocalTargetKey(keyStr, -1)
 }
 
-func GetAllKeysForTarget(target config.Target, regions []string) []TargetKey {
+func GetAllKeysForTarget(target config.Target, regions []string, index int) []TargetKey {
 	var keys []TargetKey
+
+	uniqueName := fmt.Sprintf("%s#%d", target.Name, index)
 
 	targetRegions := target.Regions
 	if len(targetRegions) == 0 {
@@ -70,10 +79,10 @@ func GetAllKeysForTarget(target config.Target, regions []string) []TargetKey {
 
 	if len(targetRegions) > 0 {
 		for _, region := range targetRegions {
-			keys = append(keys, NewRegionTargetKey(target.Name, region))
+			keys = append(keys, NewRegionTargetKey(uniqueName, region, index))
 		}
 	} else {
-		keys = append(keys, NewLocalTargetKey(target.Name))
+		keys = append(keys, NewLocalTargetKey(uniqueName, index))
 	}
 
 	return keys
@@ -89,8 +98,8 @@ func NewTargetKeyRegistry(targets []config.Target, globalRegions []string) *Targ
 		keysByName: make(map[string][]TargetKey, len(targets)),
 	}
 
-	for _, target := range targets {
-		targetKeys := GetAllKeysForTarget(target, globalRegions)
+	for i, target := range targets {
+		targetKeys := GetAllKeysForTarget(target, globalRegions, i)
 		registry.allKeys = append(registry.allKeys, targetKeys...)
 		registry.keysByName[target.Name] = targetKeys
 	}
