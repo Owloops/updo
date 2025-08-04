@@ -27,6 +27,134 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "Current status of all monitored targets",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "index": 1,
+                  "text": "DOWN ❌"
+                },
+                "1": {
+                  "color": "green", 
+                  "index": 0,
+                  "text": "UP ✅"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.5.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "updo_target_up",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Target Status Overview",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true
+            },
+            "includeByName": {},
+            "indexByName": {
+              "name": 0,
+              "url": 1,
+              "Value": 2
+            },
+            "renameByName": {
+              "Value": "Status",
+              "name": "Target",
+              "url": "URL"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Target uptime over time",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -45,7 +173,7 @@
               "vis": false
             },
             "lineInterpolation": "linear",
-            "lineWidth": 1,
+            "lineWidth": 2,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
@@ -61,6 +189,8 @@
             }
           },
           "mappings": [],
+          "max": 1,
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -70,11 +200,11 @@
               },
               {
                 "color": "red",
-                "value": 80
+                "value": 0.5
               }
             ]
           },
-          "unit": "none"
+          "unit": "percentunit"
         },
         "overrides": []
       },
@@ -82,96 +212,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 0
-      },
-      "id": 1,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "updo_target_up",
-          "interval": "",
-          "legendFormat": "{{name}} - {{url}} ({{region}})",
-          "refId": "A"
-        }
-      ],
-      "title": "Target Uptime Status",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "vis": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 0
+        "y": 6
       },
       "id": 2,
       "options": {
@@ -191,9 +232,101 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "editorMode": "code",
+          "expr": "updo_target_up",
+          "legendFormat": "{{name}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Target Uptime",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Response time trends for all targets",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 2
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 6
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
           "expr": "updo_response_time_seconds",
-          "interval": "",
-          "legendFormat": "{{name}} - {{url}} ({{region}})",
+          "legendFormat": "{{name}}",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -205,162 +338,18 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "SSL certificate expiration dates",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "thresholds"
           },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "red",
-                "value": null
-              },
-              {
-                "color": "green",
-                "value": 1
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 0,
-        "y": 8
-      },
-      "id": 3,
-      "options": {
-        "orientation": "auto",
-        "reduceOptions": {
-          "values": false,
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": ""
-        },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true,
-        "text": {}
-      },
-      "pluginVersion": "9.5.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "updo_target_up",
-          "interval": "",
-          "legendFormat": "{{name}} - {{url}}",
-          "refId": "A"
-        }
-      ],
-      "title": "Current Status",
-      "type": "gauge"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 400
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".*200.*"
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
             },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "green"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".*40[0-9].*|.*50[0-9].*"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "red"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 8,
-        "y": 8
-      },
-      "id": 5,
-      "options": {
-        "showHeader": true,
-        "sortBy": [
-          {
-            "desc": false,
-            "displayName": "Target"
-          }
-        ]
-      },
-      "pluginVersion": "9.5.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "updo_http_status_code_total",
-          "interval": "",
-          "legendFormat": "{{name}} ({{url}}) - {{status_code}}",
-          "refId": "A"
-        }
-      ],
-      "title": "HTTP Status Codes Summary",
-      "type": "table"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
+            "inspect": false
           },
           "mappings": [],
           "thresholds": {
@@ -380,44 +369,82 @@
               }
             ]
           },
-          "unit": "short",
-          "decimals": 0,
-          "custom": {
-            "displayMode": "basic"
-          }
+          "unit": "none"
         },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 16,
-        "y": 8
-      },
-      "id": 10,
-      "options": {
-        "showHeader": true,
-        "sortBy": [
+        "overrides": [
           {
-            "desc": true,
-            "displayName": "Value"
+            "matcher": {
+              "id": "byName",
+              "options": "Days Until Expiry"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              }
+            ]
           }
         ]
       },
-      "pluginVersion": "9.5.0",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "id": 5,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "editorMode": "code",
           "expr": "updo_ssl_cert_expiry_days",
-          "interval": "",
-          "legendFormat": "{{name}}",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
           "refId": "A"
         }
       ],
-      "title": "SSL Certificate Expiry (Days)",
+      "title": "SSL Certificate Expiry",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "url": true
+            },
+            "includeByName": {},
+            "indexByName": {
+              "name": 0,
+              "Value": 1
+            },
+            "renameByName": {
+              "Value": "Days Until Expiry",
+              "name": "Target"
+            }
+          }
+        }
+      ],
       "type": "table"
     },
     {
@@ -425,6 +452,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "Wait time before DNS lookup for all targets",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -443,7 +471,7 @@
               "vis": false
             },
             "lineInterpolation": "linear",
-            "lineWidth": 1,
+            "lineWidth": 2,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
@@ -465,38 +493,18 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
           "unit": "s"
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".*DNS.*"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "yellow"
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
         "h": 6,
         "w": 8,
         "x": 0,
-        "y": 16
+        "y": 22
       },
       "id": 6,
       "options": {
@@ -516,13 +524,15 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "updo_dns_lookup_seconds",
-          "interval": "",
-          "legendFormat": "{{name}} - DNS Lookup",
+          "editorMode": "code",
+          "expr": "updo_wait_seconds",
+          "hide": false,
+          "legendFormat": "{{name}}",
+          "range": true,
           "refId": "A"
         }
       ],
-      "title": "DNS Lookup Time",
+      "title": "Wait Time",
       "type": "timeseries"
     },
     {
@@ -530,6 +540,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "DNS lookup time for all targets",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -548,7 +559,7 @@
               "vis": false
             },
             "lineInterpolation": "linear",
-            "lineWidth": 1,
+            "lineWidth": 2,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
@@ -573,35 +584,19 @@
               },
               {
                 "color": "red",
-                "value": 80
+                "value": 0.1
               }
             ]
           },
           "unit": "s"
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".*TCP.*"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "red"
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
         "h": 6,
         "w": 8,
         "x": 8,
-        "y": 16
+        "y": 22
       },
       "id": 7,
       "options": {
@@ -621,13 +616,15 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "updo_tcp_connection_seconds",
-          "interval": "",
-          "legendFormat": "{{name}} - TCP Connection",
+          "editorMode": "code",
+          "expr": "updo_dns_lookup_seconds",
+          "hide": false,
+          "legendFormat": "{{name}}",
+          "range": true,
           "refId": "A"
         }
       ],
-      "title": "TCP Connection Time",
+      "title": "DNS Lookup Time",
       "type": "timeseries"
     },
     {
@@ -635,6 +632,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "TCP connection establishment time for all targets",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -653,7 +651,7 @@
               "vis": false
             },
             "lineInterpolation": "linear",
-            "lineWidth": 1,
+            "lineWidth": 2,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
@@ -678,35 +676,19 @@
               },
               {
                 "color": "red",
-                "value": 80
+                "value": 0.5
               }
             ]
           },
           "unit": "s"
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".*TTFB.*"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "blue"
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
         "h": 6,
         "w": 8,
         "x": 16,
-        "y": 16
+        "y": 22
       },
       "id": 8,
       "options": {
@@ -726,13 +708,15 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "updo_time_to_first_byte_seconds",
-          "interval": "",
-          "legendFormat": "{{name}} - TTFB",
+          "editorMode": "code",
+          "expr": "updo_tcp_connection_seconds",
+          "hide": false,
+          "legendFormat": "{{name}}",
+          "range": true,
           "refId": "A"
         }
       ],
-      "title": "Time to First Byte (Server Performance)",
+      "title": "TCP Connection Time",
       "type": "timeseries"
     },
     {
@@ -740,6 +724,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "Time to first byte (server processing) for all targets",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -758,7 +743,7 @@
               "vis": false
             },
             "lineInterpolation": "linear",
-            "lineWidth": 1,
+            "lineWidth": 2,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
@@ -783,35 +768,19 @@
               },
               {
                 "color": "red",
-                "value": 80
+                "value": 1
               }
             ]
           },
           "unit": "s"
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".*Download.*"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "green"
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
         "h": 6,
-        "w": 8,
+        "w": 12,
         "x": 0,
-        "y": 22
+        "y": 28
       },
       "id": 9,
       "options": {
@@ -831,13 +800,15 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "updo_download_duration_seconds",
-          "interval": "",
-          "legendFormat": "{{name}} - Download",
+          "editorMode": "code",
+          "expr": "updo_time_to_first_byte_seconds",
+          "hide": false,
+          "legendFormat": "{{name}}",
+          "range": true,
           "refId": "A"
         }
       ],
-      "title": "Download Duration",
+      "title": "Time to First Byte (TTFB)",
       "type": "timeseries"
     },
     {
@@ -845,6 +816,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "Content download duration for all targets",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -863,7 +835,7 @@
               "vis": false
             },
             "lineInterpolation": "linear",
-            "lineWidth": 1,
+            "lineWidth": 2,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
@@ -888,37 +860,21 @@
               },
               {
                 "color": "red",
-                "value": 80
+                "value": 0.5
               }
             ]
           },
           "unit": "s"
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".*Wait.*"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "purple"
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
         "h": 6,
-        "w": 8,
-        "x": 8,
-        "y": 22
+        "w": 12,
+        "x": 12,
+        "y": 28
       },
-      "id": 11,
+      "id": 10,
       "options": {
         "legend": {
           "calcs": [],
@@ -936,19 +892,21 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "updo_wait_seconds",
-          "interval": "",
-          "legendFormat": "{{name}} - Wait Time",
+          "editorMode": "code",
+          "expr": "updo_download_duration_seconds",
+          "hide": false,
+          "legendFormat": "{{name}}",
+          "range": true,
           "refId": "A"
         }
       ],
-      "title": "Wait Time (Pre-request Delay)",
+      "title": "Download Duration",
       "type": "timeseries"
     }
   ],
   "refresh": "5s",
-  "schemaVersion": 37,
-  "style": "dark",
+  "revision": 1,
+  "schemaVersion": 39,
   "tags": [
     "updo",
     "monitoring",
@@ -965,6 +923,6 @@
   "timezone": "",
   "title": "Updo Monitoring Dashboard",
   "uid": "updo-monitoring",
-  "version": 2,
+  "version": 1,
   "weekStart": ""
 }
