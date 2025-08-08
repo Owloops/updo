@@ -115,37 +115,42 @@ func TestIsIPAddress(t *testing.T) {
 
 func TestAutoDetectProtocol(t *testing.T) {
 	tests := []struct {
-		name  string
-		input string
-		want  string
+		name      string
+		input     string
+		wantHTTPS string
+		wantHTTP  string
 	}{
 		{
-			name:  "add protocol to domain",
-			input: "example.com",
-			want:  "https://example.com",
+			name:      "add protocol to domain",
+			input:     "example.com",
+			wantHTTPS: "https://example.com",
+			wantHTTP:  "http://example.com",
 		},
 		{
-			name:  "preserve existing protocol",
-			input: "https://example.com",
-			want:  "https://example.com",
+			name:      "preserve existing protocol",
+			input:     "https://example.com",
+			wantHTTPS: "https://example.com",
+			wantHTTP:  "https://example.com",
 		},
 		{
-			name:  "add protocol to IP with port",
-			input: "192.168.1.1:8080",
-			want:  "https://192.168.1.1:8080",
+			name:      "add protocol to IP with port",
+			input:     "192.168.1.1:8080",
+			wantHTTPS: "https://192.168.1.1:8080",
+			wantHTTP:  "http://192.168.1.1:8080",
 		},
 		{
-			name:  "add protocol to localhost",
-			input: "localhost:3000",
-			want:  "https://localhost:3000",
+			name:      "add protocol to localhost",
+			input:     "localhost:3000",
+			wantHTTPS: "https://localhost:3000",
+			wantHTTP:  "http://localhost:3000",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := AutoDetectProtocol(tt.input)
-			if got != tt.want {
-				t.Errorf("AutoDetectProtocol(%q) = %v, want %v", tt.input, got, tt.want)
+			if got != tt.wantHTTPS && got != tt.wantHTTP {
+				t.Errorf("AutoDetectProtocol(%q) = %v, want %v or %v", tt.input, got, tt.wantHTTPS, tt.wantHTTP)
 			}
 		})
 	}

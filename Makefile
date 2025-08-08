@@ -65,7 +65,7 @@ install: build ## Install updo binary to GOPATH/bin
 
 test: build ## Build and test deployment with dry-run
 	@echo "Testing deployment with dry-run..."
-	@./$(BINARY_NAME) deploy --dry-run
+	@./$(BINARY_NAME) aws deploy --dry-run
 	@echo "Test completed successfully"
 
 lint: ## Run golangci-lint if available
