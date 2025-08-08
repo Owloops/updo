@@ -116,7 +116,11 @@ func (m *Manager) InitializeLayout(width, height int) {
 				break
 			}
 		}
-		m.detailsManager.InitializeWidgets(firstTarget.URL, firstTarget.GetRefreshInterval())
+		if m.isSingle && len(m.targets) > 0 {
+			m.detailsManager.InitializeWidgets(m.targets[0].URL, m.targets[0].GetRefreshInterval())
+		} else {
+			m.detailsManager.InitializeWidgets(firstTarget.URL, firstTarget.GetRefreshInterval())
+		}
 	}
 
 	if !m.isSingle {
@@ -419,6 +423,9 @@ func (m *Manager) UpdateTarget(data TargetData) {
 
 	currentKey := m.getCurrentTargetKey()
 	if currentKey != nil && currentKey.String() == targetKeyStr {
+		if m.isSingle && m.detailsManager.URLWidget != nil {
+			m.detailsManager.URLWidget.Text = data.Target.URL
+		}
 		m.restorePlotData(targetKeyStr)
 		m.updateCurrentTargetWidgets(data.Result, data.Stats)
 		if m.showLogs {
