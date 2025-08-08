@@ -45,29 +45,33 @@ brew install updo
 **Debian/Ubuntu:**
 
 ```bash
-curl -L -O https://github.com/Owloops/updo/releases/latest/download/updo_linux_amd64.deb
-sudo dpkg -i updo_linux_amd64.deb
+# Replace VERSION with actual version (e.g., 0.3.7)
+curl -L -O https://github.com/Owloops/updo/releases/latest/download/updo_VERSION_linux_amd64.deb
+sudo dpkg -i updo_VERSION_linux_amd64.deb
 ```
 
 **Red Hat/Fedora/CentOS:**
 
 ```bash
-curl -L -O https://github.com/Owloops/updo/releases/latest/download/updo-1.x86_64.rpm
-sudo rpm -i updo-1.x86_64.rpm
+# Replace VERSION with actual version (e.g., 0.3.7)
+curl -L -O https://github.com/Owloops/updo/releases/latest/download/updo_VERSION_linux_amd64.rpm
+sudo rpm -i updo_VERSION_linux_amd64.rpm
 ```
 
 **Alpine Linux:**
 
 ```bash
-curl -L -O https://github.com/Owloops/updo/releases/latest/download/updo.apk
-sudo apk add --allow-untrusted updo.apk
+# Replace VERSION with actual version (e.g., 0.3.7)
+curl -L -O https://github.com/Owloops/updo/releases/latest/download/updo_VERSION_linux_amd64.apk
+sudo apk add --allow-untrusted updo_VERSION_linux_amd64.apk
 ```
 
 **Arch Linux:**
 
 ```bash
-curl -L -O https://github.com/Owloops/updo/releases/latest/download/updo-1-x86_64.pkg.tar.zst
-sudo pacman -U updo-1-x86_64.pkg.tar.zst
+# Replace VERSION with actual version (e.g., 0.3.7)
+curl -L -O https://github.com/Owloops/updo/releases/latest/download/updo_VERSION_linux_amd64.pkg.tar.zst
+sudo pacman -U updo_VERSION_linux_amd64.pkg.tar.zst
 ```
 
 </details>
@@ -79,7 +83,7 @@ sudo pacman -U updo-1-x86_64.pkg.tar.zst
 
 ```powershell
 # Download and install updo
-Invoke-WebRequest -Uri "https://github.com/Owloops/updo/releases/latest/download/updo-windows-amd64.exe" -OutFile "updo.exe"
+Invoke-WebRequest -Uri "https://github.com/Owloops/updo/releases/latest/download/updo_Windows_amd64.exe" -OutFile "updo.exe"
 # Move to a directory in your PATH (or create a custom directory)
 Move-Item updo.exe C:\Windows\System32\updo.exe
 ```

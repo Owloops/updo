@@ -79,20 +79,13 @@ get_latest_version() {
 
 get_download_url() {
     local RELEASE_OS="${SYSTEM}"
-    if [[ "${SYSTEM}" = "Darwin" ]]; then
-        RELEASE_OS="darwin"
-    elif [[ "${SYSTEM}" = "Linux" ]]; then
-        RELEASE_OS="linux"
-    elif [[ "${SYSTEM}" = "Windows" ]]; then
-        RELEASE_OS="windows"
-    fi
 
     local RELEASE_ARCH="${ARCH}"
     if [[ "${ARCH}" = "x86_64" ]]; then
         RELEASE_ARCH="amd64"
     fi
 
-    ASSET_PATTERN="updo-${RELEASE_OS}-${RELEASE_ARCH}"
+    ASSET_PATTERN="updo_${RELEASE_OS}_${RELEASE_ARCH}"
     if [[ "${SYSTEM}" = "Windows" ]]; then
         ASSET_PATTERN="${ASSET_PATTERN}.exe"
     fi

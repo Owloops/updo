@@ -65,5 +65,8 @@ brews:
       name: homebrew-tap
       token: "{{ .Env.GH_PAT }}"
 
+checksum:
+  name_template: checksums.txt
+
 changelog:
   use: github
