@@ -103,12 +103,6 @@ curl -sSL https://raw.githubusercontent.com/Owloops/updo/main/install.sh | bash
 </details>
 
 <details>
-<summary>Download executable binaries</summary>
-
-[![Latest Release](https://img.shields.io/github/v/release/Owloops/updo?style=flat-square)](https://github.com/Owloops/updo/releases/latest)
-</details>
-
-<details>
 <summary>Build from source</summary>
 
 Requires Go [installed](https://go.dev/doc/install).
