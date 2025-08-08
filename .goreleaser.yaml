@@ -63,7 +63,7 @@ brews:
     repository:
       owner: Owloops
       name: homebrew-tap
-      token: "{{ .Env.GITHUB_TOKEN }}"
+      token: "{{ .Env.GH_PAT }}"
 
 changelog:
   use: github
