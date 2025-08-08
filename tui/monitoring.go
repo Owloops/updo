@@ -24,6 +24,7 @@ type TargetData struct {
 	TargetKey    stats.TargetKey
 	WebhookError error
 	LambdaError  error
+	AlertError   error
 }
 
 type Options struct {
@@ -317,7 +318,15 @@ func monitorTargetTUI(ctx context.Context, target config.Target, targetIndex int
 
 					if target.ReceiveAlert {
 						if alertSent, exists := alertStates[targetKeyStr]; exists {
-							notifications.HandleAlerts(lambdaResult.Result.IsUp, alertSent, target.Name, lambdaResult.Result.URL)
+							if err := notifications.HandleAlerts(lambdaResult.Result.IsUp, alertSent, target.Name, lambdaResult.Result.URL); err != nil {
+								dataChannel <- TargetData{
+									Target:     target,
+									Result:     lambdaResult.Result,
+									Stats:      monitor.GetStats(),
+									TargetKey:  targetKey,
+									AlertError: err,
+								}
+							}
 						}
 					}
 
@@ -369,7 +378,16 @@ func monitorTargetTUI(ctx context.Context, target config.Target, targetIndex int
 
 				if target.ReceiveAlert {
 					if alertSent, exists := alertStates[targetKeyStr]; exists {
-						notifications.HandleAlerts(result.IsUp, alertSent, target.Name, target.URL)
+						if err := notifications.HandleAlerts(result.IsUp, alertSent, target.Name, target.URL); err != nil {
+							stats := monitor.GetStats()
+							dataChannel <- TargetData{
+								Target:     target,
+								Result:     result,
+								Stats:      stats,
+								TargetKey:  targetKey,
+								AlertError: err,
+							}
+						}
 					}
 				}
 

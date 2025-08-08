@@ -19,7 +19,6 @@ import (
 
 const (
 	_notAvailable          = "N/A"
-	_statusIcon            = "●"
 	_checking              = "Checking..."
 	_passing               = "Passing"
 	_failing               = "Failing"
@@ -405,13 +404,21 @@ func (m *Manager) UpdateTarget(data TargetData) {
 		m.logBuffer.AddLogEntry(LogLevelWarning, "Lambda invocation failed", data.LambdaError.Error(), data.TargetKey)
 	}
 
+	if data.AlertError != nil {
+		m.logBuffer.AddLogEntry(LogLevelWarning, "Alert notification failed", data.AlertError.Error(), data.TargetKey)
+	}
+
 	if !data.Result.IsUp {
 		level := LogLevelError
 		message := "Request failed"
 
-		if data.Result.StatusCode > 0 {
+		switch {
+		case data.Result.AssertText != "" && !data.Result.AssertionPassed && data.Result.StatusCode >= 200 && data.Result.StatusCode < 300:
+			message = fmt.Sprintf("Assertion failed (status %d)", data.Result.StatusCode)
+			level = LogLevelWarning
+		case data.Result.StatusCode > 0:
 			message = fmt.Sprintf("Status code: %d", data.Result.StatusCode)
-		} else if !data.TargetKey.IsLocal && data.LambdaError == nil {
+		case !data.TargetKey.IsLocal && data.LambdaError == nil:
 			message = "Lambda invocation failed"
 			level = LogLevelWarning
 		}
@@ -459,7 +466,7 @@ func (m *Manager) RefreshStats(monitors map[string]*stats.Monitor) {
 		m.detailsManager.UptimeWidget.Text = fmt.Sprintf("%.2f%%", freshStats.UptimePercent)
 		m.detailsManager.UpForWidget.Text = utils.FormatDurationMinute(freshStats.TotalDuration)
 
-		if freshStats.ChecksCount > 0 && freshStats.SuccessCount > 0 {
+		if freshStats.ChecksCount > 0 {
 			m.detailsManager.AvgResponseTimeWidget.Text = utils.FormatDurationMillisecond(freshStats.AvgResponseTime)
 			m.detailsManager.MinResponseTimeWidget.Text = utils.FormatDurationMillisecond(freshStats.MinResponseTime)
 			m.detailsManager.MaxResponseTimeWidget.Text = utils.FormatDurationMillisecond(freshStats.MaxResponseTime)
@@ -488,7 +495,7 @@ func (m *Manager) updateCurrentTargetWidgets(result net.WebsiteCheckResult, stat
 	m.detailsManager.UptimeWidget.Text = fmt.Sprintf("%.2f%%", stats.UptimePercent)
 	m.detailsManager.UpForWidget.Text = utils.FormatDurationMinute(stats.TotalDuration)
 
-	if stats.ChecksCount > 0 && stats.SuccessCount > 0 {
+	if stats.ChecksCount > 0 {
 		m.detailsManager.AvgResponseTimeWidget.Text = utils.FormatDurationMillisecond(stats.AvgResponseTime)
 		m.detailsManager.MinResponseTimeWidget.Text = utils.FormatDurationMillisecond(stats.MinResponseTime)
 		m.detailsManager.MaxResponseTimeWidget.Text = utils.FormatDurationMillisecond(stats.MaxResponseTime)

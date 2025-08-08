@@ -62,6 +62,7 @@ type CheckResponse struct {
 	ResponseHeaders map[string][]string  `json:"response_headers,omitempty"`
 	RequestBody     string               `json:"request_body,omitempty"`
 	ResponseBody    string               `json:"response_body,omitempty"`
+	AssertionPassed bool                 `json:"assertion_passed"`
 }
 
 type HttpTraceInfoSimple struct {
@@ -119,9 +120,7 @@ func handleRequest(ctx context.Context, req CheckRequest) (CheckResponse, error)
 
 	if result.RequestHeaders != nil {
 		resp.RequestHeaders = make(map[string][]string, len(result.RequestHeaders))
-		for k, v := range result.RequestHeaders {
-			resp.RequestHeaders[k] = v
-		}
+		maps.Copy(resp.RequestHeaders, result.RequestHeaders)
 	}
 	if result.ResponseHeaders != nil {
 		resp.ResponseHeaders = make(map[string][]string, len(result.ResponseHeaders))
@@ -133,6 +132,7 @@ func handleRequest(ctx context.Context, req CheckRequest) (CheckResponse, error)
 	}
 
 	resp.Success = result.IsUp
+	resp.AssertionPassed = result.AssertionPassed
 
 	if result.TraceInfo != nil {
 		resp.TraceInfo = &HttpTraceInfoSimple{
@@ -144,15 +144,8 @@ func handleRequest(ctx context.Context, req CheckRequest) (CheckResponse, error)
 		}
 	}
 
-	if !result.IsUp {
-		switch {
-		case !result.AssertionPassed && req.AssertText != "":
-			resp.Error = fmt.Sprintf("assertion failed: text '%s' not found in response", req.AssertText)
-		case result.StatusCode == 0:
-			resp.Error = "connection failed: unable to reach host"
-		default:
-			resp.Error = fmt.Sprintf("HTTP %d response received", result.StatusCode)
-		}
+	if !result.IsUp && result.StatusCode == 0 {
+		resp.Error = "connection failed: unable to reach host"
 	}
 
 	return resp, nil

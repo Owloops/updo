@@ -2,29 +2,33 @@ package notifications
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/gen2brain/beeep"
 )
 
-func alert(message string) {
+func alert(message string) error {
 	err := beeep.Alert("Website Status", message, "assets/information.png")
-	if err != nil {
-		log.Printf("Failed to send alert: %v", err)
-	}
+	return err
 }
 
-func HandleAlerts(isUp bool, alertSent *bool, targetName string, targetURL string) {
+func HandleAlerts(isUp bool, alertSent *bool, targetName string, targetURL string) error {
 	displayName := targetName
 	if displayName == "" {
 		displayName = targetURL
 	}
 
 	if !isUp && !*alertSent {
-		alert(fmt.Sprintf("%s is down!", displayName))
+		err := alert(fmt.Sprintf("%s is down!", displayName))
 		*alertSent = true
+		if err != nil {
+			return fmt.Errorf("failed to send alert: %w", err)
+		}
 	} else if isUp && *alertSent {
-		alert(fmt.Sprintf("%s is back up!", displayName))
+		err := alert(fmt.Sprintf("%s is back up!", displayName))
 		*alertSent = false
+		if err != nil {
+			return fmt.Errorf("failed to send alert: %w", err)
+		}
 	}
+	return nil
 }

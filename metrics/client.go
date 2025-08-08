@@ -125,7 +125,7 @@ func (c *WriteClient) sendSamples(samples []*prompb.TimeSeries) error {
 
 	compressed := snappy.Encode(nil, data)
 
-	for attempt := 0; attempt < _maxRetries; attempt++ {
+	for attempt := range _maxRetries {
 		if err := c.doRequest(compressed); err != nil {
 			if attempt < _maxRetries-1 {
 				time.Sleep(_retryDelay * time.Duration(attempt+1))

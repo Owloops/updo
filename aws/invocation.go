@@ -40,6 +40,7 @@ type LambdaResponse struct {
 	ResponseHeaders map[string][]string  `json:"response_headers,omitempty"`
 	RequestBody     string               `json:"request_body,omitempty"`
 	ResponseBody    string               `json:"response_body,omitempty"`
+	AssertionPassed bool                 `json:"assertion_passed"`
 }
 
 type HttpTraceInfoSimple struct {
@@ -185,11 +186,7 @@ func invokeLambdaInRegion(url string, config net.NetworkConfig, region string, p
 		}
 	}
 
-	if request.AssertText != "" {
-		result.AssertionPassed = lambdaResp.Success
-	} else {
-		result.AssertionPassed = true
-	}
+	result.AssertionPassed = lambdaResp.AssertionPassed
 
 	return RegionResult{
 		Region: region,

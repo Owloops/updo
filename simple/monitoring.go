@@ -240,7 +240,9 @@ func monitorTargetSimple(ctx context.Context, target config.Target, targetIndex 
 
 					if target.ReceiveAlert {
 						if alertSent, exists := alertStates[keyStr]; exists {
-							notifications.HandleAlerts(lambdaResult.Result.IsUp, alertSent, target.Name, lambdaResult.Result.URL)
+							if err := notifications.HandleAlerts(lambdaResult.Result.IsUp, alertSent, target.Name, lambdaResult.Result.URL); err != nil {
+								log.Printf("Alert notification failed: %v", err)
+							}
 						}
 					}
 
@@ -281,7 +283,9 @@ func monitorTargetSimple(ctx context.Context, target config.Target, targetIndex 
 
 				if target.ReceiveAlert {
 					if alertSent, exists := alertStates[keyStr]; exists {
-						notifications.HandleAlerts(result.IsUp, alertSent, target.Name, target.URL)
+						if err := notifications.HandleAlerts(result.IsUp, alertSent, target.Name, target.URL); err != nil {
+							log.Printf("Alert notification failed: %v", err)
+						}
 					}
 				}
 
