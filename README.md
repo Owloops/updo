@@ -30,6 +30,66 @@ Updo is a command-line tool for monitoring website uptime and performance. It pr
 ## Installation
 
 <details>
+<summary>macOS - Homebrew (Recommended)</summary>
+
+```bash
+brew tap owloops/tap
+brew install updo
+```
+
+</details>
+
+<details>
+<summary>Linux - Package Managers (Recommended)</summary>
+
+**Debian/Ubuntu:**
+
+```bash
+curl -L -O https://github.com/Owloops/updo/releases/latest/download/updo_linux_amd64.deb
+sudo dpkg -i updo_linux_amd64.deb
+```
+
+**Red Hat/Fedora/CentOS:**
+
+```bash
+curl -L -O https://github.com/Owloops/updo/releases/latest/download/updo-1.x86_64.rpm
+sudo rpm -i updo-1.x86_64.rpm
+```
+
+**Alpine Linux:**
+
+```bash
+curl -L -O https://github.com/Owloops/updo/releases/latest/download/updo.apk
+sudo apk add --allow-untrusted updo.apk
+```
+
+**Arch Linux:**
+
+```bash
+curl -L -O https://github.com/Owloops/updo/releases/latest/download/updo-1-x86_64.pkg.tar.zst
+sudo pacman -U updo-1-x86_64.pkg.tar.zst
+```
+
+</details>
+
+<details>
+<summary>Windows - Direct Download</summary>
+
+**PowerShell:**
+
+```powershell
+# Download and install updo
+Invoke-WebRequest -Uri "https://github.com/Owloops/updo/releases/latest/download/updo-windows-amd64.exe" -OutFile "updo.exe"
+# Move to a directory in your PATH (or create a custom directory)
+Move-Item updo.exe C:\Windows\System32\updo.exe
+```
+
+**Manual Download:**
+Download the Windows executable from the [latest release](https://github.com/Owloops/updo/releases/latest) and add it to your PATH.
+
+</details>
+
+<details>
 <summary>Quick install script (Linux, macOS, Windows/MSYS)</summary>
 
 ```bash
@@ -73,15 +133,6 @@ docker run updo monitor <website-url> [options]
 ```
 
 </details>
-
-> [!NOTE]  
-> You may get security warnings on Windows and macOS. See [issue #4](https://github.com/Owloops/updo/issues/4) for details.
->
-> **macOS:** If you get "cannot be opened because the developer cannot be verified":
->
-> ```bash
-> xattr -d com.apple.quarantine /path/to/updo
-> ```
 
 ## Usage
 

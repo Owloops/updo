@@ -1,5 +1,9 @@
 version: 2
 
+project_name: updo
+
+force_token: github
+
 before:
   hooks:
     - go mod tidy
@@ -7,12 +11,18 @@ before:
     - make build-lambda
 
 builds:
-  - env:
+  - binary: updo
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
       - windows
       - darwin
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
     ldflags:
       - -s -w
       - -X main.version={{.Version}}
@@ -28,18 +38,32 @@ archives:
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
     formats:
-      - tar.gz
-    files:
-      - LICENSE
-      - README.md
-    format_overrides:
-      - goos: windows
-        formats:
-          - zip
+      - binary
+
+nfpms:
+  - package_name: updo
+    formats:
+      - apk
+      - deb
+      - rpm
+      - archlinux
+    maintainer: "pgagnidze <pgagnidze@pm.me>"
+    vendor: "Owloops"
+    homepage: "https://github.com/Owloops/updo"
+    license: "MIT"
+    description: "Uptime monitoring CLI tool with alerting and advanced settings"
+    section: "net"
+    priority: "optional"
+
+brews:
+  - name: updo
+    description: Uptime monitoring CLI tool with alerting and advanced settings
+    homepage: https://github.com/Owloops/updo
+    license: MIT
+    repository:
+      owner: Owloops
+      name: homebrew-tap
+      token: "{{ .Env.GITHUB_TOKEN }}"
 
 changelog:
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
+  use: github

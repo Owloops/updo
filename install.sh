@@ -56,8 +56,6 @@ detect_platform() {
         x86_64*)    ARCH=x86_64;;
         arm64*)     ARCH=arm64;;
         aarch64*)   ARCH=arm64;;
-        i386*)      ARCH=i386;;
-        i686*)      ARCH=i386;;
         *)          log ERROR "Unsupported architecture: ${ARCH}"; exit 2;;
     esac
 
@@ -80,18 +78,29 @@ get_latest_version() {
 }
 
 get_download_url() {
+    local RELEASE_OS="${SYSTEM}"
+    if [[ "${SYSTEM}" = "Darwin" ]]; then
+        RELEASE_OS="darwin"
+    elif [[ "${SYSTEM}" = "Linux" ]]; then
+        RELEASE_OS="linux"
+    elif [[ "${SYSTEM}" = "Windows" ]]; then
+        RELEASE_OS="windows"
+    fi
+
+    local RELEASE_ARCH="${ARCH}"
+    if [[ "${ARCH}" = "x86_64" ]]; then
+        RELEASE_ARCH="amd64"
+    fi
+
+    ASSET_PATTERN="updo-${RELEASE_OS}-${RELEASE_ARCH}"
     if [[ "${SYSTEM}" = "Windows" ]]; then
-        ASSET_PATTERN="${SYSTEM}_${ARCH}.zip"
-        ensure_command unzip
-    else
-        ASSET_PATTERN="${SYSTEM}_${ARCH}.tar.gz"
-        ensure_command tar
+        ASSET_PATTERN="${ASSET_PATTERN}.exe"
     fi
 
     DOWNLOAD_URL=$(echo "${RELEASE_DATA}" | grep -o "\"browser_download_url\": \"[^\"]*${ASSET_PATTERN}\"" | grep -o "https://[^\"]*")
 
     if [[ -z "${DOWNLOAD_URL}" ]]; then
-        log ERROR "Could not find download URL for ${SYSTEM}_${ARCH}"
+        log ERROR "Could not find download URL for ${ASSET_PATTERN}"
         echo "Available assets:" >&2
         echo "${RELEASE_DATA}" | grep -o '"name": "[^"]*"' | grep -o '[^"]*$' | grep -v '^name$'
         exit 1
@@ -100,19 +109,14 @@ get_download_url() {
     log INFO "Found download URL: ${DOWNLOAD_URL}"
 }
 
-download_and_extract() {
-    ARCHIVE_NAME=$(basename "${DOWNLOAD_URL}")
-    ARCHIVE_PATH="${TMP_DIR}/${ARCHIVE_NAME}"
+download_binary() {
+    BINARY_NAME=$(basename "${DOWNLOAD_URL}")
+    BINARY_PATH="${TMP_DIR}/${BINARY_NAME}"
     
-    log INFO "Downloading from ${DOWNLOAD_URL}"
-    curl -SL -o "${ARCHIVE_PATH}" "${DOWNLOAD_URL}"
+    log INFO "Downloading binary from ${DOWNLOAD_URL}"
+    curl -SL -o "${BINARY_PATH}" "${DOWNLOAD_URL}"
     
-    log INFO "Extracting archive"
-    if [[ "${ARCHIVE_NAME}" == *.zip ]]; then
-        unzip -q "${ARCHIVE_PATH}" -d "${TMP_DIR}"
-    else
-        tar -xzf "${ARCHIVE_PATH}" -C "${TMP_DIR}"
-    fi
+    chmod +x "${BINARY_PATH}"
 }
 
 install_binary() {
@@ -140,19 +144,14 @@ install_binary() {
         fi
     fi
 
-    BINARY_PATH=$(find "${TMP_DIR}" -name "updo" -type f)
+    BINARY_PATH=$(find "${TMP_DIR}" -name "updo*" -type f | head -1)
     if [[ -z "${BINARY_PATH}" ]]; then
-        log ERROR "Failed to find the updo binary in the extracted archive"
+        log ERROR "Failed to find the updo binary in the download directory"
         exit 1
     fi
 
     cp "${BINARY_PATH}" "${INSTALL_DIR}/updo"
     chmod +x "${INSTALL_DIR}/updo"
-
-    if [[ "${SYSTEM}" = "Darwin" ]]; then
-        log INFO "Removing macOS quarantine attribute"
-        xattr -d com.apple.quarantine "${INSTALL_DIR}/updo" 2>/dev/null || true
-    fi
 
     log INFO "updo ${VERSION} has been successfully installed to ${INSTALL_DIR}/updo"
 }
@@ -194,7 +193,7 @@ main() {
     detect_platform
     get_latest_version
     get_download_url
-    download_and_extract
+    download_binary
     install_binary
     verify_installation
 }

@@ -35,7 +35,7 @@ Updo uses GitHub Actions with GoReleaser to automatically create releases when a
 ## Platforms Supported
 
 - Linux (amd64, arm64)
-- Windows (amd64, 386)  
+- Windows (amd64, arm64)  
 - macOS (amd64, arm64)
 
 ## Version Information
