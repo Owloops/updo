@@ -247,9 +247,11 @@ func StartMonitoring(targets []config.Target, options Options) {
 				metrics.RecordCheck(data.Target, data.Result, region)
 
 				if strings.HasPrefix(data.Target.URL, "https://") {
-					if sslExpiry := net.GetSSLCertExpiry(data.Target.URL); sslExpiry >= 0 {
-						metrics.RecordSSLExpiry(data.Target, sslExpiry)
-					}
+					go func(target config.Target) {
+						if sslExpiry := net.GetSSLCertExpiry(target.URL); sslExpiry >= 0 {
+							metrics.RecordSSLExpiry(target, sslExpiry)
+						}
+					}(data.Target)
 				}
 			}
 

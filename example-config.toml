@@ -2,17 +2,10 @@
 refresh_interval = 5
 timeout = 10
 follow_redirects = true
-receive_alert = true
+receive_alert = false
 count = 0
 skip = ["GitHub-API"]
-regions = ["us-east-1", "eu-west-1"]  # Uncomment to use AWS Lambda remote executors
-
-[[targets]]
-url = "https://www.google.com"
-name = "Google"
-refresh_interval = 3
-assert_text = "Google"
-# regions = ["us-east-1", "ap-southeast-1"]  # Target-specific regions (overrides global)
+# regions = ["us-east-1", "eu-central-1", "ap-southeast-1"]
 
 [[targets]]
 url = "https://www.github.com"
@@ -71,12 +64,6 @@ url = "https://httpbin.org/redirect/1"
 name = "No-Redirects"
 refresh_interval = 45
 follow_redirects = false
-
-[[targets]]
-url = "https://www.reddit.com"
-name = "Reddit"
-refresh_interval = 12
-assert_text = "reddit"
 
 [[targets]]
 url = "https://news.ycombinator.com"

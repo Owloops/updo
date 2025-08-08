@@ -75,28 +75,24 @@ func NewManager(targets []config.Target, options Options) *Manager {
 		detailsManager:  NewDetailsManager(),
 	}
 
-	m.startSSLCollection()
 	return m
-}
-
-func (m *Manager) startSSLCollection() {
-	for _, target := range m.targets {
-		go func(url string) {
-			if strings.HasPrefix(url, "https://") {
-				sslDaysRemaining := net.GetSSLCertExpiry(url)
-				m.sslExpiryMu.Lock()
-				m.sslExpiry[url] = sslDaysRemaining
-				m.sslExpiryMu.Unlock()
-			}
-		}(target.URL)
-	}
 }
 
 func (m *Manager) getSSLExpiry(url string) int {
 	m.sslExpiryMu.RLock()
-	defer m.sslExpiryMu.RUnlock()
 	if days, exists := m.sslExpiry[url]; exists {
+		m.sslExpiryMu.RUnlock()
 		return days
+	}
+	m.sslExpiryMu.RUnlock()
+
+	if strings.HasPrefix(url, "https://") {
+		go func(sslURL string) {
+			sslDaysRemaining := net.GetSSLCertExpiry(sslURL)
+			m.sslExpiryMu.Lock()
+			m.sslExpiry[sslURL] = sslDaysRemaining
+			m.sslExpiryMu.Unlock()
+		}(url)
 	}
 	return 0
 }
@@ -130,6 +126,9 @@ func (m *Manager) InitializeLayout(width, height int) {
 }
 
 func (m *Manager) updateTargetList() {
+	if m.listWidget == nil {
+		return
+	}
 	allKeys := m.keyRegistry.GetAllKeys()
 
 	targetGroups := make(map[string][]stats.TargetKey, len(allKeys))

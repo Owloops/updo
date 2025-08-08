@@ -234,7 +234,7 @@
           },
           "editorMode": "code",
           "expr": "updo_target_up",
-          "legendFormat": "{{name}}",
+          "legendFormat": "{{name}} ({{region}})",
           "range": true,
           "refId": "A"
         }
@@ -325,7 +325,7 @@
           },
           "editorMode": "code",
           "expr": "updo_response_time_seconds",
-          "legendFormat": "{{name}}",
+          "legendFormat": "{{name}} ({{region}})",
           "range": true,
           "refId": "A"
         }
@@ -527,7 +527,7 @@
           "editorMode": "code",
           "expr": "updo_wait_seconds",
           "hide": false,
-          "legendFormat": "{{name}}",
+          "legendFormat": "{{name}} ({{region}})",
           "range": true,
           "refId": "A"
         }
@@ -619,7 +619,7 @@
           "editorMode": "code",
           "expr": "updo_dns_lookup_seconds",
           "hide": false,
-          "legendFormat": "{{name}}",
+          "legendFormat": "{{name}} ({{region}})",
           "range": true,
           "refId": "A"
         }
@@ -711,7 +711,7 @@
           "editorMode": "code",
           "expr": "updo_tcp_connection_seconds",
           "hide": false,
-          "legendFormat": "{{name}}",
+          "legendFormat": "{{name}} ({{region}})",
           "range": true,
           "refId": "A"
         }
@@ -803,7 +803,7 @@
           "editorMode": "code",
           "expr": "updo_time_to_first_byte_seconds",
           "hide": false,
-          "legendFormat": "{{name}}",
+          "legendFormat": "{{name}} ({{region}})",
           "range": true,
           "refId": "A"
         }
@@ -895,7 +895,7 @@
           "editorMode": "code",
           "expr": "updo_download_duration_seconds",
           "hide": false,
-          "legendFormat": "{{name}}",
+          "legendFormat": "{{name}} ({{region}})",
           "range": true,
           "refId": "A"
         }
