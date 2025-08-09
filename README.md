@@ -24,8 +24,19 @@ Updo is a command-line tool for monitoring website uptime and performance. It pr
 - **Multiple output modes** - Interactive TUI, simple text output, or structured JSON logging
 
 ## Demo
-
-<https://github.com/user-attachments/assets/f8a15cc7-7b30-448f-ab49-35396e6ed46f>
+<table>
+   <tr>
+      <td width="50%" align="center">
+         <h4>Basic Monitoring</h4>
+         <video src="https://github.com/user-attachments/assets/c238df8e-f196-4be5-a9e0-116e76e20847" controls style="width:100%; 
+            max-width:400px; height:250px;">
+      </td>
+      <td width="50%" align="center">
+         <h4>Multi-Region Monitoring</h4>
+         <video src="https://github.com/user-attachments/assets/67c8e51d-fe6f-436a-a34d-cdc2bbf23f46" controls style="width:100%; max-width:400px; height:250px;">
+      </td>
+   </tr>
+</table>
 
 ## Installation
 
