@@ -453,7 +453,7 @@ func (m *Manager) UpdateTarget(data TargetData) {
 		logAdded = true
 	}
 
-	if !data.Result.IsUp {
+	if !data.Result.IsUp && data.LambdaError == nil {
 		level := LogLevelError
 		message := "Request failed"
 
@@ -463,14 +463,14 @@ func (m *Manager) UpdateTarget(data TargetData) {
 			level = LogLevelWarning
 		case data.Result.StatusCode > 0:
 			message = fmt.Sprintf("Status code: %d", data.Result.StatusCode)
-		case !data.TargetKey.IsLocal && data.LambdaError == nil:
+		case !data.TargetKey.IsLocal:
 			message = "Lambda invocation failed"
 			level = LogLevelWarning
 		}
 
 		m.logBuffer.AddLogEntry(level, message, "", data.TargetKey)
 		logAdded = true
-	} else if m.logBuffer.Size() == 0 || m.logBuffer.Size()%10 == 0 {
+	} else if data.Result.IsUp && (m.logBuffer.Size() == 0 || m.logBuffer.Size()%10 == 0) {
 		m.logBuffer.AddLogEntry(LogLevelInfo, "Request successful", "", data.TargetKey)
 		logAdded = true
 	}
@@ -587,7 +587,6 @@ func (m *Manager) updateCurrentTargetWidgets(result net.WebsiteCheckResult, stat
 		})
 	}
 
-	m.detailsManager.updatePlotsData(result, m.termWidth)
 }
 
 func (m *Manager) restorePlotData(targetName string) {
