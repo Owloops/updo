@@ -214,6 +214,26 @@ func (m *Manager) updateLogsWidget(targetKey stats.TargetKey) {
 
 func (m *Manager) updateLogsWidgetForTargets(targetKeys []stats.TargetKey) {
 	prevSelectedRow := m.detailsManager.LogsWidget.SelectedRow
+	var prevSelectedValue string
+
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				prevSelectedValue = ""
+			}
+		}()
+		if prevSelectedNode := m.detailsManager.LogsWidget.SelectedNode(); prevSelectedNode != nil {
+			prevSelectedValue = prevSelectedNode.Value.String()
+		}
+	}()
+
+	expandedValues := make(map[string]bool)
+	m.detailsManager.LogsWidget.Walk(func(node *widgets.TreeNode) bool {
+		if node.Expanded {
+			expandedValues[node.Value.String()] = true
+		}
+		return true
+	})
 
 	var logs []LogEntry
 	if len(targetKeys) == 1 {
@@ -286,8 +306,9 @@ func (m *Manager) updateLogsWidgetForTargets(targetKeys []stats.TargetKey) {
 		})
 
 		treeNode := &widgets.TreeNode{
-			Value: nodeValue(mainText),
-			Nodes: childNodes,
+			Value:    nodeValue(mainText),
+			Nodes:    childNodes,
+			Expanded: expandedValues[mainText],
 		}
 		treeNodes = append(treeNodes, treeNode)
 	}
@@ -298,7 +319,16 @@ func (m *Manager) updateLogsWidgetForTargets(targetKeys []stats.TargetKey) {
 
 	m.detailsManager.LogsWidget.SetNodes(treeNodes)
 
-	if prevSelectedRow >= 0 && prevSelectedRow < len(treeNodes) {
+	foundSelected := false
+	for i, node := range treeNodes {
+		if node.Value.String() == prevSelectedValue {
+			m.detailsManager.LogsWidget.SelectedRow = i
+			foundSelected = true
+			break
+		}
+	}
+
+	if !foundSelected && prevSelectedRow >= 0 && prevSelectedRow < len(treeNodes) {
 		m.detailsManager.LogsWidget.SelectedRow = prevSelectedRow
 	}
 

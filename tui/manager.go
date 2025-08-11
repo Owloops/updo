@@ -436,16 +436,21 @@ func (m *Manager) UpdateTarget(data TargetData) {
 
 	m.updatePlotDataForTarget(targetKeyStr, data.Result)
 
+	logAdded := false
+
 	if data.WebhookError != nil {
 		m.logBuffer.AddLogEntry(LogLevelWarning, "Webhook failed", data.WebhookError.Error(), data.TargetKey)
+		logAdded = true
 	}
 
 	if data.LambdaError != nil {
 		m.logBuffer.AddLogEntry(LogLevelWarning, "Lambda invocation failed", data.LambdaError.Error(), data.TargetKey)
+		logAdded = true
 	}
 
 	if data.AlertError != nil {
 		m.logBuffer.AddLogEntry(LogLevelWarning, "Alert notification failed", data.AlertError.Error(), data.TargetKey)
+		logAdded = true
 	}
 
 	if !data.Result.IsUp {
@@ -464,8 +469,10 @@ func (m *Manager) UpdateTarget(data TargetData) {
 		}
 
 		m.logBuffer.AddLogEntry(level, message, "", data.TargetKey)
+		logAdded = true
 	} else if m.logBuffer.Size() == 0 || m.logBuffer.Size()%10 == 0 {
 		m.logBuffer.AddLogEntry(LogLevelInfo, "Request successful", "", data.TargetKey)
+		logAdded = true
 	}
 
 	currentKey := m.getCurrentTargetKey()
@@ -475,8 +482,11 @@ func (m *Manager) UpdateTarget(data TargetData) {
 		}
 		m.restorePlotData(targetKeyStr)
 		m.updateCurrentTargetWidgets(data.Result, data.Stats)
-		if m.showLogs {
-			m.updateLogsWidget(*currentKey)
+		if m.showLogs && logAdded {
+			keys := m.getKeysForCurrentSelection()
+			if len(keys) > 0 {
+				m.updateLogsWidgetForTargets(keys)
+			}
 		}
 		ui.Render(m.grid)
 	} else if !m.isSingle {

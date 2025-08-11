@@ -58,8 +58,20 @@ func (fl *FilteredList) SetRowsWithMetadata(rows []string, metadata []RowMetadat
 func (fl *FilteredList) ToggleSearch() {
 	fl.searchMode = !fl.searchMode
 	if !fl.searchMode {
+		var selectedOriginalIdx int
+		if fl.SelectedRow >= 0 && fl.SelectedRow < len(fl.filteredIndices) {
+			selectedOriginalIdx = fl.filteredIndices[fl.SelectedRow]
+		}
+
 		fl.searchQuery = ""
 		fl.updateFiltered()
+
+		for i, idx := range fl.filteredIndices {
+			if idx == selectedOriginalIdx {
+				fl.SelectedRow = i
+				break
+			}
+		}
 	}
 }
 
@@ -90,8 +102,27 @@ func (fl *FilteredList) UpdateSearch(char string) {
 	}
 
 	if prevQuery != fl.searchQuery {
+		var selectedOriginalIdx = -1
+		if fl.SelectedRow >= 0 && fl.SelectedRow < len(fl.filteredIndices) {
+			selectedOriginalIdx = fl.filteredIndices[fl.SelectedRow]
+		}
+
 		fl.updateFiltered()
-		if fl.SelectedRow >= len(fl.filteredRows) {
+
+		if selectedOriginalIdx >= 0 {
+			newSelectedRow := -1
+			for i, idx := range fl.filteredIndices {
+				if idx == selectedOriginalIdx {
+					newSelectedRow = i
+					break
+				}
+			}
+			if newSelectedRow >= 0 {
+				fl.SelectedRow = newSelectedRow
+			} else if fl.SelectedRow >= len(fl.filteredRows) {
+				fl.SelectedRow = 0
+			}
+		} else if fl.SelectedRow >= len(fl.filteredRows) {
 			fl.SelectedRow = 0
 		}
 	}

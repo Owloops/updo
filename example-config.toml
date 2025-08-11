@@ -5,7 +5,7 @@ follow_redirects = true
 receive_alert = false
 count = 0
 skip = ["GitHub-API"]
-regions = ["us-east-1", "eu-central-1", "ap-southeast-1"]
+# regions = ["us-east-1", "eu-central-1", "ap-southeast-1"]
 
 [[targets]]
 url = "https://www.github.com"
@@ -16,7 +16,7 @@ assert_text = "GitHub"
 [[targets]]
 url = "https://stackoverflow.com"
 name = "StackOverflow"
-refresh_interval = 10
+refresh_interval = 2
 assert_text = "Stack Overflow"
 
 [[targets]]
@@ -34,7 +34,7 @@ refresh_interval = 30
 [[targets]]
 url = "https://httpbin.org/delay/2"
 name = "HTTPBin-Slow"
-refresh_interval = 60
+refresh_interval = 5
 timeout = 15
 
 [[targets]]
