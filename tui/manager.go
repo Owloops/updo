@@ -282,6 +282,47 @@ func (m *Manager) getCurrentTargetKey() *stats.TargetKey {
 	return nil
 }
 
+func (m *Manager) getKeysForCurrentSelection() []stats.TargetKey {
+	if m.isSingle || m.listWidget == nil {
+		allKeys := m.keyRegistry.GetAllKeys()
+		if m.currentKeyIndex >= 0 && m.currentKeyIndex < len(allKeys) {
+			return []stats.TargetKey{allKeys[m.currentKeyIndex]}
+		}
+		return nil
+	}
+
+	selectedRow := m.listWidget.SelectedRow
+	if selectedRow < 0 {
+		return nil
+	}
+
+	if m.listWidget.IsHeaderAtIndex(selectedRow) {
+		groupID := m.listWidget.GetGroupAtIndex(selectedRow)
+		if groupID == "" {
+			return nil
+		}
+
+		allKeys := m.keyRegistry.GetAllKeys()
+		targetGroups := make(map[string][]stats.TargetKey)
+
+		for _, key := range allKeys {
+			displayName := key.GetCleanName()
+			targetGroups[displayName] = append(targetGroups[displayName], key)
+		}
+
+		if keys, exists := targetGroups[groupID]; exists {
+			return keys
+		}
+		return nil
+	}
+
+	if key := m.getCurrentTargetKey(); key != nil {
+		return []stats.TargetKey{*key}
+	}
+
+	return nil
+}
+
 func (m *Manager) getCurrentTarget() *config.Target {
 	currentKey := m.getCurrentTargetKey()
 	if currentKey == nil {

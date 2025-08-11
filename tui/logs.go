@@ -136,6 +136,24 @@ func (lb *LogBuffer) GetEntriesForTarget(targetKey stats.TargetKey) []LogEntry {
 	return filtered
 }
 
+func (lb *LogBuffer) GetEntriesForTargets(targetKeys []stats.TargetKey) []LogEntry {
+	entries := lb.GetEntries()
+	var filtered []LogEntry
+
+	targetKeyMap := make(map[string]bool)
+	for _, key := range targetKeys {
+		targetKeyMap[key.String()] = true
+	}
+
+	for _, entry := range entries {
+		if targetKeyMap[entry.TargetKey.String()] {
+			filtered = append(filtered, entry)
+		}
+	}
+
+	return filtered
+}
+
 func (lb *LogBuffer) AddLogEntry(level LogLevel, message, details string, targetKey stats.TargetKey) {
 	entry := LogEntry{
 		Timestamp: time.Now(),
@@ -191,7 +209,18 @@ func wrapText(text string, maxWidth int) []string {
 }
 
 func (m *Manager) updateLogsWidget(targetKey stats.TargetKey) {
-	logs := m.logBuffer.GetEntriesForTarget(targetKey)
+	m.updateLogsWidgetForTargets([]stats.TargetKey{targetKey})
+}
+
+func (m *Manager) updateLogsWidgetForTargets(targetKeys []stats.TargetKey) {
+	prevSelectedRow := m.detailsManager.LogsWidget.SelectedRow
+
+	var logs []LogEntry
+	if len(targetKeys) == 1 {
+		logs = m.logBuffer.GetEntriesForTarget(targetKeys[0])
+	} else {
+		logs = m.logBuffer.GetEntriesForTargets(targetKeys)
+	}
 
 	if len(logs) == 0 {
 		emptyNode := &widgets.TreeNode{
@@ -199,7 +228,7 @@ func (m *Manager) updateLogsWidget(targetKey stats.TargetKey) {
 			Nodes: []*widgets.TreeNode{},
 		}
 		m.detailsManager.LogsWidget.SetNodes([]*widgets.TreeNode{emptyNode})
-		m.detailsManager.LogsWidget.Title = "Recent Logs"
+		m.detailsManager.LogsWidget.Title = _recentLogsTitle
 		return
 	}
 
@@ -268,11 +297,36 @@ func (m *Manager) updateLogsWidget(targetKey stats.TargetKey) {
 	}
 
 	m.detailsManager.LogsWidget.SetNodes(treeNodes)
-	m.detailsManager.LogsWidget.Title = fmt.Sprintf("Recent Logs (%d) - Press Enter to expand", len(logs))
+
+	if prevSelectedRow >= 0 && prevSelectedRow < len(treeNodes) {
+		m.detailsManager.LogsWidget.SelectedRow = prevSelectedRow
+	}
+
+	title := fmt.Sprintf("Recent Logs (%d) - Press Enter to expand", len(logs))
+	if len(targetKeys) > 1 {
+		title = fmt.Sprintf("Recent Logs (%d from %d targets) - Press Enter to expand", len(logs), len(targetKeys))
+	}
+	m.detailsManager.LogsWidget.Title = title
 }
 
 func (m *Manager) NavigateLogs(direction int) {
 	if !m.focusOnLogs || m.detailsManager.LogsWidget == nil {
+		return
+	}
+
+	keys := m.getKeysForCurrentSelection()
+	if len(keys) == 0 {
+		return
+	}
+
+	var logs []LogEntry
+	if len(keys) == 1 {
+		logs = m.logBuffer.GetEntriesForTarget(keys[0])
+	} else {
+		logs = m.logBuffer.GetEntriesForTargets(keys)
+	}
+
+	if len(logs) == 0 {
 		return
 	}
 
@@ -301,9 +355,16 @@ func (m *Manager) ToggleLogsVisibility() {
 		m.detailsManager.LogsWidget.BorderStyle.Fg = ui.ColorGreen
 		m.detailsManager.LogsWidget.Title = "Recent Logs (FOCUSED) - ↑↓:nav Enter:expand l:hide"
 
-		currentKey := m.getCurrentTargetKey()
-		if currentKey != nil {
-			m.updateLogsWidget(*currentKey)
+		keys := m.getKeysForCurrentSelection()
+		if len(keys) > 0 {
+			m.updateLogsWidgetForTargets(keys)
+		} else {
+			emptyNode := &widgets.TreeNode{
+				Value: nodeValue("No target selected"),
+				Nodes: []*widgets.TreeNode{},
+			}
+			m.detailsManager.LogsWidget.SetNodes([]*widgets.TreeNode{emptyNode})
+			m.detailsManager.LogsWidget.Title = _recentLogsTitle
 		}
 
 		if m.listWidget != nil {

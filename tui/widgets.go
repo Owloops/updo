@@ -12,6 +12,8 @@ import (
 	"github.com/gizak/termui/v3/widgets"
 )
 
+const _recentLogsTitle = "Recent Logs"
+
 type DetailsManager struct {
 	QuitWidget            *widgets.Paragraph
 	UptimeWidget          *widgets.Paragraph
@@ -114,7 +116,7 @@ func (m *DetailsManager) InitializeWidgets(url string, refreshInterval time.Dura
 	m.TimingBreakdownWidget.BorderStyle.Fg = ui.ColorYellow
 
 	m.LogsWidget = widgets.NewTree()
-	m.LogsWidget.Title = "Recent Logs"
+	m.LogsWidget.Title = _recentLogsTitle
 	m.LogsWidget.BorderStyle.Fg = ui.ColorMagenta
 	m.LogsWidget.TitleStyle.Fg = ui.ColorWhite
 	m.LogsWidget.TitleStyle.Modifier = ui.ModifierBold

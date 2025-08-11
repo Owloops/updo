@@ -5,7 +5,7 @@ follow_redirects = true
 receive_alert = false
 count = 0
 skip = ["GitHub-API"]
-# regions = ["us-east-1", "eu-central-1", "ap-southeast-1"]
+regions = ["us-east-1", "eu-central-1", "ap-southeast-1"]
 
 [[targets]]
 url = "https://www.github.com"

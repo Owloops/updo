@@ -171,16 +171,7 @@ func StartMonitoring(targets []config.Target, options Options) {
 					ui.Render(manager.grid)
 				}
 			case "<Enter>":
-				if manager.listWidget != nil && manager.listWidget.IsHeaderAtIndex(manager.listWidget.SelectedRow) {
-					groupID := manager.listWidget.GetGroupAtIndex(manager.listWidget.SelectedRow)
-					if groupID != "" {
-						manager.preserveHeaderSelection = groupID
-						manager.listWidget.ToggleGroupCollapse(groupID)
-						manager.updateTargetList()
-						manager.preserveHeaderSelection = ""
-						ui.Render(manager.grid)
-					}
-				} else if manager.detailsManager.LogsWidget != nil {
+				if manager.IsFocusedOnLogs() && manager.detailsManager.LogsWidget != nil {
 					func() {
 						defer func() {
 							if r := recover(); r != nil {
@@ -190,6 +181,15 @@ func StartMonitoring(targets []config.Target, options Options) {
 						manager.detailsManager.LogsWidget.ToggleExpand()
 					}()
 					ui.Render(manager.grid)
+				} else if manager.listWidget != nil && manager.listWidget.IsHeaderAtIndex(manager.listWidget.SelectedRow) {
+					groupID := manager.listWidget.GetGroupAtIndex(manager.listWidget.SelectedRow)
+					if groupID != "" {
+						manager.preserveHeaderSelection = groupID
+						manager.listWidget.ToggleGroupCollapse(groupID)
+						manager.updateTargetList()
+						manager.preserveHeaderSelection = ""
+						ui.Render(manager.grid)
+					}
 				}
 			case "l":
 				if manager.listWidget != nil && manager.listWidget.IsSearchMode() {
