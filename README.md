@@ -85,6 +85,14 @@ curl -L -O https://github.com/Owloops/updo/releases/latest/download/updo_VERSION
 sudo pacman -U updo_VERSION_linux_amd64.pkg.tar.zst
 ```
 
+**openSUSE:**
+
+```bash
+# Replace VERSION with actual version (e.g., 0.3.7)
+curl -L -O https://github.com/Owloops/updo/releases/latest/download/updo_VERSION_linux_amd64.rpm
+sudo zypper install --allow-unsigned-rpm updo_VERSION_linux_amd64.rpm
+```
+
 </details>
 
 <details>
