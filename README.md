@@ -180,7 +180,7 @@ docker run updo monitor <website-url> [options]
 - `--header`: Custom HTTP headers (repeatable)
 - `--request`: HTTP method (default: GET)
 - `--data`: Request body data
-- `--skip-ssl, --follow-redirects`: SSL and redirect options
+- `--skip-ssl, --follow-redirects, --accept-redirects`: SSL and redirect options
 - `--assert-text`: Expected response text
 
 **Multi-region:**
@@ -255,7 +255,7 @@ headers = ["Authorization: Bearer token"]
 
 **Global settings** (apply to all targets unless overridden):
 
-- `refresh_interval`, `timeout`, `follow_redirects`, `receive_alert`, `count`
+- `refresh_interval`, `timeout`, `follow_redirects`, `accept_redirects`, `receive_alert`, `count`
 - `webhook_url`, `webhook_headers`: Default webhook settings
 - `only`, `skip`: Target filtering arrays
 - `regions`: AWS regions for remote executors
@@ -265,7 +265,7 @@ headers = ["Authorization: Bearer token"]
 - `url` (required), `name`: Target identification  
 - `method`, `headers`, `body`: HTTP request options
 - `assert_text`, `should_fail`: Response validation
-- `skip_ssl`, `follow_redirects`: Connection options
+- `skip_ssl`, `follow_redirects`, `accept_redirects`: Connection options
 - `webhook_url`, `webhook_headers`: Per-target notifications
 - `regions`: Target-specific AWS regions
 
