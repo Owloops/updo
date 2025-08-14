@@ -208,6 +208,7 @@ func monitorTargetSimple(ctx context.Context, target config.Target, targetIndex 
 			Timeout:         target.GetTimeout(),
 			ShouldFail:      target.ShouldFail,
 			FollowRedirects: target.FollowRedirects,
+			AcceptRedirects: target.AcceptRedirects,
 			SkipSSL:         target.SkipSSL,
 			AssertText:      target.AssertText,
 			Headers:         target.Headers,

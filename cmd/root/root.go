@@ -20,6 +20,7 @@ type Config struct {
 	Timeout         time.Duration
 	ShouldFail      bool
 	FollowRedirects bool
+	AcceptRedirects bool
 	SkipSSL         bool
 	AssertText      string
 	ReceiveAlert    bool
@@ -76,6 +77,7 @@ func init() {
 	RootCmd.PersistentFlags().IntP("timeout", "t", _defaultTimeout, "HTTP request timeout in seconds")
 	RootCmd.PersistentFlags().BoolVarP(&AppConfig.ShouldFail, "should-fail", "f", false, "Invert success code range")
 	RootCmd.PersistentFlags().BoolVarP(&AppConfig.FollowRedirects, "follow-redirects", "l", true, "Follow redirects")
+	RootCmd.PersistentFlags().BoolVar(&AppConfig.AcceptRedirects, "accept-redirects", false, "Accept redirects (3xx) as successful responses")
 	RootCmd.PersistentFlags().BoolVarP(&AppConfig.SkipSSL, "skip-ssl", "s", false, "Skip SSL certificate verification")
 	RootCmd.PersistentFlags().StringVarP(&AppConfig.AssertText, "assert-text", "a", "", "Text to assert in the response body")
 	RootCmd.PersistentFlags().BoolVarP(&AppConfig.ReceiveAlert, "receive-alert", "n", true, "Enable alert notifications")

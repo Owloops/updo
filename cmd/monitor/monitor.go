@@ -72,6 +72,7 @@ You can monitor multiple targets by:
 					Timeout:         int(appConfig.Timeout.Seconds()),
 					ShouldFail:      appConfig.ShouldFail,
 					FollowRedirects: appConfig.FollowRedirects,
+					AcceptRedirects: appConfig.AcceptRedirects,
 					SkipSSL:         appConfig.SkipSSL,
 					AssertText:      appConfig.AssertText,
 					ReceiveAlert:    appConfig.ReceiveAlert,

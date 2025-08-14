@@ -64,6 +64,7 @@ type NetworkConfig struct {
 	Timeout         time.Duration
 	ShouldFail      bool
 	FollowRedirects bool
+	AcceptRedirects bool
 	SkipSSL         bool
 	AssertText      string
 	Headers         []string
@@ -135,6 +136,9 @@ func CheckWebsite(urlStr string, config NetworkConfig) WebsiteCheckResult {
 	}
 
 	success := httpResp.StatusCode >= 200 && httpResp.StatusCode < 300
+	if config.AcceptRedirects {
+		success = success || (httpResp.StatusCode >= 300 && httpResp.StatusCode < 400)
+	}
 	if config.ShouldFail {
 		success = !success
 	}

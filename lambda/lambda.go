@@ -44,6 +44,7 @@ type CheckRequest struct {
 	Body            string   `json:"body"`
 	Timeout         int      `json:"timeout"`
 	FollowRedirects bool     `json:"follow_redirects"`
+	AcceptRedirects bool     `json:"accept_redirects"`
 	SkipSSL         bool     `json:"skip_ssl"`
 	AssertText      string   `json:"assert_text"`
 	ShouldFail      bool     `json:"should_fail"`
@@ -103,6 +104,7 @@ func handleRequest(ctx context.Context, req CheckRequest) (CheckResponse, error)
 		Timeout:         timeout,
 		ShouldFail:      req.ShouldFail,
 		FollowRedirects: req.FollowRedirects,
+		AcceptRedirects: req.AcceptRedirects,
 		SkipSSL:         req.SkipSSL,
 		AssertText:      req.AssertText,
 		Headers:         req.Headers,

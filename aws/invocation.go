@@ -22,6 +22,7 @@ type LambdaRequest struct {
 	Body            string   `json:"body"`
 	Timeout         int      `json:"timeout"`
 	FollowRedirects bool     `json:"follow_redirects"`
+	AcceptRedirects bool     `json:"accept_redirects"`
 	SkipSSL         bool     `json:"skip_ssl"`
 	AssertText      string   `json:"assert_text"`
 	ShouldFail      bool     `json:"should_fail"`
@@ -106,6 +107,7 @@ func invokeLambdaInRegion(url string, config net.NetworkConfig, region string, p
 		Body:            config.Body,
 		Timeout:         int(config.Timeout / time.Second),
 		FollowRedirects: config.FollowRedirects,
+		AcceptRedirects: config.AcceptRedirects,
 		SkipSSL:         config.SkipSSL,
 		AssertText:      config.AssertText,
 		ShouldFail:      config.ShouldFail,

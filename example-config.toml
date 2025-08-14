@@ -2,6 +2,7 @@
 refresh_interval = 5
 timeout = 10
 follow_redirects = true
+accept_redirects = false
 receive_alert = false
 count = 0
 skip = ["GitHub-API"]
@@ -70,3 +71,10 @@ url = "https://news.ycombinator.com"
 name = "Hacker News"
 refresh_interval = 15
 assert_text = "Hacker News"
+
+[[targets]]
+url = "http://192.168.1.1"
+name = "Router-Redirect-Check"
+refresh_interval = 30
+follow_redirects = false
+accept_redirects = true

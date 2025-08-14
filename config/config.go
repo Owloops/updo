@@ -19,6 +19,7 @@ type Target struct {
 	Timeout         int      `mapstructure:"timeout"`
 	ShouldFail      bool     `mapstructure:"should_fail"`
 	FollowRedirects bool     `mapstructure:"follow_redirects"`
+	AcceptRedirects bool     `mapstructure:"accept_redirects"`
 	SkipSSL         bool     `mapstructure:"skip_ssl"`
 	AssertText      string   `mapstructure:"assert_text"`
 	ReceiveAlert    bool     `mapstructure:"receive_alert"`
@@ -35,6 +36,7 @@ type Global struct {
 	Timeout         int      `mapstructure:"timeout"`
 	ShouldFail      bool     `mapstructure:"should_fail"`
 	FollowRedirects bool     `mapstructure:"follow_redirects"`
+	AcceptRedirects bool     `mapstructure:"accept_redirects"`
 	SkipSSL         bool     `mapstructure:"skip_ssl"`
 	ReceiveAlert    bool     `mapstructure:"receive_alert"`
 	Count           int      `mapstructure:"count"`
@@ -85,6 +87,9 @@ func LoadConfig(configFile string) (*Config, error) {
 		}
 		if !target.FollowRedirects && config.Global.FollowRedirects {
 			target.FollowRedirects = config.Global.FollowRedirects
+		}
+		if !target.AcceptRedirects && config.Global.AcceptRedirects {
+			target.AcceptRedirects = config.Global.AcceptRedirects
 		}
 		if !target.ReceiveAlert && config.Global.ReceiveAlert {
 			target.ReceiveAlert = config.Global.ReceiveAlert
