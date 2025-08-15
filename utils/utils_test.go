@@ -70,3 +70,29 @@ func TestFormatDurationMinute(t *testing.T) {
 		})
 	}
 }
+
+func TestSanitizeDuration(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    time.Duration
+		expected time.Duration
+	}{
+		{"Valid positive duration", 100 * time.Millisecond, 100 * time.Millisecond},
+		{"Valid zero duration", 0, 0},
+		{"Negative duration", -100 * time.Millisecond, 0},
+		{"Extreme negative duration", -2562047*time.Hour - 47*time.Minute, 0},
+		{"Extreme positive duration", 2562047*time.Hour + 47*time.Minute, 0},
+		{"Just under 24 hours", 23*time.Hour + 59*time.Minute + 59*time.Second, 23*time.Hour + 59*time.Minute + 59*time.Second},
+		{"Exactly 24 hours", 24 * time.Hour, 0},
+		{"Just over 24 hours", 24*time.Hour + 1*time.Nanosecond, 0},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := SanitizeDuration(tc.input)
+			if result != tc.expected {
+				t.Errorf("SanitizeDuration(%v) = %v, expected %v", tc.input, result, tc.expected)
+			}
+		})
+	}
+}

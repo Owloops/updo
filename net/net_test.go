@@ -339,6 +339,38 @@ func TestCheckWebsite(t *testing.T) {
 			expectSuccess:   false,
 			expectAssertion: true,
 		},
+		{
+			name:            "redirect follow false accept false",
+			statusCode:      301,
+			responseBody:    "Moved Permanently",
+			config:          NetworkConfig{FollowRedirects: false, AcceptRedirects: false, Timeout: 5 * time.Second},
+			expectSuccess:   false,
+			expectAssertion: true,
+		},
+		{
+			name:            "redirect follow false accept true",
+			statusCode:      301,
+			responseBody:    "Moved Permanently",
+			config:          NetworkConfig{FollowRedirects: false, AcceptRedirects: true, Timeout: 5 * time.Second},
+			expectSuccess:   true,
+			expectAssertion: true,
+		},
+		{
+			name:            "redirect follow true accept false",
+			statusCode:      301,
+			responseBody:    "Moved Permanently",
+			config:          NetworkConfig{FollowRedirects: true, AcceptRedirects: false, Timeout: 5 * time.Second},
+			expectSuccess:   false,
+			expectAssertion: true,
+		},
+		{
+			name:            "redirect follow true accept true",
+			statusCode:      301,
+			responseBody:    "Moved Permanently",
+			config:          NetworkConfig{FollowRedirects: true, AcceptRedirects: true, Timeout: 5 * time.Second},
+			expectSuccess:   true,
+			expectAssertion: true,
+		},
 	}
 
 	for _, tt := range tests {

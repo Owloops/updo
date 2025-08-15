@@ -19,3 +19,11 @@ func FormatDurationMillisecond(d time.Duration) string {
 func FormatDurationMinute(d time.Duration) string {
 	return d.Truncate(time.Second).String()
 }
+
+func SanitizeDuration(d time.Duration) time.Duration {
+	maxDuration := time.Hour * 24
+	if d < 0 || d >= maxDuration {
+		return 0
+	}
+	return d
+}

@@ -8,6 +8,7 @@ import (
 	"github.com/Owloops/updo/config"
 	"github.com/Owloops/updo/net"
 	"github.com/Owloops/updo/stats"
+	"github.com/Owloops/updo/utils"
 )
 
 func TestNewManager(t *testing.T) {
@@ -227,6 +228,42 @@ func TestManager_HeaderDetection(t *testing.T) {
 
 		if isHeader != expectedHeader {
 			t.Errorf("Row %d (%q): header detection got %v, expected %v", i, row, isHeader, expectedHeader)
+		}
+	}
+}
+
+func TestManager_TraceInfoSanitization(t *testing.T) {
+	input := net.HttpTraceInfo{
+		Wait:             -2562047*time.Hour - 47*time.Minute - 16*time.Second,
+		DNSLookup:        100 * time.Millisecond,
+		TCPConnection:    2562047*time.Hour + 47*time.Minute + 16*time.Second,
+		TimeToFirstByte:  50 * time.Millisecond,
+		DownloadDuration: 25 * time.Millisecond,
+	}
+
+	result := net.WebsiteCheckResult{
+		TraceInfo: &input,
+	}
+
+	sanitizedTimings := map[string]time.Duration{
+		"Wait":     utils.SanitizeDuration(result.TraceInfo.Wait),
+		"DNS":      utils.SanitizeDuration(result.TraceInfo.DNSLookup),
+		"TCP":      utils.SanitizeDuration(result.TraceInfo.TCPConnection),
+		"TTFB":     utils.SanitizeDuration(result.TraceInfo.TimeToFirstByte),
+		"Download": utils.SanitizeDuration(result.TraceInfo.DownloadDuration),
+	}
+
+	expected := map[string]time.Duration{
+		"Wait":     0,
+		"DNS":      100 * time.Millisecond,
+		"TCP":      0,
+		"TTFB":     50 * time.Millisecond,
+		"Download": 25 * time.Millisecond,
+	}
+
+	for key, expectedDuration := range expected {
+		if sanitizedTimings[key] != expectedDuration {
+			t.Errorf("Stage %s: got %v, expected %v", key, sanitizedTimings[key], expectedDuration)
 		}
 	}
 }

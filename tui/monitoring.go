@@ -156,19 +156,19 @@ func StartMonitoring(targets []config.Target, options Options) {
 				if !manager.isSingle {
 					if manager.IsFocusedOnLogs() {
 						manager.NavigateLogs(1)
+						ui.Render(manager.grid)
 					} else {
 						manager.NavigateTargetKeys(1, monitors)
 					}
-					ui.Render(manager.grid)
 				}
 			case "<Up>":
 				if !manager.isSingle {
 					if manager.IsFocusedOnLogs() {
 						manager.NavigateLogs(-1)
+						ui.Render(manager.grid)
 					} else {
 						manager.NavigateTargetKeys(-1, monitors)
 					}
-					ui.Render(manager.grid)
 				}
 			case "<Enter>":
 				if manager.IsFocusedOnLogs() && manager.detailsManager.LogsWidget != nil {

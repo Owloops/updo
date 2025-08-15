@@ -161,12 +161,19 @@ func GetSSLCertExpiry(siteURL string) int {
 		return -1
 	}
 
+	if u.Scheme != "https" {
+		return -1
+	}
+
 	host := u.Host
 	if !strings.Contains(host, ":") {
 		host += _httpsPort
 	}
 
-	conn, err := tls.Dial("tcp", host, &tls.Config{
+	dialer := &net.Dialer{
+		Timeout: 10 * time.Second,
+	}
+	conn, err := tls.DialWithDialer(dialer, "tcp", host, &tls.Config{
 		MinVersion: tls.VersionTLS12,
 	})
 	if err != nil {
