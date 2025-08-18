@@ -59,8 +59,24 @@ For local builds, use:
 go build -ldflags="-X 'main.version=v1.0.0' -X 'main.commit=$(git rev-parse HEAD)' -X 'main.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
 ```
 
+## Lambda Code Changes
+
+**Important**: If you modify `lambda/lambda.go`, you must regenerate and commit the embedded Lambda binary:
+
+```bash
+# Regenerate the Lambda binary and ZIP file
+make build-lambda
+
+# Commit both source changes AND the updated ZIP
+git add lambda/lambda.go aws/bootstrap.zip
+git commit -m "feat: update lambda functionality"
+```
+
+This ensures `go install github.com/Owloops/updo@latest` continues to work for users.
+
 ## Pre-release Checklist
 
 - [ ] All tests pass
 - [ ] Code merged to main
 - [ ] Dependencies updated (`go mod tidy`)
+- [ ] If lambda code changed: `bootstrap.zip` regenerated and committed
