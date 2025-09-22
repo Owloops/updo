@@ -3,7 +3,7 @@
 # 🐤 Updo - Website Monitoring Tool
 
 <p align="center">
-  <img src="images/demo.png" alt="Updo demo" width="600"/>
+  <img src="images/demo.gif" alt="Updo demo" width="600"/>
 </p>
 
 Updo is a command-line tool for monitoring website uptime and performance. It provides real-time metrics on website status, response time, SSL certificate expiry, and more, with alert notifications.
