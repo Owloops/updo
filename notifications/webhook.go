@@ -2,7 +2,6 @@ package notifications
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -38,9 +37,10 @@ type WebhookPayload struct {
 }
 
 func SendWebhook(webhookURL string, headers map[string]string, payload WebhookPayload) error {
-	data, err := json.Marshal(payload)
+	formatter := SelectFormatter(webhookURL)
+	data, err := formatter.Format(payload)
 	if err != nil {
-		return fmt.Errorf("failed to marshal webhook payload: %w", err)
+		return fmt.Errorf("failed to format webhook payload: %w", err)
 	}
 
 	req, err := http.NewRequest("POST", webhookURL, bytes.NewBuffer(data))

@@ -300,27 +300,17 @@ updo aws destroy --regions all
 
 ## Webhook Notifications
 
-Updo can send webhook notifications when targets go up or down. This enables integration with various services like Slack, Discord, PagerDuty, or custom alerting systems.
+Updo can send webhook notifications when targets go up or down. Updo **automatically detects** Slack and Discord webhooks by URL pattern and formats messages accordingly with rich formatting. Custom webhooks receive a generic JSON payload.
 
-### Webhook Payload
+### Supported Platforms
 
-When a target status changes, Updo sends a JSON payload:
-
-```json
-{
-  "event": "target_down",  // or "target_up"
-  "target": "Critical API",
-  "url": "https://api.example.com",
-  "timestamp": "2024-01-01T12:00:00Z",
-  "response_time_ms": 1500,
-  "status_code": 500,
-  "error": "Internal Server Error"  // only for down events
-}
-```
+- **Slack** - Auto-detected via `hooks.slack.com` URL, sends rich messages with attachments and color coding
+- **Discord** - Auto-detected via `discord.com/api/webhooks` URL, sends embeds with color and structured fields
+- **Custom** - Any other webhook URL receives generic JSON format
 
 ### Integration Examples
 
-**Slack Webhook:**
+**Slack Webhook (Auto-Detected):**
 
 ```toml
 [[targets]]
@@ -329,7 +319,41 @@ name = "Production API"
 webhook_url = "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
 ```
 
-**Custom Webhook with Headers:**
+Updo automatically formats Slack messages with:
+- Color-coded attachments (red for down, green for up)
+- Emoji indicators (🔴 for down, ✅ for up)
+- Structured fields for URL, error, status code, response time, and timestamp
+
+**Discord Webhook (Auto-Detected):**
+
+```toml
+[[targets]]
+url = "https://api.example.com"
+name = "Production API"
+webhook_url = "https://discord.com/api/webhooks/123456789/YOUR_WEBHOOK_TOKEN"
+```
+
+Updo automatically formats Discord messages with:
+- Color-coded embeds (red for down, green for up)
+- Emoji indicators (🔴 for down, ✅ for up)
+- Structured fields with inline formatting
+- Clickable URL links
+
+**Custom Webhook:**
+
+For custom webhooks, Updo sends a generic JSON payload:
+
+```json
+{
+  "event": "target_down",
+  "target": "Production API",
+  "url": "https://api.example.com",
+  "timestamp": "2024-01-01T12:00:00Z",
+  "response_time_ms": 1500,
+  "status_code": 500,
+  "error": "Internal Server Error"
+}
+```
 
 ```toml
 [[targets]]
