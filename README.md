@@ -321,7 +321,7 @@ webhook_url = "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
 
 Updo automatically formats Slack messages with:
 - Color-coded attachments (red for down, green for up)
-- Emoji indicators (🔴 for down, ✅ for up)
+- Unicode symbols (✘ for down, ✔ for up)
 - Structured fields for URL, error, status code, response time, and timestamp
 
 **Discord Webhook (Auto-Detected):**
@@ -335,7 +335,7 @@ webhook_url = "https://discord.com/api/webhooks/123456789/YOUR_WEBHOOK_TOKEN"
 
 Updo automatically formats Discord messages with:
 - Color-coded embeds (red for down, green for up)
-- Emoji indicators (🔴 for down, ✅ for up)
+- Unicode symbols (✘ for down, ✔ for up)
 - Structured fields with inline formatting
 - Clickable URL links
 
