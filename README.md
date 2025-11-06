@@ -80,9 +80,7 @@ sudo apk add --allow-untrusted updo_VERSION_linux_amd64.apk
 **Arch Linux:**
 
 ```bash
-# Replace VERSION with actual version (e.g., 0.3.7)
-curl -L -O https://github.com/Owloops/updo/releases/latest/download/updo_VERSION_linux_amd64.pkg.tar.zst
-sudo pacman -U updo_VERSION_linux_amd64.pkg.tar.zst
+yay -S updo
 ```
 
 **openSUSE:**
@@ -155,14 +153,14 @@ docker run updo monitor <website-url> [options]
 
 ```bash
 # Monitor URLs
-./updo monitor <website-url> [options]
-./updo monitor <url1> <url2> <url3>
+updo monitor <website-url> [options]
+updo monitor <url1> <url2> <url3>
 
 # Using configuration file
-./updo monitor --config <config-file>
+updo monitor --config <config-file>
 
 # Generate shell completions
-./updo completion bash > updo_completion.bash
+updo completion bash > updo_completion.bash
 ```
 
 ### Options
@@ -200,29 +198,29 @@ docker run updo monitor <website-url> [options]
 
 ```bash
 # Basic monitoring
-./updo monitor https://example.com
+updo monitor https://example.com
 
 # Set custom refresh and timeout
-./updo monitor --refresh 10 --timeout 5 https://example.com
+updo monitor --refresh 10 --timeout 5 https://example.com
 
 # Simple mode and logging
-./updo monitor --simple --count 10 https://example.com
-./updo monitor --log --count 10 https://example.com > output.json
+updo monitor --simple --count 10 https://example.com
+updo monitor --log --count 10 https://example.com > output.json
 
 # Custom requests
-./updo monitor --header "Authorization: Bearer token" --assert-text "Welcome" https://example.com
-./updo monitor --request POST --header "Content-Type: application/json" --data '{"test":"data"}' https://api.example.com
+updo monitor --header "Authorization: Bearer token" --assert-text "Welcome" https://example.com
+updo monitor --request POST --header "Content-Type: application/json" --data '{"test":"data"}' https://api.example.com
 
 # Multi-target monitoring
-./updo monitor https://google.com https://github.com https://cloudflare.com
-./updo monitor --config example-config.toml --only Google,GitHub
+updo monitor https://google.com https://github.com https://cloudflare.com
+updo monitor --config example-config.toml --only Google,GitHub
 
 # Multi-region monitoring
-./updo monitor --regions us-east-1,eu-west-1 https://example.com
-./updo monitor --regions all --profile production https://example.com
+updo monitor --regions us-east-1,eu-west-1 https://example.com
+updo monitor --regions all --profile production https://example.com
 
 # Webhook notifications
-./updo monitor --webhook-url "https://hooks.slack.com/services/YOUR/WEBHOOK" https://example.com
+updo monitor --webhook-url "https://hooks.slack.com/services/YOUR/WEBHOOK" https://example.com
 ```
 
 ## Configuration File
