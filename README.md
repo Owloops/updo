@@ -434,6 +434,7 @@ When monitoring multiple targets:
 
 ## Mentions
 
+- [awesome-cli-apps](https://github.com/agarrharr/awesome-cli-apps)
 - [awesome-readme](https://github.com/matiassingers/awesome-readme)
 - [termui](https://github.com/gizak/termui)
 - [Terminal Trove](https://terminaltrove.com/updo)
