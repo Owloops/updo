@@ -438,7 +438,6 @@ When monitoring multiple targets:
 - [awesome-readme](https://github.com/matiassingers/awesome-readme)
 - [termui](https://github.com/gizak/termui)
 - [Terminal Trove](https://terminaltrove.com/updo)
-- [cobra](https://github.com/spf13/cobra)
 
 ## Contributing
 
