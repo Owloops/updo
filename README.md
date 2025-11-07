@@ -370,13 +370,13 @@ Export updo metrics to Prometheus for long-term storage, visualization, and aler
 
 ```bash
 # Basic Prometheus integration
-./updo monitor --prometheus-url http://localhost:9090/api/v1/write https://example.com
+updo monitor --prometheus-url http://localhost:9090/api/v1/write https://example.com
 
 # Via environment variables (CLI flag optional if URL provided via env)
 export UPDO_PROMETHEUS_RW_SERVER_URL="https://prometheus.example.com/api/v1/write"
 export UPDO_PROMETHEUS_USERNAME="admin"
 export UPDO_PROMETHEUS_PASSWORD="secret"
-./updo monitor https://example.com
+updo monitor https://example.com
 ```
 
 **Available metrics:**
@@ -410,13 +410,13 @@ Usage examples:
 
 ```bash
 # All logs to one file
-./updo monitor --log https://example.com > all.json 2>&1
+updo monitor --log https://example.com > all.json 2>&1
 
 # Metrics to one file, errors to another
-./updo monitor --log https://example.com > metrics.json 2> errors.json
+updo monitor --log https://example.com > metrics.json 2> errors.json
 
 # Processing with jq
-./updo monitor --log https://example.com | jq 'select(.type=="check") | .response_time_ms'
+updo monitor --log https://example.com | jq 'select(.type=="check") | .response_time_ms'
 ```
 
 ## Keyboard Shortcuts
