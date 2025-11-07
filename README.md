@@ -81,6 +81,8 @@ sudo apk add --allow-untrusted updo_VERSION_linux_amd64.apk
 
 ```bash
 yay -S updo
+# or use the binary package
+yay -S updo-bin
 ```
 
 **openSUSE:**
