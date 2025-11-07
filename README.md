@@ -44,8 +44,7 @@ Updo is a command-line tool for monitoring website uptime and performance. It pr
 <summary>macOS - Homebrew (Recommended)</summary>
 
 ```bash
-brew tap owloops/tap
-brew install updo
+brew install owloops/tap/updo
 ```
 
 </details>
