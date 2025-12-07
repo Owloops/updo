@@ -354,9 +354,11 @@ func (m *Manager) updateSelectionColors() {
 		return
 	}
 
+	m.listWidget.SelectedRowStyle.Bg = ui.ColorBlue
+	m.listWidget.SelectedRowStyle.Modifier = ui.ModifierBold
+
 	if m.isSelectedRowHeader() {
-		m.listWidget.SelectedRowStyle.Fg = ui.ColorMagenta
-		m.listWidget.SelectedRowStyle.Modifier = ui.ModifierBold
+		m.listWidget.SelectedRowStyle.Fg = ui.ColorWhite
 		return
 	}
 	currentKey := m.getCurrentTargetKey()
@@ -373,7 +375,6 @@ func (m *Manager) updateSelectionColors() {
 	} else {
 		m.listWidget.SelectedRowStyle.Fg = ui.ColorCyan
 	}
-	m.listWidget.SelectedRowStyle.Modifier = ui.ModifierBold
 }
 
 func (m *Manager) SetActiveTargetKey(keyIndex int, monitors map[string]*stats.Monitor) {
