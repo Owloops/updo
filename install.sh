@@ -79,11 +79,7 @@ get_latest_version() {
 
 get_download_url() {
     local RELEASE_OS="${SYSTEM}"
-
     local RELEASE_ARCH="${ARCH}"
-    if [[ "${ARCH}" = "x86_64" ]]; then
-        RELEASE_ARCH="amd64"
-    fi
 
     ASSET_PATTERN="updo_${RELEASE_OS}_${RELEASE_ARCH}"
     if [[ "${SYSTEM}" = "Windows" ]]; then
