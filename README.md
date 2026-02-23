@@ -95,6 +95,40 @@ sudo zypper install --allow-unsigned-rpm updo_VERSION_linux_amd64.rpm
 </details>
 
 <details>
+<summary>Nix/NixOS</summary>
+
+**Run directly:**
+
+```bash
+nix run github:Owloops/updo -- monitor https://example.com
+```
+
+**Temporary shell:**
+
+```bash
+nix shell github:Owloops/updo
+updo --version
+```
+
+**System flake integration:**
+
+```nix
+{
+  inputs.updo.url = "github:Owloops/updo";
+
+  outputs = { self, nixpkgs, updo }: {
+    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
+      modules = [{
+        environment.systemPackages = [ updo.packages.x86_64-linux.default ];
+      }];
+    };
+  };
+}
+```
+
+</details>
+
+<details>
 <summary>Windows - Direct Download</summary>
 
 **PowerShell:**

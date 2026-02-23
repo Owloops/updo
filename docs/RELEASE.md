@@ -74,6 +74,48 @@ git commit -m "feat: update lambda functionality"
 
 This ensures `go install github.com/Owloops/updo@latest` continues to work for users.
 
+## Updating the Nix Flake
+
+After creating a release, update the Nix flake to make the new version available to Nix users:
+
+1. **Update the version in flake.nix**
+
+   ```bash
+   # Edit flake.nix and update the version field
+   # Change: version = "0.4.5";
+   # To:     version = "0.4.6";  (or your new version)
+   ```
+
+2. **Update vendorHash if dependencies changed**
+
+   If `go.mod` or `go.sum` changed in this release:
+
+   ```bash
+   # Build will fail and show the correct hash
+   nix build --no-link
+
+   # Copy the correct hash from the error message:
+   # "got: sha256-XXXXX..."
+   # Update vendorHash in flake.nix with this value
+   ```
+
+3. **Test the flake**
+
+   ```bash
+   # Update flake.lock
+   nix flake update
+
+   # Test the version is correct
+   nix run . -- --version
+   ```
+
+4. **Commit and push the changes**
+
+   ```bash
+   git add flake.nix flake.lock
+   git commit -m "chore: update nix flake to v0.4.6"
+   ```
+
 ## Pre-release Checklist
 
 - [ ] All tests pass
