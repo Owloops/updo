@@ -22,7 +22,7 @@
 
             src = ./.;
 
-            vendorHash = "sha256-ExV9wRFd1Gsv74cU2brhnvHOAkOs9k1A0h6hsqisY1s=";
+            vendorHash = "sha256-KSYLngwYDPm46t+IkUnt0LSOMNBoN5oLmqNJQ2xVYpQ=";
 
             # Exclude the lambda directory as it's a separate module
             excludedPackages = [ "./lambda" ];
