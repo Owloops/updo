@@ -190,14 +190,14 @@ func (m *OutputManager) PrintStatisticsWithKeys(monitors map[string]*stats.Monit
 			if aggregatedStats.ChecksCount > 0 {
 				var builder strings.Builder
 				builder.Grow(100)
-				builder.WriteString(fmt.Sprintf("response time min/avg/max/stddev = %d/%d/%d/%.1f ms",
+				fmt.Fprintf(&builder, "response time min/avg/max/stddev = %d/%d/%d/%.1f ms",
 					aggregatedStats.MinResponseTime.Milliseconds(),
 					aggregatedStats.AvgResponseTime.Milliseconds(),
 					aggregatedStats.MaxResponseTime.Milliseconds(),
-					aggregatedStats.StdDev))
+					aggregatedStats.StdDev)
 
 				if aggregatedStats.ChecksCount >= 2 && aggregatedStats.P95 > 0 {
-					builder.WriteString(fmt.Sprintf(", 95th percentile: %d ms", aggregatedStats.P95.Milliseconds()))
+					fmt.Fprintf(&builder, ", 95th percentile: %d ms", aggregatedStats.P95.Milliseconds())
 				}
 
 				fmt.Println(builder.String())
@@ -305,14 +305,14 @@ func (m *OutputManager) PrintStatistics(monitors map[string]*stats.Monitor) {
 		if stats.ChecksCount > 0 {
 			var builder strings.Builder
 			builder.Grow(100)
-			builder.WriteString(fmt.Sprintf("response time min/avg/max/stddev = %d/%d/%d/%.1f ms",
+			fmt.Fprintf(&builder, "response time min/avg/max/stddev = %d/%d/%d/%.1f ms",
 				stats.MinResponseTime.Milliseconds(),
 				stats.AvgResponseTime.Milliseconds(),
 				stats.MaxResponseTime.Milliseconds(),
-				stats.StdDev))
+				stats.StdDev)
 
 			if stats.ChecksCount >= 2 && stats.P95 > 0 {
-				builder.WriteString(fmt.Sprintf(", 95th percentile: %d ms", stats.P95.Milliseconds()))
+				fmt.Fprintf(&builder, ", 95th percentile: %d ms", stats.P95.Milliseconds())
 			}
 
 			fmt.Println(builder.String())

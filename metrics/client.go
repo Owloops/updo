@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -140,7 +141,12 @@ func (c *WriteClient) sendSamples(samples []*prompb.TimeSeries) error {
 }
 
 func (c *WriteClient) doRequest(data []byte) error {
-	req, err := http.NewRequestWithContext(c.ctx, "POST", c.config.ServerURL, bytes.NewReader(data))
+	serverURL, err := url.Parse(c.config.ServerURL)
+	if err != nil {
+		return fmt.Errorf("invalid server URL: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(c.ctx, "POST", serverURL.String(), bytes.NewReader(data))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
