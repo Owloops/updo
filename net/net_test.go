@@ -128,9 +128,9 @@ func TestAutoDetectProtocol(t *testing.T) {
 		},
 		{
 			name:      "preserve existing protocol",
-			input:     "https://example.com",
-			wantHTTPS: "https://example.com",
-			wantHTTP:  "https://example.com",
+			input:     "https://google.com",
+			wantHTTPS: "https://google.com",
+			wantHTTP:  "https://google.com",
 		},
 		{
 			name:      "add protocol to IP with port",
