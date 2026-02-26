@@ -16,7 +16,7 @@ type Config struct {
 	Headers      map[string]string
 	PushInterval time.Duration
 	Username     string
-	Password string // #nosec G117 -- credentials for metrics push auth, never serialized
+	Password     string // #nosec G117 -- credentials for metrics push auth, never serialized
 }
 
 func NewConfig() Config {

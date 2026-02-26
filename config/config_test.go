@@ -26,9 +26,8 @@ method = "POST"
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
-	tmpPath := tmpFile.Name()
 	defer func() {
-		if err := os.Remove(tmpPath); err != nil {
+		if err := os.Remove(tmpFile.Name()); err != nil {
 			t.Logf("Failed to remove temp file: %v", err)
 		}
 	}()
@@ -40,7 +39,7 @@ method = "POST"
 		t.Fatalf("Failed to close temp file: %v", err)
 	}
 
-	config, err := LoadConfig(tmpPath)
+	config, err := LoadConfig(tmpFile.Name())
 	if err != nil {
 		t.Fatalf("LoadConfig failed: %v", err)
 	}
@@ -81,9 +80,8 @@ url = "https://example.com"
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
-	tmpPath := tmpFile.Name()
 	defer func() {
-		if err := os.Remove(tmpPath); err != nil {
+		if err := os.Remove(tmpFile.Name()); err != nil {
 			t.Logf("Failed to remove temp file: %v", err)
 		}
 	}()
@@ -95,7 +93,7 @@ url = "https://example.com"
 		t.Fatalf("Failed to close temp file: %v", err)
 	}
 
-	config, err := LoadConfig(tmpPath)
+	config, err := LoadConfig(tmpFile.Name())
 	if err != nil {
 		t.Fatalf("LoadConfig failed: %v", err)
 	}

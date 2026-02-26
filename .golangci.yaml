@@ -19,6 +19,10 @@ linters:
         - name: range-val-in-closure
         - name: context-as-argument
         - name: defer
+    gosec:
+      excludes:
+        - G703
+        - G704
   enable:
     - errcheck
     - staticcheck

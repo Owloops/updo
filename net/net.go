@@ -312,13 +312,7 @@ func makeHTTPRequest(urlStr string, options HTTPRequestOptions, config NetworkCo
 		reqBody = bytes.NewBufferString(options.Body)
 	}
 
-	parsedReqURL, parseErr := url.Parse(urlStr)
-	if parseErr != nil {
-		result.Error = parseErr
-		return result
-	}
-
-	req, err := http.NewRequest(options.Method, parsedReqURL.String(), reqBody)
+	req, err := http.NewRequest(options.Method, urlStr, reqBody)
 	if err != nil {
 		result.Error = err
 		return result

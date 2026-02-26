@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 )
@@ -44,12 +43,7 @@ func SendWebhook(webhookURL string, headers map[string]string, payload WebhookPa
 		return fmt.Errorf("failed to format webhook payload: %w", err)
 	}
 
-	parsedURL, err := url.Parse(webhookURL)
-	if err != nil {
-		return fmt.Errorf("invalid webhook URL: %w", err)
-	}
-
-	req, err := http.NewRequest("POST", parsedURL.String(), bytes.NewBuffer(data))
+	req, err := http.NewRequest("POST", webhookURL, bytes.NewBuffer(data))
 	if err != nil {
 		return fmt.Errorf("failed to create webhook request: %w", err)
 	}
