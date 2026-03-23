@@ -344,7 +344,8 @@ func makeHTTPRequest(urlStr string, options HTTPRequestOptions, config NetworkCo
 		}
 	}()
 
-	bodyBytes, err := io.ReadAll(resp.Body)
+	// Limit body reads to 1 MiB to prevent memory exhaustion
+	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
 		result.Error = err
 		return result
