@@ -14,6 +14,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/Owloops/updo/httputil"
 )
 
 const (
@@ -22,19 +24,6 @@ const (
 	_userAgent      = "updo/1.0"
 	_httpsPort      = ":443"
 )
-
-func parseHeaders(headers []string) map[string]string {
-	headerMap := make(map[string]string, len(headers))
-	for _, header := range headers {
-		parts := strings.SplitN(header, ":", 2)
-		if len(parts) == 2 {
-			key := strings.TrimSpace(parts[0])
-			value := strings.TrimSpace(parts[1])
-			headerMap[key] = value
-		}
-	}
-	return headerMap
-}
 
 type WebsiteCheckResult struct {
 	URL             string
@@ -108,7 +97,7 @@ func CheckWebsite(urlStr string, config NetworkConfig) WebsiteCheckResult {
 	}
 
 	if len(config.Headers) > 0 {
-		for key, value := range parseHeaders(config.Headers) {
+		for key, value := range httputil.ParseHeaders(config.Headers) {
 			options.Headers[key] = value
 		}
 	}
