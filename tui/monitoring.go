@@ -272,9 +272,9 @@ func monitorTargetTUI(ctx context.Context, target config.Target, targetIndex int
 		netConfig := net.NetworkConfig{
 			Timeout:         target.GetTimeout(),
 			ShouldFail:      target.ShouldFail,
-			FollowRedirects: target.FollowRedirects,
-			AcceptRedirects: target.AcceptRedirects,
-			SkipSSL:         target.SkipSSL,
+			FollowRedirects: config.BoolVal(target.FollowRedirects, false),
+			AcceptRedirects: config.BoolVal(target.AcceptRedirects, false),
+			SkipSSL:         config.BoolVal(target.SkipSSL, false),
 			AssertText:      target.AssertText,
 			Headers:         target.Headers,
 			Method:          target.Method,
@@ -319,7 +319,7 @@ func monitorTargetTUI(ctx context.Context, target config.Target, targetIndex int
 						*sequence++
 					}
 
-					if target.ReceiveAlert {
+					if config.BoolVal(target.ReceiveAlert, false) {
 						if alertSent, exists := alertStates[targetKeyStr]; exists {
 							if err := notifications.HandleAlerts(lambdaResult.Result.IsUp, alertSent, target.Name, lambdaResult.Result.URL); err != nil {
 								dataChannel <- TargetData{
@@ -379,7 +379,7 @@ func monitorTargetTUI(ctx context.Context, target config.Target, targetIndex int
 					*sequence++
 				}
 
-				if target.ReceiveAlert {
+				if config.BoolVal(target.ReceiveAlert, false) {
 					if alertSent, exists := alertStates[targetKeyStr]; exists {
 						if err := notifications.HandleAlerts(result.IsUp, alertSent, target.Name, target.URL); err != nil {
 							stats := monitor.GetStats()
