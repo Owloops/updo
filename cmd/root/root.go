@@ -92,8 +92,7 @@ func init() {
 	RootCmd.PersistentFlags().StringArrayVar(&AppConfig.WebhookHeaders, "webhook-header", nil, "Webhook headers (can be used multiple times, format: 'Header-Name: value')")
 	RootCmd.PersistentFlags().StringVar(&AppConfig.PrometheusURL, "prometheus-url", "", "Prometheus remote write endpoint URL (e.g., http://localhost:9090/api/v1/write)")
 
-	var logEnabled bool
-	RootCmd.PersistentFlags().BoolVar(&logEnabled, "log", false, "Output structured logs in JSON format (includes requests, responses, and metrics)")
+	RootCmd.PersistentFlags().Bool("log", false, "Output structured logs in JSON format (includes requests, responses, and metrics)")
 
 	RootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		refresh, _ := cmd.Flags().GetInt("refresh")
