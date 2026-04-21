@@ -379,3 +379,73 @@ func TestCheckWebsiteWithHeaders(t *testing.T) {
 		t.Errorf("CheckWebsite() StatusCode = %d, want 200", result.StatusCode)
 	}
 }
+
+func TestCheckWebsiteBodyLimit(t *testing.T) {
+	tests := []struct {
+		name           string
+		bodySize       int
+		bodySizeLimit  int64
+		wantTruncated  bool
+		wantBodyLength int
+	}{
+		{
+			name:           "body under custom limit",
+			bodySize:       500,
+			bodySizeLimit:  1000,
+			wantTruncated:  false,
+			wantBodyLength: 500,
+		},
+		{
+			name:           "body equals custom limit",
+			bodySize:       1000,
+			bodySizeLimit:  1000,
+			wantTruncated:  false,
+			wantBodyLength: 1000,
+		},
+		{
+			name:           "body exceeds custom limit",
+			bodySize:       2000,
+			bodySizeLimit:  1000,
+			wantTruncated:  true,
+			wantBodyLength: 1000,
+		},
+		{
+			name:           "zero BodySizeLimit means unlimited",
+			bodySize:       2 * 1024 * 1024,
+			bodySizeLimit:  0,
+			wantTruncated:  false,
+			wantBodyLength: 2 * 1024 * 1024,
+		},
+		{
+			name:           "DefaultBodySizeLimit caps at 1 MiB",
+			bodySize:       2 * 1024 * 1024,
+			bodySizeLimit:  DefaultBodySizeLimit,
+			wantTruncated:  true,
+			wantBodyLength: 1 << 20,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			payload := make([]byte, tt.bodySize)
+			for i := range payload {
+				payload[i] = 'x'
+			}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(200)
+				_, _ = w.Write(payload)
+			}))
+			defer server.Close()
+
+			config := NetworkConfig{Timeout: 5 * time.Second, BodySizeLimit: tt.bodySizeLimit}
+			result := CheckWebsite(server.URL, config)
+
+			if result.ResponseTruncated != tt.wantTruncated {
+				t.Errorf("ResponseTruncated = %v, want %v", result.ResponseTruncated, tt.wantTruncated)
+			}
+			if len(result.ResponseBody) != tt.wantBodyLength {
+				t.Errorf("ResponseBody length = %d, want %d", len(result.ResponseBody), tt.wantBodyLength)
+			}
+		})
+	}
+}

@@ -214,6 +214,7 @@ func monitorTargetSimple(ctx context.Context, target config.Target, targetIndex 
 			Headers:         target.Headers,
 			Method:          target.Method,
 			Body:            target.Body,
+			BodySizeLimit:   net.DefaultBodySizeLimit,
 		}
 
 		regions := target.Regions

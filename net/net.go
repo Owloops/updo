@@ -3,10 +3,12 @@ package net
 import (
 	"bytes"
 	"crypto/tls"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"net"
 	"net/http"
 	"net/http/httptrace"
@@ -23,23 +25,29 @@ const (
 	_defaultTimeout = 5 * time.Second
 	_userAgent      = "updo/1.0"
 	_httpsPort      = ":443"
+
+	// DefaultBodySizeLimit is the recommended response body cap (1 MiB) for
+	// probe responses. Callers should set NetworkConfig.BodySizeLimit to this
+	// value unless they have a reason to cap smaller or disable capping.
+	DefaultBodySizeLimit int64 = 1 << 20
 )
 
 type WebsiteCheckResult struct {
-	URL             string
-	ResolvedIP      string
-	IsUp            bool
-	StatusCode      int
-	ResponseTime    time.Duration
-	TraceInfo       *HttpTraceInfo
-	AssertionPassed bool
-	LastCheckTime   time.Time
-	AssertText      string
-	Method          string
-	RequestHeaders  http.Header
-	ResponseHeaders http.Header
-	RequestBody     string
-	ResponseBody    string
+	URL               string
+	ResolvedIP        string
+	IsUp              bool
+	StatusCode        int
+	ResponseTime      time.Duration
+	TraceInfo         *HttpTraceInfo
+	AssertionPassed   bool
+	LastCheckTime     time.Time
+	AssertText        string
+	Method            string
+	RequestHeaders    http.Header
+	ResponseHeaders   http.Header
+	RequestBody       string
+	ResponseBody      string
+	ResponseTruncated bool
 }
 type HttpTraceInfo struct {
 	Wait             time.Duration
@@ -59,6 +67,8 @@ type NetworkConfig struct {
 	Headers         []string
 	Method          string
 	Body            string
+	// BodySizeLimit caps bytes read from the response body. 0 means no limit.
+	BodySizeLimit int64
 }
 
 type HTTPRequestOptions struct {
@@ -68,20 +78,21 @@ type HTTPRequestOptions struct {
 }
 
 type HTTPResponse struct {
-	URL             string
-	ResolvedIP      string
-	StatusCode      int
-	StatusText      string
-	HTTPVersion     string
-	ResponseHeaders http.Header
-	ResponseBody    string
-	RequestHeaders  http.Header
-	RequestBody     string
-	Method          string
-	ResponseTime    time.Duration
-	TraceInfo       *HttpTraceInfo
-	LastCheckTime   time.Time
-	Error           error
+	URL               string
+	ResolvedIP        string
+	StatusCode        int
+	StatusText        string
+	HTTPVersion       string
+	ResponseHeaders   http.Header
+	ResponseBody      string
+	ResponseTruncated bool
+	RequestHeaders    http.Header
+	RequestBody       string
+	Method            string
+	ResponseTime      time.Duration
+	TraceInfo         *HttpTraceInfo
+	LastCheckTime     time.Time
+	Error             error
 }
 
 func CheckWebsite(urlStr string, config NetworkConfig) WebsiteCheckResult {
@@ -105,18 +116,19 @@ func CheckWebsite(urlStr string, config NetworkConfig) WebsiteCheckResult {
 	httpResp := makeHTTPRequest(urlStr, options, config)
 
 	result := WebsiteCheckResult{
-		URL:             urlStr,
-		ResolvedIP:      httpResp.ResolvedIP,
-		StatusCode:      httpResp.StatusCode,
-		ResponseTime:    httpResp.ResponseTime,
-		TraceInfo:       httpResp.TraceInfo,
-		LastCheckTime:   httpResp.LastCheckTime,
-		AssertText:      config.AssertText,
-		Method:          options.Method,
-		RequestHeaders:  httpResp.RequestHeaders,
-		ResponseHeaders: httpResp.ResponseHeaders,
-		RequestBody:     httpResp.RequestBody,
-		ResponseBody:    httpResp.ResponseBody,
+		URL:               urlStr,
+		ResolvedIP:        httpResp.ResolvedIP,
+		StatusCode:        httpResp.StatusCode,
+		ResponseTime:      httpResp.ResponseTime,
+		TraceInfo:         httpResp.TraceInfo,
+		LastCheckTime:     httpResp.LastCheckTime,
+		AssertText:        config.AssertText,
+		Method:            options.Method,
+		RequestHeaders:    httpResp.RequestHeaders,
+		ResponseHeaders:   httpResp.ResponseHeaders,
+		RequestBody:       httpResp.RequestBody,
+		ResponseBody:      httpResp.ResponseBody,
+		ResponseTruncated: httpResp.ResponseTruncated,
 	}
 
 	if httpResp.Error != nil {
@@ -333,10 +345,25 @@ func makeHTTPRequest(urlStr string, options HTTPRequestOptions, config NetworkCo
 		}
 	}()
 
-	bodyBytes, err := io.ReadAll(resp.Body)
+	body := resp.Body
+	if config.BodySizeLimit > 0 {
+		limit := config.BodySizeLimit
+		// MaxBytesReader internally does limit+1, so clamp MaxInt64 to avoid overflow.
+		if limit == math.MaxInt64 {
+			limit = math.MaxInt64 - 1
+		}
+		body = http.MaxBytesReader(nil, resp.Body, limit)
+	}
+	bodyBytes, err := io.ReadAll(body)
 	if err != nil {
-		result.Error = err
-		return result
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			result.ResponseTruncated = true
+			log.Printf("Warning: response body from %s exceeded BodySizeLimit of %d bytes", urlStr, maxBytesErr.Limit)
+		} else {
+			result.Error = err
+			return result
+		}
 	}
 
 	result.StatusCode = resp.StatusCode
