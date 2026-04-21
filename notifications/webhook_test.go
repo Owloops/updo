@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/Owloops/updo/httputil"
 )
 
 func TestSendWebhook(t *testing.T) {
@@ -71,7 +73,7 @@ func TestSendWebhook(t *testing.T) {
 			}))
 			defer server.Close()
 
-			headerMap := parseHeaders(tc.headers)
+			headerMap := httputil.ParseHeaders(tc.headers)
 
 			err := SendWebhook(server.URL, headerMap, tc.payload)
 
@@ -90,7 +92,7 @@ func TestSendWebhook(t *testing.T) {
 					t.Errorf("Target mismatch: expected %s, got %s", tc.payload.Target, receivedPayload.Target)
 				}
 
-				expectedHeaders := parseHeaders(tc.headers)
+				expectedHeaders := httputil.ParseHeaders(tc.headers)
 
 				for key, value := range expectedHeaders {
 					if receivedHeaders.Get(key) != value {

@@ -5,26 +5,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 	"time"
+
+	"github.com/Owloops/updo/httputil"
 )
 
 const (
 	_webhookTimeout = 10 * time.Second
 )
-
-func parseHeaders(headers []string) map[string]string {
-	headerMap := make(map[string]string, len(headers))
-	for _, header := range headers {
-		parts := strings.SplitN(header, ":", 2)
-		if len(parts) == 2 {
-			key := strings.TrimSpace(parts[0])
-			value := strings.TrimSpace(parts[1])
-			headerMap[key] = value
-		}
-	}
-	return headerMap
-}
 
 type WebhookPayload struct {
 	Event          string    `json:"event"`
@@ -107,7 +95,7 @@ func HandleWebhookAlert(webhookURL string, headers []string, isUp bool, alertSen
 		Error:          errorMsg,
 	}
 
-	headerMap := parseHeaders(headers)
+	headerMap := httputil.ParseHeaders(headers)
 
 	if err := SendWebhook(webhookURL, headerMap, payload); err != nil {
 		return fmt.Errorf("failed to send webhook for %s: %w", displayName, err)
