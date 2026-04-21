@@ -110,6 +110,7 @@ func handleRequest(ctx context.Context, req CheckRequest) (CheckResponse, error)
 		Headers:         req.Headers,
 		Method:          req.Method,
 		Body:            req.Body,
+		BodySizeLimit:   net.DefaultBodySizeLimit,
 	}
 
 	result := net.CheckWebsite(req.URL, netConfig)
