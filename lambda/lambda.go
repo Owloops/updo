@@ -48,6 +48,7 @@ type CheckRequest struct {
 	SkipSSL         bool     `json:"skip_ssl"`
 	AssertText      string   `json:"assert_text"`
 	ShouldFail      bool     `json:"should_fail"`
+	BodySizeLimit   int64    `json:"body_size_limit,omitempty"`
 }
 
 type CheckResponse struct {
@@ -110,7 +111,7 @@ func handleRequest(ctx context.Context, req CheckRequest) (CheckResponse, error)
 		Headers:         req.Headers,
 		Method:          req.Method,
 		Body:            req.Body,
-		BodySizeLimit:   net.DefaultBodySizeLimit,
+		BodySizeLimit:   req.BodySizeLimit,
 	}
 
 	result := net.CheckWebsite(req.URL, netConfig)

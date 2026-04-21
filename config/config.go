@@ -3,6 +3,7 @@ package config
 import (
 	"time"
 
+	"github.com/Owloops/updo/net"
 	"github.com/spf13/viper"
 )
 
@@ -29,10 +30,19 @@ type Target struct {
 	WebhookURL      string   `mapstructure:"webhook_url"`
 	WebhookHeaders  []string `mapstructure:"webhook_headers"`
 	Regions         []string `mapstructure:"regions"`
+	BodySizeLimit   *int64   `mapstructure:"body_size_limit"`
 }
 
 // BoolVal returns the value of a *bool, or the fallback if nil.
 func BoolVal(p *bool, fallback bool) bool {
+	if p != nil {
+		return *p
+	}
+	return fallback
+}
+
+// Int64Val returns the value of an *int64, or the fallback if nil.
+func Int64Val(p *int64, fallback int64) int64 {
 	if p != nil {
 		return *p
 	}
@@ -55,6 +65,7 @@ type Global struct {
 	WebhookURL      string   `mapstructure:"webhook_url"`
 	WebhookHeaders  []string `mapstructure:"webhook_headers"`
 	Regions         []string `mapstructure:"regions"`
+	BodySizeLimit   int64    `mapstructure:"body_size_limit"`
 }
 
 type Config struct {
@@ -72,6 +83,7 @@ func LoadConfig(configFile string) (*Config, error) {
 	viper.SetDefault("global.receive_alert", true)
 	viper.SetDefault("global.count", 0)
 	viper.SetDefault("global.method", _defaultMethod)
+	viper.SetDefault("global.body_size_limit", net.DefaultBodySizeLimit)
 
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, err
@@ -109,6 +121,10 @@ func LoadConfig(configFile string) (*Config, error) {
 		if target.SkipSSL == nil {
 			v := config.Global.SkipSSL
 			target.SkipSSL = &v
+		}
+		if target.BodySizeLimit == nil {
+			v := config.Global.BodySizeLimit
+			target.BodySizeLimit = &v
 		}
 		if target.WebhookURL == "" && config.Global.WebhookURL != "" {
 			target.WebhookURL = config.Global.WebhookURL

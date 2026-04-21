@@ -4,6 +4,8 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/Owloops/updo/net"
 )
 
 func TestLoadConfig(t *testing.T) {
@@ -148,6 +150,104 @@ name = "Inherit"
 	}
 	if !BoolVal(inherit.SkipSSL, false) {
 		t.Error("Inherit: SkipSSL should be true (inherited), got false")
+	}
+}
+
+// TestBodySizeLimitInheritance verifies that a target inherits
+// global.body_size_limit when unset, overrides when explicitly set,
+// and supports 0 as "unlimited".
+func TestBodySizeLimitInheritance(t *testing.T) {
+	configContent := `
+[global]
+body_size_limit = 2097152
+
+[[targets]]
+url = "https://inherit.example.com"
+name = "Inherit"
+
+[[targets]]
+url = "https://override.example.com"
+name = "Override"
+body_size_limit = 524288
+
+[[targets]]
+url = "https://unlimited.example.com"
+name = "Unlimited"
+body_size_limit = 0
+`
+
+	tmpFile, err := os.CreateTemp("", "test-config-bodysize-*.toml")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer func() {
+		if err := os.Remove(tmpFile.Name()); err != nil {
+			t.Logf("Failed to remove temp file: %v", err)
+		}
+	}()
+
+	if _, err := tmpFile.WriteString(configContent); err != nil {
+		t.Fatalf("Failed to write config: %v", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		t.Fatalf("Failed to close temp file: %v", err)
+	}
+
+	cfg, err := LoadConfig(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("LoadConfig failed: %v", err)
+	}
+
+	if cfg.Global.BodySizeLimit != 2097152 {
+		t.Errorf("Global.BodySizeLimit = %d, want 2097152", cfg.Global.BodySizeLimit)
+	}
+
+	if got := Int64Val(cfg.Targets[0].BodySizeLimit, -1); got != 2097152 {
+		t.Errorf("Inherit target: BodySizeLimit = %d, want 2097152 (inherited)", got)
+	}
+	if got := Int64Val(cfg.Targets[1].BodySizeLimit, -1); got != 524288 {
+		t.Errorf("Override target: BodySizeLimit = %d, want 524288", got)
+	}
+	if got := Int64Val(cfg.Targets[2].BodySizeLimit, -1); got != 0 {
+		t.Errorf("Unlimited target: BodySizeLimit = %d, want 0 (explicit unlimited)", got)
+	}
+}
+
+// TestBodySizeLimitDefault verifies that when neither global nor target
+// set body_size_limit, the viper default of net.DefaultBodySizeLimit applies.
+func TestBodySizeLimitDefault(t *testing.T) {
+	configContent := `
+[[targets]]
+url = "https://example.com"
+`
+
+	tmpFile, err := os.CreateTemp("", "test-config-bodysize-default-*.toml")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer func() {
+		if err := os.Remove(tmpFile.Name()); err != nil {
+			t.Logf("Failed to remove temp file: %v", err)
+		}
+	}()
+
+	if _, err := tmpFile.WriteString(configContent); err != nil {
+		t.Fatalf("Failed to write config: %v", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		t.Fatalf("Failed to close temp file: %v", err)
+	}
+
+	cfg, err := LoadConfig(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("LoadConfig failed: %v", err)
+	}
+
+	if cfg.Global.BodySizeLimit != net.DefaultBodySizeLimit {
+		t.Errorf("Global.BodySizeLimit = %d, want %d (default)", cfg.Global.BodySizeLimit, net.DefaultBodySizeLimit)
+	}
+	if got := Int64Val(cfg.Targets[0].BodySizeLimit, -1); got != net.DefaultBodySizeLimit {
+		t.Errorf("Target BodySizeLimit = %d, want %d (default inherited)", got, net.DefaultBodySizeLimit)
 	}
 }
 

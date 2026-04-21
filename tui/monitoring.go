@@ -279,7 +279,7 @@ func monitorTargetTUI(ctx context.Context, target config.Target, targetIndex int
 			Headers:         target.Headers,
 			Method:          target.Method,
 			Body:            target.Body,
-			BodySizeLimit:   net.DefaultBodySizeLimit,
+			BodySizeLimit:   config.Int64Val(target.BodySizeLimit, net.DefaultBodySizeLimit),
 		}
 
 		regions := target.Regions
