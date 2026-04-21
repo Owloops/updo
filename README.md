@@ -289,6 +289,7 @@ headers = ["Authorization: Bearer token"]
 **Global settings** (apply to all targets unless overridden):
 
 - `refresh_interval`, `timeout`, `follow_redirects`, `accept_redirects`, `receive_alert`, `count`
+- `body_size_limit`: Response body cap in bytes (default `1048576` = 1 MiB; `0` means no limit)
 - `webhook_url`, `webhook_headers`: Default webhook settings
 - `only`, `skip`: Target filtering arrays
 - `regions`: AWS regions for remote executors
@@ -299,8 +300,11 @@ headers = ["Authorization: Bearer token"]
 - `method`, `headers`, `body`: HTTP request options
 - `assert_text`, `should_fail`: Response validation
 - `skip_ssl`, `follow_redirects`, `accept_redirects`: Connection options
+- `body_size_limit`: Per-target response body cap (set to `0` to disable capping for this target)
 - `webhook_url`, `webhook_headers`: Per-target notifications
 - `regions`: Target-specific AWS regions
+
+> **Note:** Response bodies are capped at `body_size_limit` bytes when evaluating `assert_text`. If your asserted text appears beyond the cap, the assertion fails and the probe logs a warning (visible in the Recent Logs widget in TUI mode, or on stderr in simple mode). Raise `body_size_limit` or set it to `0` for targets returning large payloads.
 
 ## Multi-Region Monitoring
 

@@ -6,6 +6,7 @@ accept_redirects = false
 receive_alert = false
 count = 0
 skip = ["GitHub-API"]
+# body_size_limit = 1048576  # Cap response body reads at 1 MiB (default); 0 = no limit
 # regions = ["us-east-1", "eu-central-1", "ap-southeast-1"]
 
 [[targets]]
