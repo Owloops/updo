@@ -70,6 +70,87 @@ method = "POST"
 	}
 }
 
+// TestBooleanInheritanceOverride verifies that a target can override
+// a bool field to false when the global value is true.
+// Before the fix, with plain bool the target always inherited true from global.
+func TestBooleanInheritanceOverride(t *testing.T) {
+	configContent := `
+[global]
+follow_redirects = true
+accept_redirects = true
+receive_alert = true
+skip_ssl = true
+
+[[targets]]
+url = "https://override.example.com"
+name = "Override"
+follow_redirects = false
+accept_redirects = false
+receive_alert = false
+skip_ssl = false
+
+[[targets]]
+url = "https://inherit.example.com"
+name = "Inherit"
+`
+
+	tmpFile, err := os.CreateTemp("", "test-config-bool-*.toml")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer func() {
+		if err := os.Remove(tmpFile.Name()); err != nil {
+			t.Logf("Failed to remove temp file: %v", err)
+		}
+	}()
+
+	if _, err := tmpFile.WriteString(configContent); err != nil {
+		t.Fatalf("Failed to write config: %v", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		t.Fatalf("Failed to close temp file: %v", err)
+	}
+
+	cfg, err := LoadConfig(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("LoadConfig failed: %v", err)
+	}
+
+	if len(cfg.Targets) != 2 {
+		t.Fatalf("Expected 2 targets, got %d", len(cfg.Targets))
+	}
+
+	// Target "Override" should have all bools set to false
+	override := cfg.Targets[0]
+	if BoolVal(override.FollowRedirects, true) {
+		t.Error("Override: FollowRedirects should be false, got true")
+	}
+	if BoolVal(override.AcceptRedirects, true) {
+		t.Error("Override: AcceptRedirects should be false, got true")
+	}
+	if BoolVal(override.ReceiveAlert, true) {
+		t.Error("Override: ReceiveAlert should be false, got true")
+	}
+	if BoolVal(override.SkipSSL, true) {
+		t.Error("Override: SkipSSL should be false, got true")
+	}
+
+	// Target "Inherit" should inherit all bools as true from global
+	inherit := cfg.Targets[1]
+	if !BoolVal(inherit.FollowRedirects, false) {
+		t.Error("Inherit: FollowRedirects should be true (inherited), got false")
+	}
+	if !BoolVal(inherit.AcceptRedirects, false) {
+		t.Error("Inherit: AcceptRedirects should be true (inherited), got false")
+	}
+	if !BoolVal(inherit.ReceiveAlert, false) {
+		t.Error("Inherit: ReceiveAlert should be true (inherited), got false")
+	}
+	if !BoolVal(inherit.SkipSSL, false) {
+		t.Error("Inherit: SkipSSL should be true (inherited), got false")
+	}
+}
+
 func TestLoadConfigDefaults(t *testing.T) {
 	configContent := `
 [[targets]]

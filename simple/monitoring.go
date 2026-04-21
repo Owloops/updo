@@ -207,9 +207,9 @@ func monitorTargetSimple(ctx context.Context, target config.Target, targetIndex 
 		netConfig := net.NetworkConfig{
 			Timeout:         target.GetTimeout(),
 			ShouldFail:      target.ShouldFail,
-			FollowRedirects: target.FollowRedirects,
-			AcceptRedirects: target.AcceptRedirects,
-			SkipSSL:         target.SkipSSL,
+			FollowRedirects: config.BoolVal(target.FollowRedirects, false),
+			AcceptRedirects: config.BoolVal(target.AcceptRedirects, false),
+			SkipSSL:         config.BoolVal(target.SkipSSL, false),
 			AssertText:      target.AssertText,
 			Headers:         target.Headers,
 			Method:          target.Method,
@@ -239,7 +239,7 @@ func monitorTargetSimple(ctx context.Context, target config.Target, targetIndex 
 						*sequence++
 					}
 
-					if target.ReceiveAlert {
+					if config.BoolVal(target.ReceiveAlert, false) {
 						if alertSent, exists := alertStates[keyStr]; exists {
 							if err := notifications.HandleAlerts(lambdaResult.Result.IsUp, alertSent, target.Name, lambdaResult.Result.URL); err != nil {
 								log.Printf("Alert notification failed: %v", err)
@@ -282,7 +282,7 @@ func monitorTargetSimple(ctx context.Context, target config.Target, targetIndex 
 					*sequence++
 				}
 
-				if target.ReceiveAlert {
+				if config.BoolVal(target.ReceiveAlert, false) {
 					if alertSent, exists := alertStates[keyStr]; exists {
 						if err := notifications.HandleAlerts(result.IsUp, alertSent, target.Name, target.URL); err != nil {
 							log.Printf("Alert notification failed: %v", err)

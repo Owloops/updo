@@ -18,17 +18,25 @@ type Target struct {
 	RefreshInterval int      `mapstructure:"refresh_interval"`
 	Timeout         int      `mapstructure:"timeout"`
 	ShouldFail      bool     `mapstructure:"should_fail"`
-	FollowRedirects bool     `mapstructure:"follow_redirects"`
-	AcceptRedirects bool     `mapstructure:"accept_redirects"`
-	SkipSSL         bool     `mapstructure:"skip_ssl"`
+	FollowRedirects *bool    `mapstructure:"follow_redirects"`
+	AcceptRedirects *bool    `mapstructure:"accept_redirects"`
+	SkipSSL         *bool    `mapstructure:"skip_ssl"`
 	AssertText      string   `mapstructure:"assert_text"`
-	ReceiveAlert    bool     `mapstructure:"receive_alert"`
+	ReceiveAlert    *bool    `mapstructure:"receive_alert"`
 	Headers         []string `mapstructure:"headers"`
 	Method          string   `mapstructure:"method"`
 	Body            string   `mapstructure:"body"`
 	WebhookURL      string   `mapstructure:"webhook_url"`
 	WebhookHeaders  []string `mapstructure:"webhook_headers"`
 	Regions         []string `mapstructure:"regions"`
+}
+
+// BoolVal returns the value of a *bool, or the fallback if nil.
+func BoolVal(p *bool, fallback bool) bool {
+	if p != nil {
+		return *p
+	}
+	return fallback
 }
 
 type Global struct {
@@ -85,14 +93,22 @@ func LoadConfig(configFile string) (*Config, error) {
 		if target.Method == "" {
 			target.Method = _defaultMethod
 		}
-		if !target.FollowRedirects && config.Global.FollowRedirects {
-			target.FollowRedirects = config.Global.FollowRedirects
+		// *bool fields: if nil (not set in target), inherit from global
+		if target.FollowRedirects == nil {
+			v := config.Global.FollowRedirects
+			target.FollowRedirects = &v
 		}
-		if !target.AcceptRedirects && config.Global.AcceptRedirects {
-			target.AcceptRedirects = config.Global.AcceptRedirects
+		if target.AcceptRedirects == nil {
+			v := config.Global.AcceptRedirects
+			target.AcceptRedirects = &v
 		}
-		if !target.ReceiveAlert && config.Global.ReceiveAlert {
-			target.ReceiveAlert = config.Global.ReceiveAlert
+		if target.ReceiveAlert == nil {
+			v := config.Global.ReceiveAlert
+			target.ReceiveAlert = &v
+		}
+		if target.SkipSSL == nil {
+			v := config.Global.SkipSSL
+			target.SkipSSL = &v
 		}
 		if target.WebhookURL == "" && config.Global.WebhookURL != "" {
 			target.WebhookURL = config.Global.WebhookURL
