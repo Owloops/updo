@@ -26,6 +26,7 @@ type LambdaRequest struct {
 	SkipSSL         bool     `json:"skip_ssl"`
 	AssertText      string   `json:"assert_text"`
 	ShouldFail      bool     `json:"should_fail"`
+	BodySizeLimit   int64    `json:"body_size_limit,omitempty"`
 }
 
 type LambdaResponse struct {
@@ -111,6 +112,7 @@ func invokeLambdaInRegion(url string, config net.NetworkConfig, region string, p
 		SkipSSL:         config.SkipSSL,
 		AssertText:      config.AssertText,
 		ShouldFail:      config.ShouldFail,
+		BodySizeLimit:   config.BodySizeLimit,
 	}
 
 	payload, err := json.Marshal(request)
