@@ -278,6 +278,9 @@ func monitorTargetSimple(ctx context.Context, target config.Target, targetIndex 
 
 			if monitor, exists := monitors[keyStr]; exists {
 				result := net.CheckWebsite(target.URL, netConfig)
+				if result.ResponseTruncated {
+					log.Printf("Warning: response body from %s truncated at BodySizeLimit of %d bytes", target.URL, netConfig.BodySizeLimit)
+				}
 				monitor.AddResult(result)
 				if sequence, exists := sequences[keyStr]; exists {
 					*sequence++

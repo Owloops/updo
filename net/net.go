@@ -359,7 +359,6 @@ func makeHTTPRequest(urlStr string, options HTTPRequestOptions, config NetworkCo
 		var maxBytesErr *http.MaxBytesError
 		if errors.As(err, &maxBytesErr) {
 			result.ResponseTruncated = true
-			log.Printf("Warning: response body from %s exceeded BodySizeLimit of %d bytes", urlStr, maxBytesErr.Limit)
 		} else {
 			result.Error = err
 			return result

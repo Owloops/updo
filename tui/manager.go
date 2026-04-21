@@ -454,6 +454,11 @@ func (m *Manager) UpdateTarget(data TargetData) {
 		logAdded = true
 	}
 
+	if data.Result.ResponseTruncated {
+		m.logBuffer.AddLogEntry(LogLevelWarning, "Response body truncated", "Exceeded BodySizeLimit; assertion checks may be unreliable", data.TargetKey)
+		logAdded = true
+	}
+
 	if !data.Result.IsUp && data.LambdaError == nil {
 		level := LogLevelError
 		message := "Request failed"
