@@ -320,7 +320,11 @@ func makeHTTPRequest(urlStr string, options HTTPRequestOptions, config NetworkCo
 	}
 
 	for name, value := range options.Headers {
-		req.Header.Set(name, value)
+		if strings.EqualFold(name, "Host") {
+			req.Host = value
+		} else {
+			req.Header.Set(name, value)
+		}
 		result.RequestHeaders.Set(name, value)
 	}
 
