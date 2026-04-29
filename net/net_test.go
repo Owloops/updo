@@ -386,7 +386,6 @@ func TestCheckWebsiteWithHostHeader(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Host != wantHost {
 			w.WriteHeader(400)
-			_, _ = w.Write([]byte(r.Host))
 			return
 		}
 		w.WriteHeader(200)
@@ -402,7 +401,7 @@ func TestCheckWebsiteWithHostHeader(t *testing.T) {
 	result := CheckWebsite(server.URL, config)
 
 	if !result.IsUp {
-		t.Errorf("CheckWebsite() with Host header should succeed, got status %d body %q", result.StatusCode, result.ResponseBody)
+		t.Errorf("CheckWebsite() with Host header should succeed, got status %d", result.StatusCode)
 	}
 	if result.StatusCode != 200 {
 		t.Errorf("CheckWebsite() StatusCode = %d, want 200", result.StatusCode)
