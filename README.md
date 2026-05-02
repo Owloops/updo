@@ -475,6 +475,7 @@ When monitoring multiple targets:
 - [awesome-readme](https://github.com/matiassingers/awesome-readme)
 - [termui](https://github.com/gizak/termui)
 - [Terminal Trove](https://terminaltrove.com/updo)
+- [Jupiter Broadcasting Picks](https://www.jupiterbroadcasting.com/show/linux-unplugged/664/)
 
 ## Contributing
 
