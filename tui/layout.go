@@ -45,7 +45,7 @@ func (m *Manager) initializeMultiTargetWidgets() {
 	m.searchWidget.Title = "Search"
 	m.searchWidget.TitleStyle.Fg = ui.ColorWhite
 	m.searchWidget.TitleStyle.Modifier = ui.ModifierBold
-	m.searchWidget.Text = "Press / to activate"
+	m.searchWidget.Text = " [/] Search [r] Refresh [l] Logs [f] Focus [q] Quit"
 	m.searchWidget.TextStyle.Fg = ui.ColorWhite
 
 	m.listWidget = uw.NewFilteredList()
@@ -90,7 +90,7 @@ func (m *Manager) handleSearchChange(query string, filteredIndices []int) {
 			}
 		}
 	} else {
-		m.searchWidget.Text = "Press / to activate"
+		m.searchWidget.Text = " [/] Search [r] Refresh [l] Logs [f] Focus [q] Quit"
 		m.searchWidget.TextStyle.Fg = ui.ColorWhite
 		m.searchWidget.BorderStyle.Fg = ui.ColorCyan
 
