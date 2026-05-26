@@ -13,6 +13,9 @@ const (
 	googleURL  = "https://google.com"
 	githubURL  = "https://github.com"
 	unnamedURL = "https://unnamed.com"
+	overrideURL  = "https://override.example.com"
+	inheritURL   = "https://inherit.example.com"
+	unlimitedURL = "https://unlimited.example.com"
 	exampleStr = "Example"
 	googleStr  = "Google"
 	githubStr  = "GitHub"
@@ -27,8 +30,8 @@ follow_redirects = false
 receive_alert = false
 
 [[targets]]
-url = "https://example.com"
-name = "Example"
+url = "` + testURL + `"
+name = "` + exampleStr + `"
 refresh_interval = 60
 timeout = 20
 method = "POST"
@@ -94,7 +97,7 @@ receive_alert = true
 skip_ssl = true
 
 [[targets]]
-url = "https://override.example.com"
+url = "` + overrideURL + `"
 name = "Override"
 follow_redirects = false
 accept_redirects = false
@@ -102,7 +105,7 @@ receive_alert = false
 skip_ssl = false
 
 [[targets]]
-url = "https://inherit.example.com"
+url = "` + inheritURL + `"
 name = "Inherit"
 `
 
@@ -172,16 +175,16 @@ func TestBodySizeLimitInheritance(t *testing.T) {
 body_size_limit = 2097152
 
 [[targets]]
-url = "https://inherit.example.com"
+url = "` + inheritURL + `"
 name = "Inherit"
 
 [[targets]]
-url = "https://override.example.com"
+url = "` + overrideURL + `"
 name = "Override"
 body_size_limit = 524288
 
 [[targets]]
-url = "https://unlimited.example.com"
+url = "` + unlimitedURL + `"
 name = "Unlimited"
 body_size_limit = 0
 `
@@ -228,7 +231,7 @@ body_size_limit = 0
 func TestBodySizeLimitDefault(t *testing.T) {
 	configContent := `
 [[targets]]
-url = "https://example.com"
+url = "` + testURL + `"
 `
 
 	tmpFile, err := os.CreateTemp("", "test-config-bodysize-default-*.toml")
@@ -264,7 +267,7 @@ url = "https://example.com"
 func TestLoadConfigDefaults(t *testing.T) {
 	configContent := `
 [[targets]]
-url = "https://example.com"
+url = "` + testURL + `"
 `
 
 	tmpFile, err := os.CreateTemp("", "test-config-defaults-*.toml")

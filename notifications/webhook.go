@@ -72,11 +72,11 @@ func HandleWebhookAlert(webhookURL string, headers []string, isUp bool, alertSen
 	shouldSend := false
 
 	if !isUp && !*alertSent {
-		event = "target_down"
+		event = _eventTargetDown
 		shouldSend = true
 		*alertSent = true
 	} else if isUp && *alertSent {
-		event = "target_up"
+		event = _eventTargetUp
 		shouldSend = true
 		*alertSent = false
 	}

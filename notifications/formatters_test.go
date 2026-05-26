@@ -13,11 +13,11 @@ func TestGenericFormatter_Format(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "target_down_with_all_fields",
+			name: _eventTargetDown + "_with_all_fields",
 			payload: WebhookPayload{
-				Event:          "target_down",
+				Event:          _eventTargetDown,
 				Target:         "Test Service",
-				URL:            "https://example.com",
+				URL:            testURL,
 				Timestamp:      time.Date(2025, 10, 7, 12, 0, 0, 0, time.UTC),
 				ResponseTimeMs: 150,
 				StatusCode:     500,
@@ -25,11 +25,11 @@ func TestGenericFormatter_Format(t *testing.T) {
 			},
 		},
 		{
-			name: "target_up_with_minimal_fields",
+			name: _eventTargetUp + "_with_minimal_fields",
 			payload: WebhookPayload{
-				Event:          "target_up",
+				Event:          _eventTargetUp,
 				Target:         "Test Service",
-				URL:            "https://example.com",
+				URL:            testURL,
 				Timestamp:      time.Date(2025, 10, 7, 12, 0, 0, 0, time.UTC),
 				ResponseTimeMs: 50,
 			},
@@ -68,9 +68,9 @@ func TestSlackFormatter_Format(t *testing.T) {
 		wantColor string
 	}{
 		{
-			name: "target_down",
+			name: _eventTargetDown,
 			payload: WebhookPayload{
-				Event:          "target_down",
+				Event:          _eventTargetDown,
 				Target:         "API Service",
 				URL:            "https://api.example.com",
 				Timestamp:      time.Date(2025, 10, 7, 12, 0, 0, 0, time.UTC),
@@ -81,9 +81,9 @@ func TestSlackFormatter_Format(t *testing.T) {
 			wantColor: "danger",
 		},
 		{
-			name: "target_up",
+			name: _eventTargetUp,
 			payload: WebhookPayload{
-				Event:          "target_up",
+				Event:          _eventTargetUp,
 				Target:         "API Service",
 				URL:            "https://api.example.com",
 				Timestamp:      time.Date(2025, 10, 7, 12, 0, 0, 0, time.UTC),
@@ -132,9 +132,9 @@ func TestDiscordFormatter_Format(t *testing.T) {
 		wantColor int
 	}{
 		{
-			name: "target_down",
+			name: _eventTargetDown,
 			payload: WebhookPayload{
-				Event:          "target_down",
+				Event:          _eventTargetDown,
 				Target:         "Database",
 				URL:            "https://db.example.com",
 				Timestamp:      time.Date(2025, 10, 7, 12, 0, 0, 0, time.UTC),
@@ -145,9 +145,9 @@ func TestDiscordFormatter_Format(t *testing.T) {
 			wantColor: _discordColorRed,
 		},
 		{
-			name: "target_up",
+			name: _eventTargetUp,
 			payload: WebhookPayload{
-				Event:          "target_up",
+				Event:          _eventTargetUp,
 				Target:         "Database",
 				URL:            "https://db.example.com",
 				Timestamp:      time.Date(2025, 10, 7, 12, 0, 0, 0, time.UTC),
@@ -197,32 +197,32 @@ func TestSelectFormatter(t *testing.T) {
 		{
 			name:     "slack_webhook_standard",
 			url:      "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX",
-			wantType: "*notifications.SlackFormatter",
+			wantType: slackFormatter,
 		},
 		{
 			name:     "slack_webhook_uppercase",
 			url:      "HTTPS://HOOKS.SLACK.COM/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX",
-			wantType: "*notifications.SlackFormatter",
+			wantType: slackFormatter,
 		},
 		{
 			name:     "discord_webhook_standard",
 			url:      "https://discord.com/api/webhooks/123456789012345678/abcdefghijklmnopqrstuvwxyz",
-			wantType: "*notifications.DiscordFormatter",
+			wantType: discordFormatter,
 		},
 		{
 			name:     "discord_webhook_uppercase",
 			url:      "HTTPS://DISCORD.COM/API/WEBHOOKS/123456789012345678/abcdefghijklmnopqrstuvwxyz",
-			wantType: "*notifications.DiscordFormatter",
+			wantType: discordFormatter,
 		},
 		{
 			name:     "generic_webhook_custom",
-			url:      "https://example.com/webhook",
-			wantType: "*notifications.GenericFormatter",
+			url:      testURL + "/webhook",
+			wantType: genericFormatter,
 		},
 		{
 			name:     "generic_webhook_localhost",
 			url:      "http://localhost:8080/webhook",
-			wantType: "*notifications.GenericFormatter",
+			wantType: genericFormatter,
 		},
 	}
 
@@ -240,11 +240,11 @@ func TestSelectFormatter(t *testing.T) {
 func getFormatterType(f WebhookFormatter) string {
 	switch f.(type) {
 	case *SlackFormatter:
-		return "*notifications.SlackFormatter"
+		return slackFormatter
 	case *DiscordFormatter:
-		return "*notifications.DiscordFormatter"
+		return discordFormatter
 	case *GenericFormatter:
-		return "*notifications.GenericFormatter"
+		return genericFormatter
 	default:
 		return "unknown"
 	}
