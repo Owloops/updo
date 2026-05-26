@@ -585,11 +585,11 @@ func (m *Manager) updateCurrentTargetWidgets(result net.WebsiteCheckResult, stat
 
 	if result.TraceInfo != nil {
 		m.detailsManager.TimingBreakdownWidget.SetTimings(map[string]time.Duration{
-			"Wait":     utils.SanitizeDuration(result.TraceInfo.Wait),
-			"DNS":      utils.SanitizeDuration(result.TraceInfo.DNSLookup),
-			"TCP":      utils.SanitizeDuration(result.TraceInfo.TCPConnection),
-			"TTFB":     utils.SanitizeDuration(result.TraceInfo.TimeToFirstByte),
-			"Download": utils.SanitizeDuration(result.TraceInfo.DownloadDuration),
+			uw.StageWait:     utils.SanitizeDuration(result.TraceInfo.Wait),
+			uw.StageDNS:      utils.SanitizeDuration(result.TraceInfo.DNSLookup),
+			uw.StageTCP:      utils.SanitizeDuration(result.TraceInfo.TCPConnection),
+			uw.StageTTFB:     utils.SanitizeDuration(result.TraceInfo.TimeToFirstByte),
+			uw.StageDownload: utils.SanitizeDuration(result.TraceInfo.DownloadDuration),
 		})
 	}
 

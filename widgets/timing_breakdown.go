@@ -15,10 +15,16 @@ const (
 	_durationFormat       = "%4dms"
 	_labelFormat          = "%-9s"
 	_millisecondsInSecond = 1000
+
+	StageWait     = "Wait"
+	StageDNS      = "DNS"
+	StageTCP      = "TCP"
+	StageTTFB     = "TTFB"
+	StageDownload = "Download"
 )
 
 var (
-	_stagesOrder = []string{"Wait", "DNS", "TCP", "TTFB", "Download"}
+	_stagesOrder = []string{StageWait, StageDNS, StageTCP, StageTTFB, StageDownload}
 	_labelStyle  = ui.NewStyle(ui.ColorWhite)
 )
 
@@ -33,11 +39,11 @@ func NewTimingBreakdown() *TimingBreakdown {
 		Block:   *ui.NewBlock(),
 		Timings: make(map[string]time.Duration),
 		Colors: map[string]ui.Color{
-			"Wait":     ui.ColorCyan,
-			"DNS":      ui.ColorYellow,
-			"TCP":      ui.ColorRed,
-			"TTFB":     ui.ColorBlue,
-			"Download": ui.ColorGreen,
+			StageWait:     ui.ColorCyan,
+			StageDNS:      ui.ColorYellow,
+			StageTCP:      ui.ColorRed,
+			StageTTFB:     ui.ColorBlue,
+			StageDownload: ui.ColorGreen,
 		},
 	}
 }

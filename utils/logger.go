@@ -12,6 +12,11 @@ import (
 	"github.com/Owloops/updo/stats"
 )
 
+const (
+	_logLevelError   = "error"
+	_logLevelWarning = "warning"
+)
+
 func encodeAndPrint(data interface{}, writer io.Writer) {
 	var buf strings.Builder
 	encoder := json.NewEncoder(&buf)
@@ -128,10 +133,10 @@ func LogCheck(result net.WebsiteCheckResult, seq int, jsonFormat string, region 
 
 func LogError(url string, msg string, err error, region ...string) {
 	data := ErrorData{
-		Type:      "error",
+		Type:      _logLevelError,
 		Timestamp: time.Now(),
 		URL:       url,
-		Level:     "error",
+		Level:     _logLevelError,
 		Message:   msg,
 	}
 
@@ -148,10 +153,10 @@ func LogError(url string, msg string, err error, region ...string) {
 
 func LogWarning(url string, msg string, region ...string) {
 	data := ErrorData{
-		Type:      "warning",
+		Type:      _logLevelWarning,
 		Timestamp: time.Now(),
 		URL:       url,
-		Level:     "warning",
+		Level:     _logLevelWarning,
 		Message:   msg,
 	}
 
