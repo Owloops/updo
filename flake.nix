@@ -18,7 +18,7 @@
         {
           default = pkgs.buildGoModule rec {
             pname = "updo";
-            version = "0.4.7";
+            version = "0.4.8";
 
             src = ./.;
 
