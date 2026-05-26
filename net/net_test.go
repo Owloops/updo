@@ -380,6 +380,37 @@ func TestCheckWebsiteWithHeaders(t *testing.T) {
 	}
 }
 
+func TestCheckWebsiteWithHostHeader(t *testing.T) {
+	const wantHost = "virtual.example.com"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Host != wantHost {
+			w.WriteHeader(400)
+			return
+		}
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte("OK"))
+	}))
+	defer server.Close()
+
+	config := NetworkConfig{
+		Timeout: 5 * time.Second,
+		Headers: []string{"Host: " + wantHost},
+	}
+
+	result := CheckWebsite(server.URL, config)
+
+	if !result.IsUp {
+		t.Errorf("CheckWebsite() with Host header should succeed, got status %d", result.StatusCode)
+	}
+	if result.StatusCode != 200 {
+		t.Errorf("CheckWebsite() StatusCode = %d, want 200", result.StatusCode)
+	}
+	if got := result.RequestHeaders.Get("Host"); got != wantHost {
+		t.Errorf("RequestHeaders Host = %q, want %q", got, wantHost)
+	}
+}
+
 func TestCheckWebsiteBodyLimit(t *testing.T) {
 	tests := []struct {
 		name           string
