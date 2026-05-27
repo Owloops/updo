@@ -13,11 +13,6 @@ import (
 	"github.com/Owloops/updo/net"
 )
 
-const (
-	testUser = "user"
-	testPass = "pass"
-)
-
 func TestWriteClient(t *testing.T) {
 	cfg := NewConfig()
 	client := NewWriteClient(cfg)
@@ -27,7 +22,7 @@ func TestWriteClient(t *testing.T) {
 		t.Fatal("WriteClient not properly initialized")
 	}
 
-	target := config.Target{Name: "test", URL: "https://example.com"}
+	target := config.Target{Name: "test", URL: testURL}
 	result := net.WebsiteCheckResult{URL: target.URL, IsUp: true, StatusCode: 200}
 
 	initialCount := len(client.samples)
@@ -49,7 +44,7 @@ func TestWriteClient(t *testing.T) {
 
 func TestSSLExpiry(t *testing.T) {
 	client := NewWriteClient(NewConfig())
-	target := config.Target{Name: "ssl-test", URL: "https://example.com"}
+	target := config.Target{Name: "ssl-test", URL: testURL}
 
 	tests := []struct {
 		days int
@@ -72,17 +67,17 @@ func TestNormalizeTimestamps(t *testing.T) {
 	client := NewWriteClient(NewConfig())
 	samples := []*prompb.TimeSeries{
 		{
-			Labels:  []*prompb.Label{{Name: "__name__", Value: "test1"}},
+			Labels:  []*prompb.Label{{Name: _nameLbl, Value: "test1"}},
 			Samples: []*prompb.Sample{{Timestamp: 0, Value: 1.0}, {Timestamp: 0, Value: 2.0}},
 		},
 		{
-			Labels:  []*prompb.Label{{Name: "__name__", Value: "test2"}},
+			Labels:  []*prompb.Label{{Name: _nameLbl, Value: "test2"}},
 			Samples: []*prompb.Sample{{Timestamp: 0, Value: 3.0}},
 		},
 		nil,
-		{Labels: []*prompb.Label{{Name: "__name__", Value: "empty"}}, Samples: []*prompb.Sample{}},
+		{Labels: []*prompb.Label{{Name: _nameLbl, Value: emptyStr}}, Samples: []*prompb.Sample{}},
 		{
-			Labels:  []*prompb.Label{{Name: "__name__", Value: "mixed"}},
+			Labels:  []*prompb.Label{{Name: _nameLbl, Value: "mixed"}},
 			Samples: []*prompb.Sample{nil, {Timestamp: 0, Value: 4.0}},
 		},
 	}
@@ -112,7 +107,7 @@ func TestNormalizeTimestamps(t *testing.T) {
 
 func TestConcurrentAccess(t *testing.T) {
 	client := NewWriteClient(NewConfig())
-	target := config.Target{Name: "concurrent", URL: "https://example.com"}
+	target := config.Target{Name: "concurrent", URL: testURL}
 	result := net.WebsiteCheckResult{URL: target.URL, IsUp: true}
 
 	var wg sync.WaitGroup
@@ -143,7 +138,7 @@ func TestHTTPRequests(t *testing.T) {
 		header bool
 		expect bool
 	}{
-		{"success", 200, "", false, false, true},
+		{successStr, 200, "", false, false, true},
 		{"error", 400, "out of order", false, false, false},
 		{"auth", 200, "", true, false, true},
 		{"headers", 200, "", false, true, true},

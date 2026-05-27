@@ -21,9 +21,9 @@ func TestSendWebhook(t *testing.T) {
 		{
 			name: "successful webhook",
 			payload: WebhookPayload{
-				Event:          "target_down",
-				Target:         "Test Site",
-				URL:            "https://example.com",
+				Event:          _eventTargetDown,
+				Target:         testSite,
+				URL:            testURL,
 				Timestamp:      time.Now().UTC(),
 				ResponseTimeMs: 1500,
 				StatusCode:     500,
@@ -36,9 +36,9 @@ func TestSendWebhook(t *testing.T) {
 		{
 			name: "webhook returns error status",
 			payload: WebhookPayload{
-				Event:          "target_up",
-				Target:         "Test Site",
-				URL:            "https://example.com",
+				Event:          _eventTargetUp,
+				Target:         testSite,
+				URL:            testURL,
 				Timestamp:      time.Now().UTC(),
 				ResponseTimeMs: 200,
 				StatusCode:     200,
@@ -120,8 +120,8 @@ func TestHandleWebhookAlert(t *testing.T) {
 			initialAlertSent:  false,
 			expectedAlertSent: true,
 			expectWebhookCall: true,
-			targetName:        "Test Site",
-			targetURL:         "https://example.com",
+			targetName:        testSite,
+			targetURL:         testURL,
 		},
 		{
 			name:              "target still down",
@@ -129,8 +129,8 @@ func TestHandleWebhookAlert(t *testing.T) {
 			initialAlertSent:  true,
 			expectedAlertSent: true,
 			expectWebhookCall: false,
-			targetName:        "Test Site",
-			targetURL:         "https://example.com",
+			targetName:        testSite,
+			targetURL:         testURL,
 		},
 		{
 			name:              "target comes up",
@@ -138,8 +138,8 @@ func TestHandleWebhookAlert(t *testing.T) {
 			initialAlertSent:  true,
 			expectedAlertSent: false,
 			expectWebhookCall: true,
-			targetName:        "Test Site",
-			targetURL:         "https://example.com",
+			targetName:        testSite,
+			targetURL:         testURL,
 		},
 		{
 			name:              "target still up",
@@ -147,8 +147,8 @@ func TestHandleWebhookAlert(t *testing.T) {
 			initialAlertSent:  false,
 			expectedAlertSent: false,
 			expectWebhookCall: false,
-			targetName:        "Test Site",
-			targetURL:         "https://example.com",
+			targetName:        testSite,
+			targetURL:         testURL,
 		},
 		{
 			name:              "empty target name uses URL",
@@ -157,7 +157,7 @@ func TestHandleWebhookAlert(t *testing.T) {
 			expectedAlertSent: true,
 			expectWebhookCall: true,
 			targetName:        "",
-			targetURL:         "https://example.com",
+			targetURL:         testURL,
 		},
 	}
 
@@ -206,9 +206,9 @@ func TestHandleWebhookAlert(t *testing.T) {
 					t.Errorf("Expected target %s, got %s", expectedTarget, receivedPayload.Target)
 				}
 
-				expectedEvent := "target_down"
+				expectedEvent := _eventTargetDown
 				if tc.isUp {
-					expectedEvent = "target_up"
+					expectedEvent = _eventTargetUp
 				}
 				if receivedPayload.Event != expectedEvent {
 					t.Errorf("Expected event %s, got %s", expectedEvent, receivedPayload.Event)
@@ -233,8 +233,8 @@ func TestHandleWebhookAlertEmptyURL(t *testing.T) {
 		nil,
 		false,
 		&alertSent,
-		"Test Site",
-		"https://example.com",
+		testSite,
+		testURL,
 		1500*time.Millisecond,
 		500,
 		"Server Error",

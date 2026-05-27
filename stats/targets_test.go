@@ -7,6 +7,10 @@ import (
 	"github.com/Owloops/updo/config"
 )
 
+const (
+	apiServer = "api-server"
+)
+
 func TestTargetKey(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -16,27 +20,27 @@ func TestTargetKey(t *testing.T) {
 	}{
 		{
 			name:        "local target",
-			targetKey:   NewLocalTargetKey("api-server", -1),
-			wantString:  "api-server",
-			wantDisplay: "api-server",
+			targetKey:   NewLocalTargetKey(apiServer, -1),
+			wantString:  apiServer,
+			wantDisplay: apiServer,
 		},
 		{
 			name:        "region target",
-			targetKey:   NewRegionTargetKey("api-server", "us-east-1", -1),
-			wantString:  "api-server@us-east-1",
-			wantDisplay: "api-server (us-east-1)",
+			targetKey:   NewRegionTargetKey(apiServer, "us-east-1", -1),
+			wantString:  apiServer + "@us-east-1",
+			wantDisplay: apiServer + " (us-east-1)",
 		},
 		{
 			name:        "empty region treated as local",
-			targetKey:   NewTargetKey("api-server", ""),
-			wantString:  "api-server",
-			wantDisplay: "api-server",
+			targetKey:   NewTargetKey(apiServer, ""),
+			wantString:  apiServer,
+			wantDisplay: apiServer,
 		},
 		{
 			name:        "local region treated as local",
-			targetKey:   NewTargetKey("api-server", "local"),
-			wantString:  "api-server",
-			wantDisplay: "api-server",
+			targetKey:   NewTargetKey(apiServer, "local"),
+			wantString:  apiServer,
+			wantDisplay: apiServer,
 		},
 	}
 
@@ -60,13 +64,13 @@ func TestParseTargetKey(t *testing.T) {
 	}{
 		{
 			name:   "simple name",
-			keyStr: "api-server",
-			want:   NewLocalTargetKey("api-server", -1),
+			keyStr: apiServer,
+			want:   NewLocalTargetKey(apiServer, -1),
 		},
 		{
 			name:   "name with region",
-			keyStr: "api-server@us-west-2",
-			want:   NewRegionTargetKey("api-server", "us-west-2", -1),
+			keyStr: apiServer + "@us-west-2",
+			want:   NewRegionTargetKey(apiServer, "us-west-2", -1),
 		},
 		{
 			name:   "name with multiple @ symbols",
@@ -101,39 +105,39 @@ func TestGetAllKeysForTarget(t *testing.T) {
 		{
 			name: "target with specific regions",
 			target: config.Target{
-				Name:    "api-server",
+				Name:    apiServer,
 				Regions: []string{"us-east-1", "eu-west-1"},
 			},
 			globalRegions: []string{"us-west-2", "ap-south-1"},
 			index:         0,
 			wantKeys: []TargetKey{
-				NewRegionTargetKey("api-server#0", "us-east-1", 0),
-				NewRegionTargetKey("api-server#0", "eu-west-1", 0),
+				NewRegionTargetKey(apiServer+"#0", "us-east-1", 0),
+				NewRegionTargetKey(apiServer+"#0", "eu-west-1", 0),
 			},
 		},
 		{
 			name: "target with no regions uses global",
 			target: config.Target{
-				Name:    "api-server",
+				Name:    apiServer,
 				Regions: []string{},
 			},
 			globalRegions: []string{"us-east-1", "us-west-2"},
 			index:         1,
 			wantKeys: []TargetKey{
-				NewRegionTargetKey("api-server#1", "us-east-1", 1),
-				NewRegionTargetKey("api-server#1", "us-west-2", 1),
+				NewRegionTargetKey(apiServer+"#1", "us-east-1", 1),
+				NewRegionTargetKey(apiServer+"#1", "us-west-2", 1),
 			},
 		},
 		{
 			name: "target with no regions and no global regions",
 			target: config.Target{
-				Name:    "api-server",
+				Name:    apiServer,
 				Regions: []string{},
 			},
 			globalRegions: []string{},
 			index:         2,
 			wantKeys: []TargetKey{
-				NewLocalTargetKey("api-server#2", 2),
+				NewLocalTargetKey(apiServer+"#2", 2),
 			},
 		},
 	}
