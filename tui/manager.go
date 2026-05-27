@@ -483,8 +483,8 @@ func (m *Manager) UpdateTarget(data TargetData) {
 
 	currentKey := m.getCurrentTargetKey()
 	if currentKey != nil && currentKey.String() == targetKeyStr {
-		if m.isSingle && m.detailsManager.URLWidget != nil {
-			m.detailsManager.URLWidget.Text = data.Target.URL
+		if m.detailsManager.URLWidget != nil {
+			m.detailsManager.URLWidget.Text = fmt.Sprintf("%s\n[Last: %s](fg:cyan)", data.Target.URL, data.Result.LastCheckTime.Format("15:04:05"))
 		}
 		m.restorePlotData(targetKeyStr)
 		m.updateCurrentTargetWidgets(data.Result, data.Stats)
@@ -627,4 +627,53 @@ func (m *Manager) updatePlotDataForTarget(targetName string, result net.WebsiteC
 	}
 
 	m.plotData[targetName] = history
+}
+func (m *Manager) ShowRefreshing() {
+	if m.detailsManager.URLWidget != nil {
+		originalTitle := m.detailsManager.URLWidget.Title
+		m.detailsManager.URLWidget.Title = "Refreshing..."
+		m.detailsManager.URLWidget.TitleStyle.Fg = ui.ColorYellow
+		ui.Render(m.grid)
+
+		go func() {
+			time.Sleep(500 * time.Millisecond)
+			m.detailsManager.URLWidget.Title = originalTitle
+			m.detailsManager.URLWidget.TitleStyle.Fg = ui.ColorWhite
+			ui.Render(m.grid)
+		}()
+	}
+}
+
+func (m *Manager) ToggleFocus() {
+	if m.isSingle {
+		if m.detailsManager.URLWidget != nil {
+			originalFg := m.detailsManager.URLWidget.BorderStyle.Fg
+			m.detailsManager.URLWidget.BorderStyle.Fg = ui.ColorYellow
+			ui.Render(m.grid)
+			go func() {
+				time.Sleep(200 * time.Millisecond)
+				m.detailsManager.URLWidget.BorderStyle.Fg = originalFg
+				ui.Render(m.grid)
+			}()
+		}
+		return
+	}
+
+	m.focusOnLogs = !m.focusOnLogs
+
+	if m.focusOnLogs {
+		if m.listWidget != nil {
+			m.listWidget.BorderStyle.Fg = ui.ColorCyan
+		}
+		if m.detailsManager.LogsWidget != nil {
+			m.detailsManager.LogsWidget.BorderStyle.Fg = ui.ColorGreen
+		}
+	} else {
+		if m.listWidget != nil {
+			m.listWidget.BorderStyle.Fg = ui.ColorGreen
+		}
+		if m.detailsManager.LogsWidget != nil {
+			m.detailsManager.LogsWidget.BorderStyle.Fg = ui.ColorCyan
+		}
+	}
 }

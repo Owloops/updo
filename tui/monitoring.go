@@ -109,12 +109,17 @@ func StartMonitoring(targets []config.Target, options Options) {
 	dataChannel := make(chan TargetData, len(targets)*_dataChannelMultiplier)
 	var wg sync.WaitGroup
 
+	refreshChans := make([]chan struct{}, len(targets))
+	for i := range refreshChans {
+		refreshChans[i] = make(chan struct{}, 1)
+	}
+
 	for i, target := range targets {
 		wg.Add(1)
-		go func(t config.Target, index int) {
+		go func(t config.Target, index int, rChan chan struct{}) {
 			defer wg.Done()
-			monitorTargetTUI(ctx, t, index, monitors, sequences, alertStates, webhookAlertStates, dataChannel, options)
-		}(target, i)
+			monitorTargetTUI(ctx, t, index, monitors, sequences, alertStates, webhookAlertStates, dataChannel, options, rChan)
+		}(target, i, refreshChans[i])
 	}
 
 	go func() {
@@ -191,9 +196,30 @@ func StartMonitoring(targets []config.Target, options Options) {
 						ui.Render(manager.grid)
 					}
 				}
-			case "l":
+			case "r", "R", "<C-r>":
 				if manager.listWidget != nil && manager.listWidget.IsSearchMode() {
-					manager.listWidget.UpdateSearch("l")
+					manager.listWidget.UpdateSearch(e.ID)
+				} else {
+					manager.ShowRefreshing()
+					for _, ch := range refreshChans {
+						select {
+						case ch <- struct{}{}:
+						default:
+						}
+					}
+				}
+
+				ui.Render(manager.grid)
+			case "f", "F", "<C-f>":
+				if manager.listWidget != nil && manager.listWidget.IsSearchMode() {
+					manager.listWidget.UpdateSearch(e.ID)
+				} else {
+					manager.ToggleFocus()
+				}
+				ui.Render(manager.grid)
+			case "l", "L":
+				if manager.listWidget != nil && manager.listWidget.IsSearchMode() {
+					manager.listWidget.UpdateSearch(e.ID)
 				} else {
 					manager.ToggleLogsVisibility()
 				}
@@ -214,7 +240,11 @@ func StartMonitoring(targets []config.Target, options Options) {
 						manager.listWidget.OnSearchChange(manager.listWidget.GetQuery(), manager.listWidget.GetFilteredIndices())
 					}
 					ui.Render(manager.grid)
+				} else if manager.IsFocusedOnLogs() {
+					manager.ToggleFocus()
+					ui.Render(manager.grid)
 				}
+
 			case _backspaceKey, _ctrlBackspace, "<Space>":
 				if manager.listWidget != nil && manager.listWidget.IsSearchMode() {
 					manager.listWidget.UpdateSearch(e.ID)
@@ -261,7 +291,7 @@ func StartMonitoring(targets []config.Target, options Options) {
 	}
 }
 
-func monitorTargetTUI(ctx context.Context, target config.Target, targetIndex int, monitors map[string]*stats.Monitor, sequences map[string]*int, alertStates map[string]*bool, webhookAlertStates map[string]*bool, dataChannel chan<- TargetData, options Options) {
+func monitorTargetTUI(ctx context.Context, target config.Target, targetIndex int, monitors map[string]*stats.Monitor, sequences map[string]*int, alertStates map[string]*bool, webhookAlertStates map[string]*bool, dataChannel chan<- TargetData, options Options, refreshChan chan struct{}) {
 	ticker := time.NewTicker(target.GetRefreshInterval())
 	defer ticker.Stop()
 
@@ -443,6 +473,8 @@ func monitorTargetTUI(ctx context.Context, target config.Target, targetIndex int
 		select {
 		case <-ctx.Done():
 			return
+		case <-refreshChan:
+			makeRequest()
 		case <-ticker.C:
 			makeRequest()
 			if options.Count > 0 && attemptCount >= options.Count {

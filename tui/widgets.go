@@ -42,7 +42,7 @@ func NewDetailsManager() *DetailsManager {
 func (m *DetailsManager) InitializeWidgets(url string, refreshInterval time.Duration) {
 	m.QuitWidget = widgets.NewParagraph()
 	m.QuitWidget.Title = "Information"
-	m.QuitWidget.Text = "q:quit l:logs ↑↓:nav"
+	m.QuitWidget.Text = "[r] Refresh [l] Logs [f] Focus [q] Quit"
 	m.QuitWidget.BorderStyle.Fg = ui.ColorClear
 
 	m.UptimeWidget = widgets.NewParagraph()

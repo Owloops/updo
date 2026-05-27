@@ -383,7 +383,7 @@ func (m *Manager) ToggleLogsVisibility() {
 		m.detailsManager.ActiveGrid = m.detailsManager.LogsGrid
 
 		m.detailsManager.LogsWidget.BorderStyle.Fg = ui.ColorGreen
-		m.detailsManager.LogsWidget.Title = "Recent Logs (FOCUSED) - ↑↓:nav Enter:expand l:hide"
+		m.detailsManager.LogsWidget.Title = "Recent Logs (FOCUSED) - [r] Refresh [l] Hide [f] Focus [q] Quit"
 
 		keys := m.getKeysForCurrentSelection()
 		if len(keys) > 0 {

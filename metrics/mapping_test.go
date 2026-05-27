@@ -10,11 +10,11 @@ import (
 )
 
 func TestMapTargetLabels(t *testing.T) {
-	target := config.Target{Name: "service", URL: "https://example.com"}
+	target := config.Target{Name: "service", URL: testURL}
 	result := net.WebsiteCheckResult{URL: target.URL, IsUp: true, StatusCode: 200}
 
 	labels := MapTargetLabels(target, result, "us-east-1")
-	expected := map[string]string{"name": "service", "url": "https://example.com", "region": "us-east-1"}
+	expected := map[string]string{"name": "service", "url": testURL, "region": "us-east-1"}
 
 	for key, want := range expected {
 		if got := labels[key]; got != want {
@@ -24,7 +24,7 @@ func TestMapTargetLabels(t *testing.T) {
 }
 
 func TestMapSeries(t *testing.T) {
-	labels := map[string]string{"name": "test", "url": "https://example.com", "": "empty", "empty": ""}
+	labels := map[string]string{"name": "test", "url": testURL, "": emptyStr, emptyStr: ""}
 	pbLabels := MapSeries("target_up", labels)
 
 	if len(pbLabels) != 3 {
@@ -35,12 +35,12 @@ func TestMapSeries(t *testing.T) {
 	for _, label := range pbLabels {
 		labelMap[label.Name] = label.Value
 		if label.Name == "" || label.Value == "" {
-			t.Error("Found empty label after filtering")
+			t.Errorf("Found %s label after filtering", emptyStr)
 		}
 	}
 
-	if labelMap["__name__"] != "updo_target_up" {
-		t.Errorf("Expected __name__=updo_target_up, got %s", labelMap["__name__"])
+	if labelMap[_nameLbl] != "updo_target_up" {
+		t.Errorf("Expected %s=updo_target_up, got %s", _nameLbl, labelMap[_nameLbl])
 	}
 
 	for i := 1; i < len(pbLabels); i++ {
@@ -59,20 +59,20 @@ func TestConvertCheckToTimeSeries(t *testing.T) {
 	}{
 		{
 			"up_target",
-			config.Target{Name: "test", URL: "https://example.com"},
-			net.WebsiteCheckResult{URL: "https://example.com", IsUp: true, StatusCode: 200, ResponseTime: 100 * time.Millisecond},
+			config.Target{Name: "test", URL: testURL},
+			net.WebsiteCheckResult{URL: testURL, IsUp: true, StatusCode: 200, ResponseTime: 100 * time.Millisecond},
 			map[string]float64{"target_up": 1.0, "response_time_seconds": 0.1, "http_status_code_total": 1.0},
 		},
 		{
 			"down_target",
-			config.Target{Name: "failing", URL: "https://broken.com"},
-			net.WebsiteCheckResult{URL: "https://broken.com", IsUp: false, StatusCode: 500},
+			config.Target{Name: "failing", URL: brokenURL},
+			net.WebsiteCheckResult{URL: brokenURL, IsUp: false, StatusCode: 500},
 			map[string]float64{"target_up": 0.0, "http_status_code_total": 1.0},
 		},
 		{
 			"with_assertion",
-			config.Target{Name: "assert", URL: "https://api.com", AssertText: "success"},
-			net.WebsiteCheckResult{URL: "https://api.com", IsUp: true, StatusCode: 200, AssertText: "success", AssertionPassed: true},
+			config.Target{Name: "assert", URL: apiURL, AssertText: successStr},
+			net.WebsiteCheckResult{URL: apiURL, IsUp: true, StatusCode: 200, AssertText: successStr, AssertionPassed: true},
 			map[string]float64{"target_up": 1.0, "assertion_passed": 1.0, "http_status_code_total": 1.0},
 		},
 	}
@@ -105,7 +105,7 @@ func TestConvertCheckToTimeSeries(t *testing.T) {
 }
 
 func TestConvertWithTraceInfo(t *testing.T) {
-	target := config.Target{Name: "traced", URL: "https://example.com"}
+	target := config.Target{Name: "traced", URL: testURL}
 	result := net.WebsiteCheckResult{
 		URL: target.URL, IsUp: true, StatusCode: 200,
 		TraceInfo: &net.HttpTraceInfo{
@@ -120,7 +120,7 @@ func TestConvertWithTraceInfo(t *testing.T) {
 	found := make(map[string]bool)
 	for _, series := range timeSeries {
 		for _, label := range series.Labels {
-			if label.Name == "__name__" {
+			if label.Name == _nameLbl {
 				metricName := strings.TrimPrefix(label.Value, "updo_")
 				found[metricName] = true
 			}
@@ -135,7 +135,7 @@ func TestConvertWithTraceInfo(t *testing.T) {
 }
 
 func TestConvertSSLExpiryToTimeSeries(t *testing.T) {
-	target := config.Target{Name: "ssl-test", URL: "https://secure.com"}
+	target := config.Target{Name: "ssl-test", URL: secureURL}
 	tests := []struct {
 		days   int
 		expect bool
@@ -158,7 +158,7 @@ func TestConvertSSLExpiryToTimeSeries(t *testing.T) {
 
 			var foundSSLMetric bool
 			for _, label := range result.Labels {
-				if label.Name == "__name__" && strings.Contains(label.Value, "ssl_cert_expiry_days") {
+				if label.Name == _nameLbl && strings.Contains(label.Value, "ssl_cert_expiry_days") {
 					foundSSLMetric = true
 				}
 			}

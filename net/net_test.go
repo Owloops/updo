@@ -7,6 +7,14 @@ import (
 	"time"
 )
 
+const (
+	exampleCom   = "example.com"
+	httpExample  = "http://example.com"
+	httpsExample = "https://example.com"
+	httpsGoogle  = "https://google.com"
+	movedPerm    = "Moved Permanently"
+)
+
 func TestIsUrl(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -15,12 +23,12 @@ func TestIsUrl(t *testing.T) {
 	}{
 		{
 			name:  "valid domain",
-			input: "https://example.com",
+			input: httpsExample,
 			want:  true,
 		},
 		{
 			name:  "domain with port",
-			input: "https://example.com:8080",
+			input: httpsExample + ":8080",
 			want:  true,
 		},
 		{
@@ -55,7 +63,7 @@ func TestIsUrl(t *testing.T) {
 		},
 		{
 			name:  "missing protocol",
-			input: "example.com",
+			input: exampleCom,
 			want:  false,
 		},
 		{
@@ -93,7 +101,7 @@ func TestIsIPAddress(t *testing.T) {
 		},
 		{
 			name:  "domain name",
-			input: "https://example.com",
+			input: httpsExample,
 			want:  false,
 		},
 		{
@@ -122,15 +130,15 @@ func TestAutoDetectProtocol(t *testing.T) {
 	}{
 		{
 			name:      "add protocol to domain",
-			input:     "example.com",
-			wantHTTPS: "https://example.com",
-			wantHTTP:  "http://example.com",
+			input:     exampleCom,
+			wantHTTPS: httpsExample,
+			wantHTTP:  httpExample,
 		},
 		{
 			name:      "preserve existing protocol",
-			input:     "https://google.com",
-			wantHTTPS: "https://google.com",
-			wantHTTP:  "https://google.com",
+			input:     httpsGoogle,
+			wantHTTPS: httpsGoogle,
+			wantHTTP:  httpsGoogle,
 		},
 		{
 			name:      "add protocol to IP with port",
@@ -164,18 +172,18 @@ func TestFormatURL(t *testing.T) {
 	}{
 		{
 			name:  "add https to domain",
-			input: "example.com",
-			want:  "https://example.com",
+			input: exampleCom,
+			want:  httpsExample,
 		},
 		{
 			name:  "preserve existing protocol",
-			input: "http://example.com",
-			want:  "http://example.com",
+			input: httpExample,
+			want:  httpExample,
 		},
 		{
 			name:  "trim whitespace",
-			input: "  example.com  ",
-			want:  "https://example.com",
+			input: "  " + exampleCom + "  ",
+			want:  httpsExample,
 		},
 		{
 			name:  "localhost with port",
@@ -249,7 +257,7 @@ func TestCheckWebsite(t *testing.T) {
 		{
 			name:            "redirect without accept redirects",
 			statusCode:      301,
-			responseBody:    "Moved Permanently",
+			responseBody:    movedPerm,
 			config:          NetworkConfig{AcceptRedirects: false, Timeout: 5 * time.Second},
 			expectSuccess:   false,
 			expectAssertion: true,
@@ -257,7 +265,7 @@ func TestCheckWebsite(t *testing.T) {
 		{
 			name:            "redirect with accept redirects",
 			statusCode:      301,
-			responseBody:    "Moved Permanently",
+			responseBody:    movedPerm,
 			config:          NetworkConfig{AcceptRedirects: true, Timeout: 5 * time.Second},
 			expectSuccess:   true,
 			expectAssertion: true,
@@ -281,7 +289,7 @@ func TestCheckWebsite(t *testing.T) {
 		{
 			name:            "redirect with accept redirects and assertion failure",
 			statusCode:      301,
-			responseBody:    "Moved Permanently",
+			responseBody:    movedPerm,
 			config:          NetworkConfig{AcceptRedirects: true, AssertText: "Not Found", Timeout: 5 * time.Second},
 			expectSuccess:   false,
 			expectAssertion: false,
@@ -289,7 +297,7 @@ func TestCheckWebsite(t *testing.T) {
 		{
 			name:            "redirect with accept redirects and should fail",
 			statusCode:      301,
-			responseBody:    "Moved Permanently",
+			responseBody:    movedPerm,
 			config:          NetworkConfig{AcceptRedirects: true, ShouldFail: true, Timeout: 5 * time.Second},
 			expectSuccess:   false,
 			expectAssertion: true,
@@ -297,7 +305,7 @@ func TestCheckWebsite(t *testing.T) {
 		{
 			name:            "redirect follow false accept false",
 			statusCode:      301,
-			responseBody:    "Moved Permanently",
+			responseBody:    movedPerm,
 			config:          NetworkConfig{FollowRedirects: false, AcceptRedirects: false, Timeout: 5 * time.Second},
 			expectSuccess:   false,
 			expectAssertion: true,
@@ -305,7 +313,7 @@ func TestCheckWebsite(t *testing.T) {
 		{
 			name:            "redirect follow false accept true",
 			statusCode:      301,
-			responseBody:    "Moved Permanently",
+			responseBody:    movedPerm,
 			config:          NetworkConfig{FollowRedirects: false, AcceptRedirects: true, Timeout: 5 * time.Second},
 			expectSuccess:   true,
 			expectAssertion: true,
@@ -313,7 +321,7 @@ func TestCheckWebsite(t *testing.T) {
 		{
 			name:            "redirect follow true accept false",
 			statusCode:      301,
-			responseBody:    "Moved Permanently",
+			responseBody:    movedPerm,
 			config:          NetworkConfig{FollowRedirects: true, AcceptRedirects: false, Timeout: 5 * time.Second},
 			expectSuccess:   false,
 			expectAssertion: true,
@@ -321,7 +329,7 @@ func TestCheckWebsite(t *testing.T) {
 		{
 			name:            "redirect follow true accept true",
 			statusCode:      301,
-			responseBody:    "Moved Permanently",
+			responseBody:    movedPerm,
 			config:          NetworkConfig{FollowRedirects: true, AcceptRedirects: true, Timeout: 5 * time.Second},
 			expectSuccess:   true,
 			expectAssertion: true,
