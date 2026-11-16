@@ -18,11 +18,11 @@
         {
           default = pkgs.buildGoModule rec {
             pname = "updo";
-            version = "0.4.8";
+            version = "0.4.9";
 
             src = ./.;
 
-            vendorHash = "sha256-I5Cu0cXNsPoVBgouE+hRn/s1x2IbRt+V6kHDcfiRIfA=";
+            vendorHash = "sha256-gAyOml86M/lo5+MIdbEyDhW+QcpaQM7fKBmmmyacCzA=";
 
             # Exclude the lambda directory as it's a separate module
             excludedPackages = [ "./lambda" ];
