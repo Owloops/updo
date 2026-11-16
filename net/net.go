@@ -2,6 +2,7 @@ package net
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"errors"
 	"flag"
@@ -31,6 +32,25 @@ const (
 	// value unless they have a reason to cap smaller or disable capping.
 	DefaultBodySizeLimit int64 = 1 << 20
 )
+
+// IPVersion restricts which address family a check may use.
+type IPVersion uint8
+
+const (
+	IPAny IPVersion = iota
+	IPv4Only
+	IPv6Only
+)
+
+func (v IPVersion) network() string {
+	switch v {
+	case IPv4Only:
+		return "tcp4"
+	case IPv6Only:
+		return "tcp6"
+	}
+	return "tcp"
+}
 
 type WebsiteCheckResult struct {
 	URL               string
@@ -79,6 +99,7 @@ type NetworkConfig struct {
 	Body            string
 	// BodySizeLimit caps bytes read from the response body. 0 means no limit.
 	BodySizeLimit int64
+	IPVersion     IPVersion
 }
 
 type HTTPRequestOptions struct {
@@ -166,7 +187,7 @@ func CheckWebsite(urlStr string, config NetworkConfig) WebsiteCheckResult {
 	return result
 }
 
-func GetSSLCertExpiry(siteURL string) int {
+func GetSSLCertExpiry(siteURL string, ipVersion IPVersion) int {
 	u, err := url.Parse(siteURL)
 	if err != nil {
 		return -1
@@ -179,7 +200,7 @@ func GetSSLCertExpiry(siteURL string) int {
 	dialer := &net.Dialer{
 		Timeout: 10 * time.Second,
 	}
-	conn, err := tls.DialWithDialer(dialer, "tcp", httpsHostPort(u), &tls.Config{
+	conn, err := tls.DialWithDialer(dialer, ipVersion.network(), httpsHostPort(u), &tls.Config{
 		MinVersion: tls.VersionTLS12,
 	})
 	if err != nil {
@@ -316,10 +337,14 @@ func makeHTTPRequest(urlStr string, options HTTPRequestOptions, config NetworkCo
 
 	// Keep-alives off: the transport is discarded per request, so an idle
 	// connection would be leaked rather than reused.
+	dialer := &net.Dialer{}
 	transport := &http.Transport{
 		// #nosec G402 - InsecureSkipVerify is intentionally configurable for testing and IP addresses
 		TLSClientConfig:   &tls.Config{InsecureSkipVerify: config.SkipSSL || isIPAddress(urlStr)},
 		DisableKeepAlives: true,
+		DialContext: func(ctx context.Context, _, addr string) (net.Conn, error) {
+			return dialer.DialContext(ctx, config.IPVersion.network(), addr)
+		},
 	}
 
 	client := &http.Client{

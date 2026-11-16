@@ -15,13 +15,15 @@ type OutputManager struct {
 	targets      []config.Target
 	isSingle     bool
 	sslExpiry    map[string]int
+	ipVersion    net.IPVersion
 	sslExpiryMu  sync.RWMutex
 	sslCollected map[string]bool
 }
 
-func NewOutputManager(targets []config.Target) *OutputManager {
+func NewOutputManager(targets []config.Target, ipVersion net.IPVersion) *OutputManager {
 	return &OutputManager{
 		targets:      targets,
+		ipVersion:    ipVersion,
 		isSingle:     len(targets) == 1,
 		sslExpiry:    make(map[string]int),
 		sslCollected: make(map[string]bool),
@@ -45,7 +47,7 @@ func (m *OutputManager) startSSLCollection() {
 	for _, target := range m.targets {
 		go func(url string) {
 			if strings.HasPrefix(url, "https://") {
-				sslDaysRemaining := net.GetSSLCertExpiry(url)
+				sslDaysRemaining := net.GetSSLCertExpiry(url, m.ipVersion)
 				m.sslExpiryMu.Lock()
 				m.sslExpiry[url] = sslDaysRemaining
 				m.sslCollected[url] = true

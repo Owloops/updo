@@ -167,7 +167,7 @@ func checkSSLExpiry(url string, resp *CheckResponse) {
 			log.Printf("Warning: SSL check failed for %s: %v", url, r)
 		}
 	}()
-	sslDays := net.GetSSLCertExpiry(url)
+	sslDays := net.GetSSLCertExpiry(url, net.IPAny)
 	if sslDays >= 0 {
 		resp.SSLExpiry = &sslDays
 	}

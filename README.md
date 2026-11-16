@@ -215,6 +215,7 @@ updo completion bash > updo_completion.bash
 - `--data`: Request body data
 - `--skip-ssl, --follow-redirects, --accept-redirects`: SSL and redirect options
 - `--assert-text`: Expected response text
+- `-4, --ipv4` / `-6, --ipv6`: Restrict checks to one address family
 
 **Multi-region:**
 
