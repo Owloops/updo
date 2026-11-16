@@ -1,6 +1,6 @@
 module updo-lambda
 
-go 1.24.0
+go 1.27.0
 
 require (
 	github.com/Owloops/updo v0.0.0

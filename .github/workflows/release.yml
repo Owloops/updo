@@ -20,7 +20,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version: "1.27"
           cache: true
       - name: Build Lambda binary
         run: make build-lambda
@@ -39,7 +39,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version: "1.27"
           cache: true
       - name: Build Lambda binary
         run: make build-lambda
@@ -59,7 +59,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version: "1.27"
           cache: true
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6

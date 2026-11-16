@@ -1,6 +1,6 @@
 module github.com/Owloops/updo
 
-go 1.24.0
+go 1.27.0
 
 require (
 	buf.build/gen/go/prometheus/prometheus/protocolbuffers/go v1.36.6-20250320161912-af2aab87b1b3.1
