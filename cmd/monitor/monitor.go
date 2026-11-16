@@ -111,7 +111,17 @@ You can monitor multiple targets by:
 				Profile:       profile,
 				PrometheusURL: appConfig.PrometheusURL,
 			}
-			tui.StartMonitoring(targets, options)
+			if err := tui.StartMonitoring(targets, options); err != nil {
+				fmt.Fprintf(os.Stderr, "%v, falling back to simple output\n", err)
+				simpleOptions := simple.MonitoringOptions{
+					Count:         appConfig.Count,
+					Log:           appConfig.Log,
+					Regions:       regions,
+					Profile:       profile,
+					PrometheusURL: appConfig.PrometheusURL,
+				}
+				simple.StartMultiTargetMonitoring(targets, simpleOptions)
+			}
 		}
 	},
 }

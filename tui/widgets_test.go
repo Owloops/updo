@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Owloops/termui/v3/widgets"
 	"github.com/Owloops/updo/net"
-	"github.com/gizak/termui/v3/widgets"
 )
 
 func TestDetailsManager_Creation(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"image"
 	"time"
 
-	ui "github.com/gizak/termui/v3"
+	ui "github.com/Owloops/termui/v3"
 	rw "github.com/mattn/go-runewidth"
 )
 

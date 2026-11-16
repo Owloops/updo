@@ -8,13 +8,13 @@ import (
 	"sync"
 	"time"
 
+	ui "github.com/Owloops/termui/v3"
 	"github.com/Owloops/updo/aws"
 	"github.com/Owloops/updo/config"
 	"github.com/Owloops/updo/metrics"
 	"github.com/Owloops/updo/net"
 	"github.com/Owloops/updo/notifications"
 	"github.com/Owloops/updo/stats"
-	ui "github.com/gizak/termui/v3"
 )
 
 type TargetData struct {
@@ -35,13 +35,13 @@ type Options struct {
 	PrometheusURL string
 }
 
-func StartMonitoring(targets []config.Target, options Options) {
+func StartMonitoring(targets []config.Target, options Options) error {
 	if len(targets) == 0 {
 		panic("No targets provided")
 	}
 
 	if err := ui.Init(); err != nil {
-		panic(err)
+		return fmt.Errorf("terminal initialization failed: %w", err)
 	}
 	defer ui.Close()
 
@@ -141,11 +141,11 @@ func StartMonitoring(targets []config.Target, options Options) {
 					ui.Render(manager.grid)
 				} else {
 					cancel()
-					return
+					return nil
 				}
 			case "<C-c>":
 				cancel()
-				return
+				return nil
 			case "<Resize>":
 				if payload, ok := e.Payload.(ui.Resize); ok {
 					width, height = payload.Width, payload.Height
@@ -235,7 +235,7 @@ func StartMonitoring(targets []config.Target, options Options) {
 
 		case data, ok := <-dataChannel:
 			if !ok {
-				return
+				return nil
 			}
 			manager.UpdateTarget(data)
 

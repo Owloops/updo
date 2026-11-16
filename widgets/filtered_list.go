@@ -3,7 +3,7 @@ package widgets
 import (
 	"strings"
 
-	"github.com/gizak/termui/v3/widgets"
+	"github.com/Owloops/termui/v3/widgets"
 )
 
 const (

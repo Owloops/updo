@@ -3,10 +3,10 @@ package tui
 import (
 	"fmt"
 
+	ui "github.com/Owloops/termui/v3"
+	"github.com/Owloops/termui/v3/widgets"
 	"github.com/Owloops/updo/stats"
 	uw "github.com/Owloops/updo/widgets"
-	ui "github.com/gizak/termui/v3"
-	"github.com/gizak/termui/v3/widgets"
 )
 
 func (m *Manager) setupGrid(width, height int) {
