@@ -487,7 +487,7 @@ func TestCheckWebsiteClosesConnections(t *testing.T) {
 	var newConns, closedConns atomic.Int64
 
 	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("OK"))
+		_, _ = w.Write([]byte("OK"))
 	}))
 	srv.Config.ConnState = func(_ net.Conn, state http.ConnState) {
 		switch state {
@@ -524,7 +524,7 @@ func TestCheckWebsiteClosesConnections(t *testing.T) {
 
 func TestCheckWebsiteResolvedIPFromConnection(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("OK"))
+		_, _ = w.Write([]byte("OK"))
 	}))
 	defer srv.Close()
 
@@ -534,5 +534,50 @@ func TestCheckWebsiteResolvedIPFromConnection(t *testing.T) {
 	}
 	if net.ParseIP(result.ResolvedIP) == nil {
 		t.Errorf("ResolvedIP = %q, want a bare IP address", result.ResolvedIP)
+	}
+}
+
+func TestCheckWebsiteTracePhases(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("OK"))
+	}))
+	defer srv.Close()
+
+	result := CheckWebsite(srv.URL, NetworkConfig{Timeout: 5 * time.Second, SkipSSL: true})
+	if result.TraceInfo == nil {
+		t.Fatal("TraceInfo is nil")
+	}
+
+	trace := result.TraceInfo
+	if trace.TCPConnection <= 0 {
+		t.Errorf("TCPConnection = %v, want > 0", trace.TCPConnection)
+	}
+	if trace.TLSHandshake <= 0 {
+		t.Errorf("TLSHandshake = %v, want > 0 for an https target", trace.TLSHandshake)
+	}
+	if trace.TimeToFirstByte <= 0 {
+		t.Errorf("TimeToFirstByte = %v, want > 0", trace.TimeToFirstByte)
+	}
+	combined := trace.TCPConnection + trace.TLSHandshake
+	if combined <= trace.TCPConnection {
+		t.Errorf("TCPConnection (%v) should exclude TLS (%v)", trace.TCPConnection, trace.TLSHandshake)
+	}
+}
+
+func TestCheckWebsiteTracePhasesPlainHTTP(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("OK"))
+	}))
+	defer srv.Close()
+
+	result := CheckWebsite(srv.URL, NetworkConfig{Timeout: 5 * time.Second})
+	if result.TraceInfo == nil {
+		t.Fatal("TraceInfo is nil")
+	}
+	if got := result.TraceInfo.TLSHandshake; got != 0 {
+		t.Errorf("TLSHandshake = %v, want 0 for an http target", got)
+	}
+	if result.TraceInfo.TCPConnection <= 0 {
+		t.Errorf("TCPConnection = %v, want > 0", result.TraceInfo.TCPConnection)
 	}
 }

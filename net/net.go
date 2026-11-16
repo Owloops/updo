@@ -53,8 +53,18 @@ type HttpTraceInfo struct {
 	Wait             time.Duration
 	DNSLookup        time.Duration
 	TCPConnection    time.Duration
+	TLSHandshake     time.Duration
 	TimeToFirstByte  time.Duration
 	DownloadDuration time.Duration
+	ReusedConn       bool
+}
+
+// phase is zero when the event never fired, e.g. DNS for an IP literal.
+func phase(done, began time.Time) time.Duration {
+	if began.IsZero() || done.IsZero() || done.Before(began) {
+		return 0
+	}
+	return done.Sub(began)
 }
 
 type NetworkConfig struct {
@@ -279,23 +289,30 @@ func makeHTTPRequest(urlStr string, options HTTPRequestOptions, config NetworkCo
 		RequestHeaders: make(http.Header),
 	}
 
-	if parsedURL, parseErr := url.Parse(urlStr); parseErr == nil {
-		if ips, lookupErr := net.LookupIP(parsedURL.Hostname()); lookupErr == nil && len(ips) > 0 {
-			result.ResolvedIP = ips[0].String()
-		}
-	}
-
-	var start, connect, dnsStart, dnsDone, gotFirstByte time.Time
+	var (
+		start, dnsStart, dnsDone, connectStart, connectDone time.Time
+		tlsStart, tlsDone, gotConn, gotFirstByte            time.Time
+		isReused                                            bool
+	)
 	trace := &httptrace.ClientTrace{
-		DNSStart:             func(_ httptrace.DNSStartInfo) { dnsStart = time.Now() },
-		DNSDone:              func(_ httptrace.DNSDoneInfo) { dnsDone = time.Now() },
-		GotConn:              func(_ httptrace.GotConnInfo) { connect = time.Now() },
+		DNSStart:          func(_ httptrace.DNSStartInfo) { dnsStart = time.Now() },
+		DNSDone:           func(_ httptrace.DNSDoneInfo) { dnsDone = time.Now() },
+		ConnectStart:      func(_, _ string) { connectStart = time.Now() },
+		ConnectDone:       func(_, _ string, _ error) { connectDone = time.Now() },
+		TLSHandshakeStart: func() { tlsStart = time.Now() },
+		TLSHandshakeDone:  func(_ tls.ConnectionState, _ error) { tlsDone = time.Now() },
+		GotConn: func(info httptrace.GotConnInfo) {
+			gotConn = time.Now()
+			isReused = info.Reused
+			if addr, ok := info.Conn.RemoteAddr().(*net.TCPAddr); ok {
+				result.ResolvedIP = addr.IP.String()
+			}
+		},
 		GotFirstResponseByte: func() { gotFirstByte = time.Now() },
 	}
 
-	// Each check uses a dedicated connection so that DNS, connect and TLS timings
-	// reflect a real client visit. Keep-alives are disabled because the transport is
-	// discarded after this request, which would otherwise leak the idle connection.
+	// Keep-alives off: the transport is discarded per request, so an idle
+	// connection would be leaked rather than reused.
 	transport := &http.Transport{
 		// #nosec G402 - InsecureSkipVerify is intentionally configurable for testing and IP addresses
 		TLSClientConfig:   &tls.Config{InsecureSkipVerify: config.SkipSSL || isIPAddress(urlStr)},
@@ -380,11 +397,13 @@ func makeHTTPRequest(urlStr string, options HTTPRequestOptions, config NetworkCo
 	result.ResponseBody = string(bodyBytes)
 
 	result.TraceInfo = &HttpTraceInfo{
-		Wait:             dnsStart.Sub(start),
-		DNSLookup:        dnsDone.Sub(dnsStart),
-		TCPConnection:    connect.Sub(dnsDone),
-		TimeToFirstByte:  gotFirstByte.Sub(connect),
+		Wait:             phase(dnsStart, start),
+		DNSLookup:        phase(dnsDone, dnsStart),
+		TCPConnection:    phase(connectDone, connectStart),
+		TLSHandshake:     phase(tlsDone, tlsStart),
+		TimeToFirstByte:  phase(gotFirstByte, gotConn),
 		DownloadDuration: time.Since(gotFirstByte),
+		ReusedConn:       isReused,
 	}
 
 	return result

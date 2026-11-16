@@ -19,12 +19,13 @@ const (
 	StageWait     = "Wait"
 	StageDNS      = "DNS"
 	StageTCP      = "TCP"
+	StageTLS      = "TLS"
 	StageTTFB     = "TTFB"
 	StageDownload = "Download"
 )
 
 var (
-	_stagesOrder = []string{StageWait, StageDNS, StageTCP, StageTTFB, StageDownload}
+	_stagesOrder = []string{StageWait, StageDNS, StageTCP, StageTLS, StageTTFB, StageDownload}
 	_labelStyle  = ui.NewStyle(ui.ColorWhite)
 )
 
@@ -42,6 +43,7 @@ func NewTimingBreakdown() *TimingBreakdown {
 			StageWait:     ui.ColorCyan,
 			StageDNS:      ui.ColorYellow,
 			StageTCP:      ui.ColorRed,
+			StageTLS:      ui.ColorMagenta,
 			StageTTFB:     ui.ColorBlue,
 			StageDownload: ui.ColorGreen,
 		},
