@@ -649,3 +649,23 @@ func TestCheckWebsiteIPVersion(t *testing.T) {
 		})
 	}
 }
+
+func TestCheckWebsiteTimeout(t *testing.T) {
+	release := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-release
+	}))
+	defer srv.Close()
+	defer close(release)
+
+	start := time.Now()
+	result := CheckWebsite(srv.URL, NetworkConfig{Timeout: 100 * time.Millisecond})
+	elapsed := time.Since(start)
+
+	if result.IsUp {
+		t.Error("IsUp = true, want false when the server exceeds the timeout")
+	}
+	if elapsed > 2*time.Second {
+		t.Errorf("check took %v, timeout of 100ms was not honored", elapsed)
+	}
+}
