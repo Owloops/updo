@@ -198,3 +198,25 @@ func TestLogBuffer_EdgeCases(t *testing.T) {
 		}
 	})
 }
+
+func TestEscapeTargetFor(t *testing.T) {
+	tests := []struct {
+		name            string
+		isSearching     bool
+		isFocusedOnLogs bool
+		want            escapeTarget
+	}{
+		{name: "nothing open", want: escapeNone},
+		{name: "search open", isSearching: true, want: escapeSearch},
+		{name: "logs focused", isFocusedOnLogs: true, want: escapeLogs},
+		{name: "search wins over logs", isSearching: true, isFocusedOnLogs: true, want: escapeSearch},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := escapeTargetFor(tt.isSearching, tt.isFocusedOnLogs); got != tt.want {
+				t.Errorf("escapeTargetFor(%v, %v) = %v, want %v", tt.isSearching, tt.isFocusedOnLogs, got, tt.want)
+			}
+		})
+	}
+}

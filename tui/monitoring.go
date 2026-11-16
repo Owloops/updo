@@ -207,11 +207,7 @@ func StartMonitoring(targets []config.Target, options Options) error {
 					ui.Render(manager.grid)
 				}
 			case "<Escape>":
-				if manager.listWidget != nil && manager.listWidget.IsSearchMode() {
-					manager.listWidget.ToggleSearch()
-					if manager.listWidget.OnSearchChange != nil {
-						manager.listWidget.OnSearchChange(manager.listWidget.GetQuery(), manager.listWidget.GetFilteredIndices())
-					}
+				if handleEscape(manager) {
 					ui.Render(manager.grid)
 				}
 			case _backspaceKey, _ctrlBackspace, "<Space>":
@@ -450,4 +446,39 @@ func monitorTargetTUI(ctx context.Context, target config.Target, targetIndex int
 			}
 		}
 	}
+}
+
+type escapeTarget int
+
+const (
+	escapeNone escapeTarget = iota
+	escapeSearch
+	escapeLogs
+)
+
+// escapeTargetFor prefers closing search before the logs panel.
+func escapeTargetFor(isSearching, isFocusedOnLogs bool) escapeTarget {
+	if isSearching {
+		return escapeSearch
+	}
+	if isFocusedOnLogs {
+		return escapeLogs
+	}
+	return escapeNone
+}
+
+func handleEscape(manager *Manager) bool {
+	isSearching := manager.listWidget != nil && manager.listWidget.IsSearchMode()
+	switch escapeTargetFor(isSearching, manager.IsFocusedOnLogs()) {
+	case escapeSearch:
+		manager.listWidget.ToggleSearch()
+		if manager.listWidget.OnSearchChange != nil {
+			manager.listWidget.OnSearchChange(manager.listWidget.GetQuery(), manager.listWidget.GetFilteredIndices())
+		}
+		return true
+	case escapeLogs:
+		manager.ToggleLogsVisibility()
+		return true
+	}
+	return false
 }
