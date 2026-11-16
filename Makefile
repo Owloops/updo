@@ -47,10 +47,10 @@ doctor: ## Check required tools and environment
 build-lambda: ## Build Lambda binary for embedding
 	@echo "Building Lambda binary for ARM64..."
 	@cd lambda && GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=$(CGO_ENABLED) \
-		go build -tags $(BUILD_TAGS) -ldflags="-s -w" -o ../$(LAMBDA_BINARY) $(notdir $(LAMBDA_SOURCE))
+		go build -trimpath -tags $(BUILD_TAGS) -ldflags="-s -w -buildid=" -o ../$(LAMBDA_BINARY) $(notdir $(LAMBDA_SOURCE))
 	@echo "Lambda binary built: $(LAMBDA_BINARY)"
 	@echo "Creating ZIP archive for embedding..."
-	@cd aws && zip -q bootstrap.zip bootstrap
+	@cd aws && touch -d '1980-01-01 00:00:00 UTC' bootstrap && TZ=UTC zip -q -X bootstrap.zip bootstrap
 	@echo "Lambda ZIP created: $(LAMBDA_ZIP)"
 
 build: build-lambda ## Build updo binary with embedded Lambda
