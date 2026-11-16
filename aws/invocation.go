@@ -69,12 +69,10 @@ func InvokeMultiRegion(url string, config net.NetworkConfig, regions []string, p
 	resultsChan := make(chan RegionResult, len(regions))
 
 	for _, region := range regions {
-		wg.Add(1)
-		go func(r string) {
-			defer wg.Done()
-			result := invokeLambdaInRegion(url, config, r, profile)
+		wg.Go(func() {
+			result := invokeLambdaInRegion(url, config, region, profile)
 			resultsChan <- result
-		}(region)
+		})
 	}
 
 	wg.Wait()

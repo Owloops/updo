@@ -111,11 +111,9 @@ func StartMonitoring(targets []config.Target, options Options) error {
 	var wg sync.WaitGroup
 
 	for i, target := range targets {
-		wg.Add(1)
-		go func(t config.Target, index int) {
-			defer wg.Done()
-			monitorTargetTUI(ctx, t, index, monitors, sequences, alertStates, webhookAlertStates, dataChannel, options)
-		}(target, i)
+		wg.Go(func() {
+			monitorTargetTUI(ctx, target, i, monitors, sequences, alertStates, webhookAlertStates, dataChannel, options)
+		})
 	}
 
 	go func() {

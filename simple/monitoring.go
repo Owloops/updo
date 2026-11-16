@@ -139,11 +139,9 @@ func StartMultiTargetMonitoring(targets []config.Target, options MonitoringOptio
 	}
 
 	for i, target := range targets {
-		wg.Add(1)
-		go func(t config.Target, index int) {
-			defer wg.Done()
-			monitorTargetSimple(ctx, t, index, monitors, sequences, alertStates, webhookAlertStates, resultsChan, options)
-		}(target, i)
+		wg.Go(func() {
+			monitorTargetSimple(ctx, target, i, monitors, sequences, alertStates, webhookAlertStates, resultsChan, options)
+		})
 	}
 
 	go func() {

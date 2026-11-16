@@ -49,8 +49,7 @@ func NewWriteClient(cfg Config) *WriteClient {
 }
 
 func (c *WriteClient) Start() {
-	c.wg.Add(1)
-	go c.pushLoop()
+	c.wg.Go(c.pushLoop)
 }
 
 func (c *WriteClient) Stop() {
