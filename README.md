@@ -10,7 +10,7 @@ Updo is a command-line tool for monitoring website uptime and performance. It pr
 
 ![License:MIT](https://img.shields.io/static/v1?label=license&message=MIT&color=blue)
 [![Latest Release](https://img.shields.io/github/v/release/Owloops/updo)](https://github.com/Owloops/updo/releases/latest)
-[![Go Report Card](https://goreportcard.com/badge/github.com/Owloops/updo)](https://goreportcard.com/report/github.com/Owloops/updo)
+[![Go Reference](https://pkg.go.dev/badge/github.com/Owloops/updo.svg)](https://pkg.go.dev/github.com/Owloops/updo)
 </div>
 
 ## Features
