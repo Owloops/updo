@@ -8,13 +8,13 @@ import (
 	"sync"
 	"time"
 
+	ui "github.com/Owloops/termui/v3"
 	"github.com/Owloops/updo/aws"
 	"github.com/Owloops/updo/config"
 	"github.com/Owloops/updo/metrics"
 	"github.com/Owloops/updo/net"
 	"github.com/Owloops/updo/notifications"
 	"github.com/Owloops/updo/stats"
-	ui "github.com/gizak/termui/v3"
 )
 
 type TargetData struct {

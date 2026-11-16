@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
+	ui "github.com/Owloops/termui/v3"
+	"github.com/Owloops/termui/v3/widgets"
 	"github.com/Owloops/updo/stats"
-	ui "github.com/gizak/termui/v3"
-	"github.com/gizak/termui/v3/widgets"
 )
 
 type LogLevel string

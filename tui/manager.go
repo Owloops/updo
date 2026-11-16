@@ -13,8 +13,8 @@ import (
 	"github.com/Owloops/updo/utils"
 	uw "github.com/Owloops/updo/widgets"
 
-	ui "github.com/gizak/termui/v3"
-	"github.com/gizak/termui/v3/widgets"
+	ui "github.com/Owloops/termui/v3"
+	"github.com/Owloops/termui/v3/widgets"
 )
 
 const (
