@@ -293,9 +293,13 @@ func makeHTTPRequest(urlStr string, options HTTPRequestOptions, config NetworkCo
 		GotFirstResponseByte: func() { gotFirstByte = time.Now() },
 	}
 
+	// Each check uses a dedicated connection so that DNS, connect and TLS timings
+	// reflect a real client visit. Keep-alives are disabled because the transport is
+	// discarded after this request, which would otherwise leak the idle connection.
 	transport := &http.Transport{
 		// #nosec G402 - InsecureSkipVerify is intentionally configurable for testing and IP addresses
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: config.SkipSSL || isIPAddress(urlStr)},
+		TLSClientConfig:   &tls.Config{InsecureSkipVerify: config.SkipSSL || isIPAddress(urlStr)},
+		DisableKeepAlives: true,
 	}
 
 	client := &http.Client{

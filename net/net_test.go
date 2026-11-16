@@ -1,8 +1,10 @@
 package net
 
 import (
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -478,5 +480,59 @@ func TestCheckWebsiteBodyLimit(t *testing.T) {
 				t.Errorf("ResponseBody length = %d, want %d", len(result.ResponseBody), tt.wantBodyLength)
 			}
 		})
+	}
+}
+
+func TestCheckWebsiteClosesConnections(t *testing.T) {
+	var newConns, closedConns atomic.Int64
+
+	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("OK"))
+	}))
+	srv.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+		switch state {
+		case http.StateNew:
+			newConns.Add(1)
+		case http.StateClosed, http.StateHijacked:
+			closedConns.Add(1)
+		}
+	}
+	srv.Start()
+	defer srv.Close()
+
+	config := NetworkConfig{Timeout: 5 * time.Second}
+	for i := 0; i < 5; i++ {
+		CheckWebsite(srv.URL, config)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if closedConns.Load() >= newConns.Load() {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	if got := newConns.Load(); got != 5 {
+		t.Errorf("new connections = %d, want 5 (one per check)", got)
+	}
+	if closed := closedConns.Load(); closed != newConns.Load() {
+		t.Errorf("closed connections = %d of %d, want all closed (leaked %d)",
+			closed, newConns.Load(), newConns.Load()-closed)
+	}
+}
+
+func TestCheckWebsiteResolvedIPFromConnection(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("OK"))
+	}))
+	defer srv.Close()
+
+	result := CheckWebsite(srv.URL, NetworkConfig{Timeout: 5 * time.Second})
+	if result.ResolvedIP == "" {
+		t.Fatal("ResolvedIP is empty")
+	}
+	if net.ParseIP(result.ResolvedIP) == nil {
+		t.Errorf("ResolvedIP = %q, want a bare IP address", result.ResolvedIP)
 	}
 }
