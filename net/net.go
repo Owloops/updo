@@ -24,7 +24,7 @@ const (
 	_hoursPerDay    = 24
 	_defaultTimeout = 5 * time.Second
 	_userAgent      = "updo/1.0"
-	_httpsPort      = ":443"
+	_httpsPort      = "443"
 
 	// DefaultBodySizeLimit is the recommended response body cap (1 MiB) for
 	// probe responses. Callers should set NetworkConfig.BodySizeLimit to this
@@ -176,15 +176,10 @@ func GetSSLCertExpiry(siteURL string) int {
 		return -1
 	}
 
-	host := u.Host
-	if !strings.Contains(host, ":") {
-		host += _httpsPort
-	}
-
 	dialer := &net.Dialer{
 		Timeout: 10 * time.Second,
 	}
-	conn, err := tls.DialWithDialer(dialer, "tcp", host, &tls.Config{
+	conn, err := tls.DialWithDialer(dialer, "tcp", httpsHostPort(u), &tls.Config{
 		MinVersion: tls.VersionTLS12,
 	})
 	if err != nil {
@@ -203,6 +198,14 @@ func GetSSLCertExpiry(siteURL string) int {
 	}
 
 	return -1
+}
+
+func httpsHostPort(u *url.URL) string {
+	port := u.Port()
+	if port == "" {
+		port = _httpsPort
+	}
+	return net.JoinHostPort(u.Hostname(), port)
 }
 
 func isIPAddress(host string) bool {
