@@ -588,6 +588,7 @@ func (m *Manager) updateCurrentTargetWidgets(result net.WebsiteCheckResult, stat
 			uw.StageWait:     utils.SanitizeDuration(result.TraceInfo.Wait),
 			uw.StageDNS:      utils.SanitizeDuration(result.TraceInfo.DNSLookup),
 			uw.StageTCP:      utils.SanitizeDuration(result.TraceInfo.TCPConnection),
+			uw.StageTLS:      utils.SanitizeDuration(result.TraceInfo.TLSHandshake),
 			uw.StageTTFB:     utils.SanitizeDuration(result.TraceInfo.TimeToFirstByte),
 			uw.StageDownload: utils.SanitizeDuration(result.TraceInfo.DownloadDuration),
 		})

@@ -71,6 +71,7 @@ type HttpTraceInfoSimple struct {
 	WaitMs             float64 `json:"wait_ms"`
 	DNSLookupMs        float64 `json:"dns_lookup_ms"`
 	TCPConnectionMs    float64 `json:"tcp_connection_ms"`
+	TLSHandshakeMs     float64 `json:"tls_handshake_ms,omitempty"`
 	TimeToFirstByteMs  float64 `json:"time_to_first_byte_ms"`
 	DownloadDurationMs float64 `json:"download_duration_ms"`
 }
@@ -143,6 +144,7 @@ func handleRequest(ctx context.Context, req CheckRequest) (CheckResponse, error)
 			WaitMs:             float64(result.TraceInfo.Wait / time.Millisecond),
 			DNSLookupMs:        float64(result.TraceInfo.DNSLookup / time.Millisecond),
 			TCPConnectionMs:    float64(result.TraceInfo.TCPConnection / time.Millisecond),
+			TLSHandshakeMs:     float64(result.TraceInfo.TLSHandshake / time.Millisecond),
 			TimeToFirstByteMs:  float64(result.TraceInfo.TimeToFirstByte / time.Millisecond),
 			DownloadDurationMs: float64(result.TraceInfo.DownloadDuration / time.Millisecond),
 		}

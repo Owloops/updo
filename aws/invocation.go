@@ -49,6 +49,7 @@ type HttpTraceInfoSimple struct {
 	WaitMs             float64 `json:"wait_ms"`
 	DNSLookupMs        float64 `json:"dns_lookup_ms"`
 	TCPConnectionMs    float64 `json:"tcp_connection_ms"`
+	TLSHandshakeMs     float64 `json:"tls_handshake_ms,omitempty"`
 	TimeToFirstByteMs  float64 `json:"time_to_first_byte_ms"`
 	DownloadDurationMs float64 `json:"download_duration_ms"`
 }
@@ -185,6 +186,7 @@ func invokeLambdaInRegion(url string, config net.NetworkConfig, region string, p
 			Wait:             time.Duration(lambdaResp.TraceInfo.WaitMs) * time.Millisecond,
 			DNSLookup:        time.Duration(lambdaResp.TraceInfo.DNSLookupMs) * time.Millisecond,
 			TCPConnection:    time.Duration(lambdaResp.TraceInfo.TCPConnectionMs) * time.Millisecond,
+			TLSHandshake:     time.Duration(lambdaResp.TraceInfo.TLSHandshakeMs) * time.Millisecond,
 			TimeToFirstByte:  time.Duration(lambdaResp.TraceInfo.TimeToFirstByteMs) * time.Millisecond,
 			DownloadDuration: time.Duration(lambdaResp.TraceInfo.DownloadDurationMs) * time.Millisecond,
 		}
