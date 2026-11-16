@@ -4,6 +4,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -579,5 +580,32 @@ func TestCheckWebsiteTracePhasesPlainHTTP(t *testing.T) {
 	}
 	if result.TraceInfo.TCPConnection <= 0 {
 		t.Errorf("TCPConnection = %v, want > 0", result.TraceInfo.TCPConnection)
+	}
+}
+
+func TestHTTPSHostPort(t *testing.T) {
+	tests := []struct {
+		name string
+		url  string
+		want string
+	}{
+		{name: "hostname default port", url: "https://example.com", want: "example.com:443"},
+		{name: "hostname custom port", url: "https://example.com:8443", want: "example.com:8443"},
+		{name: "ipv4 default port", url: "https://192.168.1.1", want: "192.168.1.1:443"},
+		{name: "ipv4 custom port", url: "https://192.168.1.1:8443", want: "192.168.1.1:8443"},
+		{name: "ipv6 default port", url: "https://[::1]", want: "[::1]:443"},
+		{name: "ipv6 custom port", url: "https://[::1]:8443", want: "[::1]:8443"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			u, err := url.Parse(tt.url)
+			if err != nil {
+				t.Fatalf("parse %q: %v", tt.url, err)
+			}
+			if got := httpsHostPort(u); got != tt.want {
+				t.Errorf("httpsHostPort(%q) = %q, want %q", tt.url, got, tt.want)
+			}
+		})
 	}
 }
