@@ -34,10 +34,8 @@ func (tk TargetKey) DisplayName() string {
 }
 
 func (tk TargetKey) GetCleanName() string {
-	if idx := strings.LastIndex(tk.TargetName, "#"); idx != -1 {
-		return tk.TargetName[:idx]
-	}
-	return tk.TargetName
+	name, _, _ := strings.CutLast(tk.TargetName, "#")
+	return name
 }
 
 func NewTargetKey(targetName, region string) TargetKey {
