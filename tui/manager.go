@@ -33,6 +33,7 @@ const (
 
 type Manager struct {
 	targets         []config.Target
+	options         Options
 	keyRegistry     *stats.TargetKeyRegistry
 	targetData      map[string]TargetData
 	plotData        map[string]PlotHistory
@@ -65,6 +66,7 @@ func NewManager(targets []config.Target, options Options) *Manager {
 
 	m := &Manager{
 		targets:         targets,
+		options:         options,
 		keyRegistry:     keyRegistry,
 		targetData:      make(map[string]TargetData, len(allKeys)),
 		plotData:        make(map[string]PlotHistory, len(allKeys)),
@@ -88,7 +90,7 @@ func (m *Manager) getSSLExpiry(url string) int {
 
 	if strings.HasPrefix(url, "https://") {
 		go func(sslURL string) {
-			sslDaysRemaining := net.GetSSLCertExpiry(sslURL)
+			sslDaysRemaining := net.GetSSLCertExpiry(sslURL, m.options.IPVersion)
 			m.sslExpiryMu.Lock()
 			m.sslExpiry[sslURL] = sslDaysRemaining
 			m.sslExpiryMu.Unlock()

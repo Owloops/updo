@@ -58,6 +58,7 @@ type MonitoringOptions struct {
 	Regions       []string
 	Profile       string
 	PrometheusURL string
+	IPVersion     net.IPVersion
 }
 
 func StartMultiTargetMonitoring(targets []config.Target, options MonitoringOptions) {
@@ -132,7 +133,7 @@ func StartMultiTargetMonitoring(targets []config.Target, options MonitoringOptio
 
 	logMode := options.Log != ""
 
-	outputManager := NewOutputManager(targets)
+	outputManager := NewOutputManager(targets, options.IPVersion)
 	if !logMode {
 		outputManager.PrintHeader()
 	}
@@ -176,7 +177,7 @@ func StartMultiTargetMonitoring(targets []config.Target, options MonitoringOptio
 				metrics.RecordCheck(result.Target, result.Result, result.Region)
 
 				if strings.HasPrefix(result.Target.URL, "https://") {
-					if sslExpiry := net.GetSSLCertExpiry(result.Target.URL); sslExpiry >= 0 {
+					if sslExpiry := net.GetSSLCertExpiry(result.Target.URL, options.IPVersion); sslExpiry >= 0 {
 						metrics.RecordSSLExpiry(result.Target, sslExpiry)
 					}
 				}
@@ -215,6 +216,7 @@ func monitorTargetSimple(ctx context.Context, target config.Target, targetIndex 
 			Method:          target.Method,
 			Body:            target.Body,
 			BodySizeLimit:   config.Int64Val(target.BodySizeLimit, net.DefaultBodySizeLimit),
+			IPVersion:       options.IPVersion,
 		}
 
 		regions := target.Regions

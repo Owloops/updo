@@ -609,3 +609,43 @@ func TestHTTPSHostPort(t *testing.T) {
 		})
 	}
 }
+
+func TestCheckWebsiteIPVersion(t *testing.T) {
+	v4 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("OK"))
+	}))
+	defer v4.Close()
+
+	v6 := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("OK"))
+	}))
+	ln, err := net.Listen("tcp6", "[::1]:0")
+	if err != nil {
+		t.Skipf("ipv6 loopback unavailable: %v", err)
+	}
+	v6.Listener = ln
+	v6.Start()
+	defer v6.Close()
+
+	tests := []struct {
+		name    string
+		url     string
+		version IPVersion
+		wantUp  bool
+	}{
+		{name: "ivp4 over ipv4", url: v4.URL, version: IPv4Only, wantUp: true},
+		{name: "ipv6 over ipv6", url: "http://" + ln.Addr().String(), version: IPv6Only, wantUp: true},
+		{name: "ipv4 over ipv6 only listener", url: "http://" + ln.Addr().String(), version: IPv4Only, wantUp: false},
+		{name: "any over ipv4", url: v4.URL, version: IPAny, wantUp: true},
+		{name: "any over ipv6", url: "http://" + ln.Addr().String(), version: IPAny, wantUp: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := CheckWebsite(tt.url, NetworkConfig{Timeout: 3 * time.Second, IPVersion: tt.version})
+			if result.IsUp != tt.wantUp {
+				t.Errorf("IsUp = %v, want %v", result.IsUp, tt.wantUp)
+			}
+		})
+	}
+}

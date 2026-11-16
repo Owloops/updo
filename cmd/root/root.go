@@ -35,6 +35,8 @@ type Config struct {
 	WebhookURL      string
 	WebhookHeaders  []string
 	PrometheusURL   string
+	IPv4            bool
+	IPv6            bool
 }
 
 var AppConfig Config
@@ -91,6 +93,9 @@ func init() {
 	RootCmd.PersistentFlags().StringVar(&AppConfig.WebhookURL, "webhook-url", "", "Webhook URL for notifications")
 	RootCmd.PersistentFlags().StringArrayVar(&AppConfig.WebhookHeaders, "webhook-header", nil, "Webhook headers (can be used multiple times, format: 'Header-Name: value')")
 	RootCmd.PersistentFlags().StringVar(&AppConfig.PrometheusURL, "prometheus-url", "", "Prometheus remote write endpoint URL (e.g., http://localhost:9090/api/v1/write)")
+	RootCmd.PersistentFlags().BoolVarP(&AppConfig.IPv4, "ipv4", "4", false, "Use IPv4 only")
+	RootCmd.PersistentFlags().BoolVarP(&AppConfig.IPv6, "ipv6", "6", false, "Use IPv6 only")
+	RootCmd.MarkFlagsMutuallyExclusive("ipv4", "ipv6")
 
 	RootCmd.PersistentFlags().Bool("log", false, "Output structured logs in JSON format (includes requests, responses, and metrics)")
 

@@ -33,6 +33,7 @@ type Options struct {
 	Regions       []string
 	Profile       string
 	PrometheusURL string
+	IPVersion     net.IPVersion
 }
 
 func StartMonitoring(targets []config.Target, options Options) error {
@@ -248,7 +249,7 @@ func StartMonitoring(targets []config.Target, options Options) error {
 
 				if strings.HasPrefix(data.Target.URL, "https://") {
 					go func(target config.Target) {
-						if sslExpiry := net.GetSSLCertExpiry(target.URL); sslExpiry >= 0 {
+						if sslExpiry := net.GetSSLCertExpiry(target.URL, options.IPVersion); sslExpiry >= 0 {
 							metrics.RecordSSLExpiry(target, sslExpiry)
 						}
 					}(data.Target)
@@ -280,6 +281,7 @@ func monitorTargetTUI(ctx context.Context, target config.Target, targetIndex int
 			Method:          target.Method,
 			Body:            target.Body,
 			BodySizeLimit:   config.Int64Val(target.BodySizeLimit, net.DefaultBodySizeLimit),
+			IPVersion:       options.IPVersion,
 		}
 
 		regions := target.Regions

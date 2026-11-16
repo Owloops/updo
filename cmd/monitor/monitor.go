@@ -101,6 +101,7 @@ You can monitor multiple targets by:
 				Regions:       regions,
 				Profile:       profile,
 				PrometheusURL: appConfig.PrometheusURL,
+				IPVersion:     ipVersion(appConfig),
 			}
 			simple.StartMultiTargetMonitoring(targets, options)
 		} else {
@@ -110,6 +111,7 @@ You can monitor multiple targets by:
 				Regions:       regions,
 				Profile:       profile,
 				PrometheusURL: appConfig.PrometheusURL,
+				IPVersion:     ipVersion(appConfig),
 			}
 			if err := tui.StartMonitoring(targets, options); err != nil {
 				fmt.Fprintf(os.Stderr, "%v, falling back to simple output\n", err)
@@ -124,6 +126,16 @@ You can monitor multiple targets by:
 			}
 		}
 	},
+}
+
+func ipVersion(cfg root.Config) net.IPVersion {
+	switch {
+	case cfg.IPv4:
+		return net.IPv4Only
+	case cfg.IPv6:
+		return net.IPv6Only
+	}
+	return net.IPAny
 }
 
 func init() {
