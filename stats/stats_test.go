@@ -301,3 +301,35 @@ func TestMonitor_EdgeCases(t *testing.T) {
 		}
 	})
 }
+
+func TestSummarize(t *testing.T) {
+	newMonitor := func(isUp bool, checks int) *Monitor {
+		m, err := NewMonitor()
+		if err != nil {
+			t.Fatalf("NewMonitor: %v", err)
+		}
+		m.IsUp = isUp
+		m.ChecksCount = checks
+		return m
+	}
+
+	tests := []struct {
+		name     string
+		monitors map[string]*Monitor
+		wantUp   bool
+	}{
+		{name: "no targets", monitors: map[string]*Monitor{}, wantUp: true},
+		{name: "all up", monitors: map[string]*Monitor{"a": newMonitor(true, 2), "b": newMonitor(true, 1)}, wantUp: true},
+		{name: "one down", monitors: map[string]*Monitor{"a": newMonitor(true, 2), "b": newMonitor(false, 1)}, wantUp: false},
+		{name: "unchecked target is ignored", monitors: map[string]*Monitor{"a": newMonitor(true, 1), "b": newMonitor(false, 0)}, wantUp: true},
+		{name: "all unchecked", monitors: map[string]*Monitor{"a": newMonitor(false, 0)}, wantUp: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Summarize(tt.monitors); got.AllUp != tt.wantUp {
+				t.Errorf("Summarize().AllUp = %v, want %v", got.AllUp, tt.wantUp)
+			}
+		})
+	}
+}

@@ -36,13 +36,13 @@ type Options struct {
 	IPVersion     net.IPVersion
 }
 
-func StartMonitoring(targets []config.Target, options Options) error {
+func StartMonitoring(targets []config.Target, options Options) (stats.Summary, error) {
 	if len(targets) == 0 {
 		panic("No targets provided")
 	}
 
 	if err := ui.Init(); err != nil {
-		return fmt.Errorf("terminal initialization failed: %w", err)
+		return stats.Summary{}, fmt.Errorf("terminal initialization failed: %w", err)
 	}
 	defer ui.Close()
 
@@ -140,11 +140,11 @@ func StartMonitoring(targets []config.Target, options Options) error {
 					ui.Render(manager.grid)
 				} else {
 					cancel()
-					return nil
+					return stats.Summary{Interrupted: true}, nil
 				}
 			case "<C-c>":
 				cancel()
-				return nil
+				return stats.Summary{Interrupted: true}, nil
 			case "<Resize>":
 				if payload, ok := e.Payload.(ui.Resize); ok {
 					width, height = payload.Width, payload.Height
@@ -230,7 +230,7 @@ func StartMonitoring(targets []config.Target, options Options) error {
 
 		case data, ok := <-dataChannel:
 			if !ok {
-				return nil
+				return stats.Summarize(monitors), nil
 			}
 			manager.UpdateTarget(data)
 

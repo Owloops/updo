@@ -468,7 +468,18 @@ When monitoring multiple targets:
 - `Enter`: Collapse/expand individual target group
 - `/`: Search mode, `ESC` to exit
 - `l`: Toggle logs per target
+- `ESC`: Close logs or search
 - `q` or `Ctrl+C`: Quit
+
+## Exit Codes
+
+Useful for cron jobs, scripts and CI:
+
+- `0`: every checked target was up
+- `1`: at least one target was down or failed its assertion
+- `2`: usage or configuration error
+
+Runs stopped with `Ctrl+C` or `q` exit with `0`, since the run did not finish on its own.
 
 ## Mentions
 

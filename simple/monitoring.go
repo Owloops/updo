@@ -61,7 +61,7 @@ type MonitoringOptions struct {
 	IPVersion     net.IPVersion
 }
 
-func StartMultiTargetMonitoring(targets []config.Target, options MonitoringOptions) {
+func StartMultiTargetMonitoring(targets []config.Target, options MonitoringOptions) stats.Summary {
 	if len(targets) == 0 {
 		log.Fatal("No targets provided")
 	}
@@ -157,7 +157,7 @@ func StartMultiTargetMonitoring(targets []config.Target, options MonitoringOptio
 		select {
 		case result, ok := <-resultsChan:
 			if !ok {
-				return
+				return stats.Summarize(monitors)
 			}
 
 			totalChecks++
@@ -184,13 +184,13 @@ func StartMultiTargetMonitoring(targets []config.Target, options MonitoringOptio
 			if options.Count > 0 && totalChecks >= options.Count*len(targets) {
 				outputManager.PrintFinalStatisticsWithKeys(monitors, keyRegistry, logMode)
 				cancel()
-				return
+				return stats.Summarize(monitors)
 			}
 
 		case <-sigChan:
 			outputManager.PrintFinalStatisticsWithKeys(monitors, keyRegistry, logMode)
 			cancel()
-			return
+			return stats.Summary{Interrupted: true}
 		}
 	}
 }
