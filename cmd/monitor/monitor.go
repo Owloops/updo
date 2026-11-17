@@ -8,9 +8,15 @@ import (
 	"github.com/Owloops/updo/config"
 	"github.com/Owloops/updo/net"
 	"github.com/Owloops/updo/simple"
+	"github.com/Owloops/updo/stats"
 	"github.com/Owloops/updo/tui"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
+)
+
+const (
+	_exitFailure = 1
+	_exitUsage   = 2
 )
 
 var MonitorCmd = &cobra.Command{
@@ -41,7 +47,7 @@ You can monitor multiple targets by:
 			cfg, err := config.LoadConfig(appConfig.ConfigFile)
 			if err != nil {
 				fmt.Printf("Error loading config file: %v\n", err)
-				os.Exit(1)
+				os.Exit(_exitUsage)
 			}
 			targets = cfg.FilterTargets(appConfig.Only, appConfig.Skip)
 			if appConfig.Count == 0 && cfg.Global.Count > 0 {
@@ -60,7 +66,7 @@ You can monitor multiple targets by:
 			if len(urls) == 0 {
 				fmt.Println("Error: At least one URL is required")
 				fmt.Println("Use updo monitor --help for usage information")
-				os.Exit(1)
+				os.Exit(_exitUsage)
 			}
 
 			targets = make([]config.Target, 0, len(urls))
@@ -89,43 +95,53 @@ You can monitor multiple targets by:
 		if len(targets) == 0 {
 			fmt.Println("Error: No targets to monitor after filtering")
 			fmt.Println("Check your --only/--skip flags or config file settings")
-			os.Exit(1)
+			os.Exit(_exitUsage)
 		}
 
 		useSimpleMode := appConfig.Simple || !term.IsTerminal(int(os.Stdout.Fd()))
 
+		var summary stats.Summary
 		if useSimpleMode {
-			options := simple.MonitoringOptions{
-				Count:         appConfig.Count,
-				Log:           appConfig.Log,
-				Regions:       regions,
-				Profile:       profile,
-				PrometheusURL: appConfig.PrometheusURL,
-				IPVersion:     ipVersion(appConfig),
-			}
-			simple.StartMultiTargetMonitoring(targets, options)
-		} else {
-			options := tui.Options{
-				Count:         appConfig.Count,
-				Log:           appConfig.Log,
-				Regions:       regions,
-				Profile:       profile,
-				PrometheusURL: appConfig.PrometheusURL,
-				IPVersion:     ipVersion(appConfig),
-			}
-			if err := tui.StartMonitoring(targets, options); err != nil {
-				fmt.Fprintf(os.Stderr, "%v, falling back to simple output\n", err)
-				simpleOptions := simple.MonitoringOptions{
-					Count:         appConfig.Count,
-					Log:           appConfig.Log,
-					Regions:       regions,
-					Profile:       profile,
-					PrometheusURL: appConfig.PrometheusURL,
-				}
-				simple.StartMultiTargetMonitoring(targets, simpleOptions)
-			}
+			summary = simple.StartMultiTargetMonitoring(targets, simpleOptions(appConfig, regions, profile))
+			os.Exit(exitCode(summary))
 		}
+
+		var err error
+		summary, err = tui.StartMonitoring(targets, tui.Options{
+			Count:         appConfig.Count,
+			Log:           appConfig.Log,
+			Regions:       regions,
+			Profile:       profile,
+			PrometheusURL: appConfig.PrometheusURL,
+			IPVersion:     ipVersion(appConfig),
+		})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v, falling back to simple output\n", err)
+			summary = simple.StartMultiTargetMonitoring(targets, simpleOptions(appConfig, regions, profile))
+		}
+
+		os.Exit(exitCode(summary))
 	},
+}
+
+func simpleOptions(cfg root.Config, regions []string, profile string) simple.MonitoringOptions {
+	return simple.MonitoringOptions{
+		Count:         cfg.Count,
+		Log:           cfg.Log,
+		Regions:       regions,
+		Profile:       profile,
+		PrometheusURL: cfg.PrometheusURL,
+		IPVersion:     ipVersion(cfg),
+	}
+}
+
+// exitCode reports 1 when a completed run left a target down, and 0 otherwise,
+// including runs the user interrupted.
+func exitCode(summary stats.Summary) int {
+	if summary.Interrupted || summary.AllUp {
+		return 0
+	}
+	return _exitFailure
 }
 
 func ipVersion(cfg root.Config) net.IPVersion {

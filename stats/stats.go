@@ -144,3 +144,23 @@ func (m *Monitor) GetStats() Stats {
 
 	return stats
 }
+
+// Summary reports the outcome of a monitoring run.
+type Summary struct {
+	AllUp       bool
+	Interrupted bool
+}
+
+// Summarize reports whether every target that was checked ended up.
+func Summarize(monitors map[string]*Monitor) Summary {
+	summary := Summary{AllUp: true}
+	for _, m := range monitors {
+		if m.ChecksCount == 0 {
+			continue
+		}
+		if !m.IsUp {
+			summary.AllUp = false
+		}
+	}
+	return summary
+}
