@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 24" width="1200" height="24" preserveAspectRatio="none" role="presentation">
+  <defs>
+    <linearGradient id="left" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FF6C19" stop-opacity="0"/>
+      <stop offset="1" stop-color="#FF6C19" stop-opacity="0.6"/>
+    </linearGradient>
+    <linearGradient id="right" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0" stop-color="#FF6C19" stop-opacity="0"/>
+      <stop offset="1" stop-color="#FF6C19" stop-opacity="0.6"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="11" width="574" height="2" rx="1" fill="url(#left)"/>
+  <rect x="626" y="11" width="574" height="2" rx="1" fill="url(#right)"/>
+  <g transform="translate(588 0)" fill="none" stroke="#FF6C19" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><g fill="none" stroke="#FF6C19" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M15 8a1 1 0 0 1-1-1V2a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8zm5 0v12a2 2 0 0 1-2 2h-4.182M3.305 19.53l.923-.382M4 10.592V4a2 2 0 0 1 2-2h8M4.228 16.852l-.924-.383m2.548-1.241l-.383-.923m.383 6.467l-.383.924m2.679-6.468l.383-.923m-.001 7.391l-.382-.924m1.625-3.92l.922-.383m-.922 2.679l.922.383"/><circle cx="7" cy="18" r="3"/></g></g>
+</svg>

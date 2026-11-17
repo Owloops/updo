@@ -1,188 +1,124 @@
 <div align="center">
 
-# 🐤 Updo - Website Monitoring Tool
+<img src="assets/updo.svg" width="72" alt="Updo"/>
 
-<p align="center">
-  <img src="images/demo.gif" alt="Updo demo" width="600"/>
-</p>
+# Updo
 
-Updo is a command-line tool for monitoring website uptime and performance. It provides real-time metrics on website status, response time, SSL certificate expiry, and more, with alert notifications.
+Updo is a command-line tool for monitoring website uptime and performance, with response times, SSL certificate expiry and alerts.
 
-![License:MIT](https://img.shields.io/static/v1?label=license&message=MIT&color=blue)
-[![Latest Release](https://img.shields.io/github/v/release/Owloops/updo)](https://github.com/Owloops/updo/releases/latest)
-[![Go Reference](https://pkg.go.dev/badge/github.com/Owloops/updo.svg)](https://pkg.go.dev/github.com/Owloops/updo)
+[![Latest Release](https://img.shields.io/github/v/release/Owloops/updo?style=flat-square&color=FF6C19)](https://github.com/Owloops/updo/releases/latest)
+[![Go Reference](https://img.shields.io/badge/reference-FF6C19?style=flat-square&logo=go&logoColor=white)](https://pkg.go.dev/github.com/Owloops/updo)
+[![License: MIT](https://img.shields.io/badge/license-MIT-FF6C19?style=flat-square)](LICENSE)
+
+<img src="images/demo.gif" alt="Updo demo" width="700"/>
+
 </div>
 
 ## Features
 
-- **Real-time monitoring** with uptime percentage, response times, and SSL certificate tracking
-- **Multi-target monitoring** - Monitor multiple URLs concurrently from the command line or config files
-- **Multi-region AWS Lambda** - Deploy across 13 global regions for worldwide monitoring coverage
-- **Prometheus & Grafana integration** - Export metrics for visualization and long-term storage
-- **Alert notifications** - Desktop notifications and webhook integration (Slack, Discord, custom endpoints)
-- **Flexible HTTP support** - Custom headers, POST/PUT requests, SSL verification options, response assertions
-- **Multiple output modes** - Interactive TUI, simple text output, or structured JSON logging
-
-## Demo
-<table>
-   <tr>
-      <td width="50%" align="center">
-         <h4>Basic Monitoring</h4>
-         <video src="https://github.com/user-attachments/assets/c238df8e-f196-4be5-a9e0-116e76e20847" controls style="width:100%; 
-            max-width:400px; height:250px;">
-      </td>
-      <td width="50%" align="center">
-         <h4>Multi-Region Monitoring</h4>
-         <video src="https://github.com/user-attachments/assets/67c8e51d-fe6f-436a-a34d-cdc2bbf23f46" controls style="width:100%; max-width:400px; height:250px;">
-      </td>
-   </tr>
+<table width="100%">
+  <tr>
+    <td width="33%" valign="top" align="center">
+      <br>
+      <h3 align="center"><img src="https://api.iconify.design/lucide/activity.svg?color=%23FF6C19" width="20" height="20">&nbsp; Real-time</h3>
+      <p align="center">Uptime percentage, response times and SSL certificate tracking, updated as it runs.</p>
+      <br>
+    </td>
+    <td width="33%" valign="top" align="center">
+      <br>
+      <h3 align="center"><img src="https://api.iconify.design/lucide/list.svg?color=%23FF6C19" width="20" height="20">&nbsp; Multi-target</h3>
+      <p align="center">Watch many URLs at once, from the command line or a TOML config, each with its own interval and rules.</p>
+      <br>
+    </td>
+    <td width="33%" valign="top" align="center">
+      <br>
+      <h3 align="center"><img src="https://api.iconify.design/lucide/globe.svg?color=%23FF6C19" width="20" height="20">&nbsp; Multi-region</h3>
+      <p align="center">Deploy probes as AWS Lambda functions across 13 regions to see your site from where your users are.</p>
+      <br>
+    </td>
+  </tr>
+  <tr>
+    <td width="33%" valign="top" align="center">
+      <br>
+      <h3 align="center"><img src="https://api.iconify.design/lucide/code.svg?color=%23FF6C19" width="20" height="20">&nbsp; Flexible HTTP</h3>
+      <p align="center">Custom headers, POST and PUT bodies, redirect and SSL options, response assertions, IPv4 or IPv6 only checks.</p>
+      <br>
+    </td>
+    <td width="33%" valign="top" align="center">
+      <br>
+      <h3 align="center"><img src="https://api.iconify.design/lucide/bell.svg?color=%23FF6C19" width="20" height="20">&nbsp; Alerts</h3>
+      <p align="center">Desktop notifications plus webhooks. Slack and Discord are detected and formatted automatically.</p>
+      <br>
+    </td>
+    <td width="33%" valign="top" align="center">
+      <br>
+      <h3 align="center"><img src="https://api.iconify.design/lucide/chart-line.svg?color=%23FF6C19" width="20" height="20">&nbsp; Output</h3>
+      <p align="center">Interactive TUI, plain text or JSON logs, and Prometheus export for Grafana dashboards and long-term storage.</p>
+      <br>
+    </td>
+  </tr>
 </table>
+
+<img src="assets/dividers/table-of-contents.svg" alt="" width="100%"/>
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Options](#options)
+  - [Examples](#examples)
+- [Configuration File](#configuration-file)
+  - [Example Configuration](#example-configuration)
+  - [Configuration Options](#configuration-options)
+- [Multi-Region Monitoring](#multi-region-monitoring)
+  - [Prerequisites](#prerequisites)
+- [Webhook Notifications](#webhook-notifications)
+  - [Supported Platforms](#supported-platforms)
+  - [Integration Examples](#integration-examples)
+- [Prometheus & Grafana Integration](#prometheus--grafana-integration)
+- [Structured Logging](#structured-logging)
+- [Keyboard Shortcuts](#keyboard-shortcuts)
+- [Exit Codes](#exit-codes)
+- [Community](#community)
+
+<img src="assets/dividers/installation.svg" alt="" width="100%"/>
 
 ## Installation
 
-<details>
-<summary>macOS - Homebrew (Recommended)</summary>
-
 ```bash
+# macOS and Linux, Homebrew
 brew install owloops/tap/updo
-```
 
-</details>
-
-<details>
-<summary>Linux - Package Managers (Recommended)</summary>
-
-**Debian/Ubuntu:**
-
-```bash
-# Replace VERSION with actual version (e.g., 0.3.7)
-curl -L -O https://github.com/Owloops/updo/releases/latest/download/updo_VERSION_linux_amd64.deb
-sudo dpkg -i updo_VERSION_linux_amd64.deb
-```
-
-**Red Hat/Fedora/CentOS:**
-
-```bash
-# Replace VERSION with actual version (e.g., 0.3.7)
-curl -L -O https://github.com/Owloops/updo/releases/latest/download/updo_VERSION_linux_amd64.rpm
-sudo rpm -i updo_VERSION_linux_amd64.rpm
-```
-
-**Alpine Linux:**
-
-```bash
-# Replace VERSION with actual version (e.g., 0.3.7)
-curl -L -O https://github.com/Owloops/updo/releases/latest/download/updo_VERSION_linux_amd64.apk
-sudo apk add --allow-untrusted updo_VERSION_linux_amd64.apk
-```
-
-**Arch Linux:**
-
-```bash
-yay -S updo
-# or use the binary package
-yay -S updo-bin
-```
-
-**openSUSE:**
-
-```bash
-# Replace VERSION with actual version (e.g., 0.3.7)
-curl -L -O https://github.com/Owloops/updo/releases/latest/download/updo_VERSION_linux_amd64.rpm
-sudo zypper install --allow-unsigned-rpm updo_VERSION_linux_amd64.rpm
-```
-
-</details>
-
-<details>
-<summary>Nix/NixOS</summary>
-
-**Run directly:**
-
-```bash
-nix run github:Owloops/updo -- monitor https://example.com
-```
-
-**Temporary shell:**
-
-```bash
-nix shell github:Owloops/updo
-updo --version
-```
-
-**System flake integration:**
-
-```nix
-{
-  inputs.updo.url = "github:Owloops/updo";
-
-  outputs = { self, nixpkgs, updo }: {
-    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
-      modules = [{
-        environment.systemPackages = [ updo.packages.x86_64-linux.default ];
-      }];
-    };
-  };
-}
-```
-
-</details>
-
-<details>
-<summary>Windows - Direct Download</summary>
-
-**PowerShell:**
-
-```powershell
-# Download and install updo
-Invoke-WebRequest -Uri "https://github.com/Owloops/updo/releases/latest/download/updo_Windows_amd64.exe" -OutFile "updo.exe"
-# Move to a directory in your PATH (or create a custom directory)
-Move-Item updo.exe C:\Windows\System32\updo.exe
-```
-
-**Manual Download:**
-Download the Windows executable from the [latest release](https://github.com/Owloops/updo/releases/latest) and add it to your PATH.
-
-</details>
-
-<details>
-<summary>Quick install script (Linux, macOS, Windows/MSYS)</summary>
-
-```bash
+# Linux and macOS, install script picks the right release asset
 curl -sSL https://raw.githubusercontent.com/Owloops/updo/main/install.sh | bash
-```
 
-</details>
+# Arch Linux
+yay -S updo
 
-<details>
-<summary>Build from source</summary>
+# Nix, run without installing
+nix run github:Owloops/updo -- monitor https://example.com
 
-Requires Go [installed](https://go.dev/doc/install).
+# Docker, build the image and run it in one line
+docker run --rm -it "$(docker build -q https://github.com/Owloops/updo.git)" monitor https://example.com
 
-```bash
-git clone https://github.com/Owloops/updo.git
-cd updo
-go build
-```
-
-Or install directly:
-
-```bash
+# Any platform with Go 1.27 or newer
 go install github.com/Owloops/updo@latest
 ```
 
-</details>
+### Package files
 
-<details>
-<summary>Docker</summary>
+Every release ships native packages for Linux plus tarballs for macOS and an executable for Windows. Grab them from the [latest release](https://github.com/Owloops/updo/releases/latest):
 
-```bash
-# Build and run
-docker build -t updo https://github.com/Owloops/updo.git
-docker run updo monitor <website-url> [options]
-```
+| Platform | File |
+|---|---|
+| Debian, Ubuntu | `updo_<version>_linux_amd64.deb`, `dpkg -i` |
+| Fedora, RHEL, openSUSE | `updo_<version>_linux_amd64.rpm`, `rpm -i` or `zypper install` |
+| Alpine | `updo_<version>_linux_amd64.apk`, `apk add --allow-untrusted` |
+| Arch | `updo-bin` from the AUR, or the `.pkg.tar.zst` above |
+| macOS | `updo_Darwin_arm64`, `updo_Darwin_x86_64` |
+| Windows | `updo_Windows_x86_64.exe`, move it somewhere on your `PATH` |
 
-</details>
+The install script handles the correct asset, architecture and `PATH` for you, which is why it is the shortest path on Linux and macOS.
 
 ## Usage
 
@@ -228,7 +164,8 @@ updo completion bash > updo_completion.bash
 - `--webhook-url, --webhook-header`: Webhook notifications
 - `--only, --skip`: Target filtering
 
-> **Note:** When using CLI flags, all settings (headers, webhook URL, timeouts, etc.) apply globally to all monitored targets. For per-target configuration, use a TOML configuration file.
+> [!NOTE]
+> When using CLI flags, all settings (headers, webhook URL, timeouts, etc.) apply globally to all monitored targets. For per-target configuration, use a TOML configuration file.
 
 ### Examples
 
@@ -258,6 +195,8 @@ updo monitor --regions all --profile production https://example.com
 # Webhook notifications
 updo monitor --webhook-url "https://hooks.slack.com/services/YOUR/WEBHOOK" https://example.com
 ```
+
+<img src="assets/dividers/configuration.svg" alt="" width="100%"/>
 
 ## Configuration File
 
@@ -305,7 +244,10 @@ headers = ["Authorization: Bearer token"]
 - `webhook_url`, `webhook_headers`: Per-target notifications
 - `regions`: Target-specific AWS regions
 
-> **Note:** Response bodies are capped at `body_size_limit` bytes when evaluating `assert_text`. If your asserted text appears beyond the cap, the assertion fails and the probe logs a warning (visible in the Recent Logs widget in TUI mode, or on stderr in simple mode). Raise `body_size_limit` or set it to `0` for targets returning large payloads.
+> [!IMPORTANT]
+> Response bodies are capped at `body_size_limit` bytes when evaluating `assert_text`. If your asserted text appears beyond the cap, the assertion fails and the probe logs a warning (visible in the Recent Logs widget in TUI mode, or on stderr in simple mode). Raise `body_size_limit` or set it to `0` for targets returning large payloads.
+
+<img src="assets/dividers/multi-region.svg" alt="" width="100%"/>
 
 ## Multi-Region Monitoring
 
@@ -335,6 +277,8 @@ updo aws destroy --regions all
 **Supported regions:** us-east-1, us-west-1, us-west-2, eu-west-1, eu-central-1, eu-west-2, ap-southeast-1, ap-southeast-2, ap-northeast-1, ap-northeast-2, ap-south-1, sa-east-1, ca-central-1
 
 **Troubleshooting:** If you get credential errors, run `aws sso login --profile your-profile` to refresh expired sessions.
+
+<img src="assets/dividers/webhooks.svg" alt="" width="100%"/>
 
 ## Webhook Notifications
 
@@ -404,6 +348,8 @@ webhook_headers = [
 ]
 ```
 
+<img src="assets/dividers/prometheus.svg" alt="" width="100%"/>
+
 ## Prometheus & Grafana Integration
 
 Export updo metrics to Prometheus for long-term storage, visualization, and alerting:
@@ -436,7 +382,18 @@ docker compose up -d
 
 Access Grafana at [http://localhost:3000](http://localhost:3000) for pre-built dashboards.
 
-> **📖 Full Documentation:** See [examples/prometheus-grafana/README.md](examples/prometheus-grafana/README.md) for complete setup, authentication options, metrics reference, and PromQL examples.
+<table>
+   <tr>
+      <td align="center">
+         <video src="https://github.com/user-attachments/assets/67c8e51d-fe6f-436a-a34d-cdc2bbf23f46" controls style="width:100%; max-width:720px; height:400px;"></video>
+      </td>
+   </tr>
+</table>
+
+> [!TIP]
+> Full documentation lives in [examples/prometheus-grafana/README.md](examples/prometheus-grafana/README.md): complete setup, authentication options, metrics reference and PromQL examples.
+
+<img src="assets/dividers/logging.svg" alt="" width="100%"/>
 
 ## Structured Logging
 
@@ -459,17 +416,21 @@ updo monitor --log https://example.com > metrics.json 2> errors.json
 updo monitor --log https://example.com | jq 'select(.type=="check") | .response_time_ms'
 ```
 
+<img src="assets/dividers/shortcuts.svg" alt="" width="100%"/>
+
 ## Keyboard Shortcuts
 
-When monitoring multiple targets:
+In the TUI:
 
-- `↑/↓`: Navigate targets
-- `Tab`: Collapse/expand all target groups
-- `Enter`: Collapse/expand individual target group
-- `/`: Search mode, `ESC` to exit
-- `l`: Toggle logs per target
-- `ESC`: Close logs or search
-- `q` or `Ctrl+C`: Quit
+| Keys | Action |
+|---|---|
+| <kbd>↑</kbd> <kbd>↓</kbd> | Move through targets |
+| <kbd>Tab</kbd> | Collapse or expand every target group |
+| <kbd>Enter</kbd> | Collapse or expand the selected group |
+| <kbd>/</kbd> | Search, <kbd>Esc</kbd> to leave search |
+| <kbd>l</kbd> | Show or hide logs for the selected target |
+| <kbd>Esc</kbd> | Close the logs panel |
+| <kbd>q</kbd> <kbd>Ctrl</kbd>+<kbd>c</kbd> | Quit |
 
 ## Exit Codes
 
@@ -481,18 +442,20 @@ Useful for cron jobs, scripts and CI:
 
 Runs stopped with `Ctrl+C` or `q` exit with `0`, since the run did not finish on its own.
 
-## Mentions
+<img src="assets/dividers/community.svg" alt="" width="100%"/>
 
-- [awesome-cli-apps](https://github.com/agarrharr/awesome-cli-apps)
-- [awesome-readme](https://github.com/matiassingers/awesome-readme)
-- [termui](https://github.com/gizak/termui)
-- [Terminal Trove](https://terminaltrove.com/updo)
-- [Jupiter Broadcasting Picks](https://www.jupiterbroadcasting.com/show/linux-unplugged/664/)
+## Community
 
-## Contributing
+Contributions are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers building, testing, commit style and what a mergeable pull request looks like.
 
-Contributions to Updo are welcome! Feel free to create issues or submit pull requests.
+The TUI runs on [termui](https://github.com/gizak/termui) and [tcell](https://github.com/gdamore/tcell), which the [Owloops fork](https://github.com/Owloops/termui) keeps on a maintained terminal layer.
 
-## License
+The project has been featured in [awesome-cli-apps](https://github.com/agarrharr/awesome-cli-apps), [awesome-readme](https://github.com/matiassingers/awesome-readme), [Terminal Trove](https://terminaltrove.com/updo) and [Jupiter Broadcasting](https://www.jupiterbroadcasting.com/show/linux-unplugged/664/).
 
-This project is licensed under the [MIT License](LICENSE).
+<br>
+
+<div align="center">
+
+<sub>Built with&nbsp;<sub><img src="https://api.iconify.design/ph/heart-fill.svg?color=%23FF6C19" width="14" height="14" alt="love"></sub>&nbsp;by <a href="https://owloops.com">Owloops</a></sub>
+
+</div>

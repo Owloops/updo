@@ -1,0 +1,29 @@
+# Config used by images/demo.tape when recording the README demo.
+# Differs from example-config.toml by enabling multi-region probes, which
+# requires the Lambda functions to be deployed (updo aws deploy).
+
+[global]
+refresh_interval = 5
+timeout = 15
+regions = ["us-east-1", "eu-west-1", "ap-southeast-1"]
+
+[[targets]]
+url = "https://www.github.com"
+name = "GitHub"
+assert_text = "GitHub"
+
+[[targets]]
+url = "https://jsonplaceholder.typicode.com/posts/1"
+name = "JSONPlaceholder"
+refresh_interval = 2
+headers = ["Accept: application/json"]
+assert_text = "userId"
+
+[[targets]]
+url = "https://api.github.com/repos/octocat/Hello-World"
+name = "GitHub-API"
+headers = ["User-Agent: updo-monitor/1.0", "Accept: application/vnd.github.v3+json"]
+
+[[targets]]
+url = "https://www.cloudflare.com"
+name = "Cloudflare"

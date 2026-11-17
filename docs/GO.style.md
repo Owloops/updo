@@ -94,7 +94,7 @@ project/
 └── README.md
 ```
 
-Package by domain, not by layer. Use `config/`, `metrics/`, `notifications/` — not `models/`, `services/`, `handlers/`.
+Package by domain, not by layer. Use `config/`, `metrics/`, `notifications/`, not `models/`, `services/`, `handlers/`.
 
 No `internal/` unless you need to prevent imports. Flat is better than nested.
 
