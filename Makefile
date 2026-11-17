@@ -50,7 +50,7 @@ build-lambda: ## Build Lambda binary for embedding
 		go build -trimpath -tags $(BUILD_TAGS) -ldflags="-s -w -buildid=" -o ../$(LAMBDA_BINARY) $(notdir $(LAMBDA_SOURCE))
 	@echo "Lambda binary built: $(LAMBDA_BINARY)"
 	@echo "Creating ZIP archive for embedding..."
-	@cd aws && touch -d '1980-01-01 00:00:00 UTC' bootstrap && TZ=UTC zip -q -X bootstrap.zip bootstrap
+	@cd aws && TZ=UTC touch -t 198001010000 bootstrap && TZ=UTC zip -q -X bootstrap.zip bootstrap
 	@echo "Lambda ZIP created: $(LAMBDA_ZIP)"
 
 build: build-lambda ## Build updo binary with embedded Lambda
