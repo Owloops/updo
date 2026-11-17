@@ -1,53 +1,48 @@
-# VHS Demo for updo
+# VHS demo for updo, see https://github.com/charmbracelet/vhs
+# Record from the repo root after `go build -o updo .`:
+#   vhs images/demo.tape
+# Multi-region targets need `updo aws deploy` and a valid AWS profile.
 
-# https://github.com/charmbracelet/vhs
+Output images/demo.gif
 
-Output demo.gif
 Set FontSize 18
 Set Width 1280
 Set Height 720
-Set Theme "OneDark"
+Set Theme {"name":"Updo","black":"#111111","red":"#FF6B5B","green":"#5BFF6B","yellow":"#F59E0B","blue":"#8A4A22","magenta":"#C94F0E","cyan":"#FF6C19","white":"#E5E5E5","brightBlack":"#888888","brightRed":"#FF6B5B","brightGreen":"#5BFF6B","brightYellow":"#F59E0B","brightBlue":"#8A4A22","brightMagenta":"#C94F0E","brightCyan":"#FF6C19","brightWhite":"#FFFFFF","background":"#0A0A0A","foreground":"#E5E5E5","selection":"#2A2A2A","cursor":"#FF6C19"}
 
-# Start with a clean terminal
-Type "# updo Demo"
-Sleep 1s
+Type "# updo demo"
+Sleep 500ms
 Enter
 
-# Start updo monitoring
-Type "./updo monitor --profile Owloops-Development --config example-config.toml"
-Sleep 1s
+Type "./updo monitor --profile Owloops-Development -C images/demo-config.toml"
+Sleep 500ms
 Enter
-Sleep 5s
 
-# Press arrow down several times to show navigation
-Down
-Sleep 500ms
-Down
-Sleep 500ms
-Down
-Sleep 500ms
-Down
-Sleep 500ms
-Up
-Sleep 500ms
-Up
-Sleep 500ms
-
-# Now demonstrate search functionality
-Type "/"
-Sleep 500ms
-Type "GitHub"
-Sleep 1s
-Enter
+# Checks run in three regions, give the Lambdas a moment
 Sleep 3s
 
-# Show the filtered results for a moment
-Sleep 4s
+# First row is a target group header, step onto its region rows to see data
+Down
+Sleep 2500ms
+Down
+Sleep 1200ms
+Down
+Sleep 1200ms
+Up
+Sleep 900ms
+Up
+Sleep 900ms
 
-# Exit the search/filter
+# Filter to a single target
+Type "/"
+Sleep 500ms
+Type "Cloudflare"
+Sleep 1200ms
+Enter
+Sleep 2500ms
 Escape
-Sleep 2s
+Sleep 1500ms
 
-# Exit the application
+# Quit
 Ctrl+C
-Sleep 2s
+Sleep 1s
