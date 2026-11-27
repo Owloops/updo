@@ -133,6 +133,53 @@ func TestDrawDash(t *testing.T) {
 	}
 }
 
+func TestTargetListIsFlatForLocalTargets(t *testing.T) {
+	m := newStyledManager(t, _styleDash, "one", "two")
+	m.updateTargetList()
+
+	if got := len(m.listWidget.Rows); got != 2 {
+		t.Fatalf("rows = %d (%q), want one row per local target", got, m.listWidget.Rows)
+	}
+	for i, name := range []string{"one", "two"} {
+		if row := m.listWidget.Rows[i]; !strings.HasSuffix(row, " "+name) || m.listWidget.IsHeaderAtIndex(i) {
+			t.Errorf("row %d = %q, want a selectable %q target row", i, row, name)
+		}
+	}
+
+	m.listWidget.SelectedRow = 1
+	if key := m.getCurrentTargetKey(); key == nil || key.GetCleanName() != "two" {
+		t.Errorf("selected key = %v, want two", key)
+	}
+}
+
+func TestTargetListGroupsRegions(t *testing.T) {
+	targets := []config.Target{
+		{Name: "one", URL: "https://one.test"},
+		{Name: "two", URL: "https://two.test", Regions: []string{"us-east-1", "eu-west-1"}},
+	}
+	m := NewManager(targets, Options{})
+	for _, target := range targets {
+		m.sslExpiry[target.URL] = 0
+	}
+	m.detailsManager.createWidgets(targets[0].URL, targets[0].GetRefreshInterval())
+	m.initializeMultiTargetWidgets()
+	m.initStyledWidgets()
+	m.updateTargetList()
+
+	rows := m.listWidget.Rows
+	if len(rows) < 4 || !m.listWidget.IsHeaderAtIndex(1) || m.listWidget.IsHeaderAtIndex(0) {
+		t.Fatalf("rows = %q, want a flat row then a region group", rows)
+	}
+	if !containsAll(strings.Join(rows[2:], "|"), "us-east-1", "eu-west-1") {
+		t.Errorf("region rows = %q", rows[2:])
+	}
+
+	m.listWidget.SelectedRow = 1
+	if view := m.currentView(); view.key.GetCleanName() != "two" || view.key.Region != "us-east-1" {
+		t.Errorf("group header shows %v, want the first region of two", view.key)
+	}
+}
+
 func TestRememberSampleCapsHistory(t *testing.T) {
 	m := newStyledManager(t, _styleDash, "solo")
 	for range _historyCap + 25 {

@@ -170,6 +170,14 @@ func (m *Manager) updateTargetList() {
 		keys := targetGroups[targetName]
 		groupID := targetName
 
+		if len(keys) == 1 && keys[0].IsLocal {
+			items = append(items, m.targetRow(keys[0], targetName))
+			metadata = append(metadata, m.targetRowMetadata(keys[0], "", targetName))
+			itemToKeyIndex = append(itemToKeyIndex, keyIndex)
+			keyIndex++
+			continue
+		}
+
 		isCollapsed := m.listWidget.IsGroupCollapsed(groupID)
 		collapseIcon := "▼"
 		if isCollapsed {
