@@ -11,6 +11,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/lambda v1.89.1
 	github.com/aws/aws-sdk-go-v2/service/sts v1.35.0
 	github.com/caio/go-tdigest/v4 v4.0.1
+	github.com/gdamore/tcell/v2 v2.13.10
 	github.com/gen2brain/beeep v0.0.0-20230907135156-1a38885a97fc
 	github.com/golang/snappy v1.0.0
 	github.com/mattn/go-runewidth v0.0.31
@@ -38,7 +39,6 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/gdamore/encoding v1.0.1 // indirect
-	github.com/gdamore/tcell/v2 v2.13.10 // indirect
 	github.com/go-toast/toast v0.0.0-20190211030409-01e6764cf0a4 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect

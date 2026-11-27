@@ -94,9 +94,9 @@ func TestAreaChartDraw(t *testing.T) {
 			height:  7,
 			samples: []Sample{{Millis: 50, IsUp: true}, up},
 			rows: map[int]string{
-				1: "│  100ms ┈┈┈┈┈┈⣿⣿┈ │",
-				4: "│      0    ⣿⣿ ⣿⣿  │",
-				5: "│        -6s   now │",
+				1: "│  100ms ┈┈┈┈┈███┈ │",
+				4: "│      0  ███ ███  │",
+				5: "│        -4s   now │",
 			},
 		},
 		{
@@ -104,8 +104,8 @@ func TestAreaChartDraw(t *testing.T) {
 			height:  7,
 			samples: []Sample{{Millis: 9000}, {Millis: 40, IsUp: true}},
 			rows: map[int]string{
-				1: "│   40ms ┈┈┈┈┈┈⣿⣿┈ │",
-				4: "│      0       ⣿⣿  │",
+				1: "│   40ms ┈┈┈┈┈███┈ │",
+				4: "│      0      ███  │",
 			},
 		},
 		{
@@ -113,24 +113,45 @@ func TestAreaChartDraw(t *testing.T) {
 			height:  7,
 			samples: []Sample{{Millis: 200, HasResponse: true}, {Millis: 40, IsUp: true}},
 			rows: map[int]string{
-				1: "│  200ms ┈┈┈⣿⣿┈┈┈┈ │",
-				4: "│      0    ⣿⣿ ⣶⣶  │",
+				1: "│  200ms ┈███┈┈┈┈┈ │",
+				4: "│      0  ███ ▆▆▆  │",
 			},
 		},
 		{
-			name:    "a full history uses one column per check",
+			name:    "a full history keeps a gap between bars and drops the oldest checks",
 			height:  7,
-			samples: []Sample{up, up, up, up, up, up, {Millis: 100}, up, up, up, up, up},
+			samples: []Sample{up, up, up, {Millis: 100}, up, up},
 			rows: map[int]string{
-				4: "│      0 ⣿⣿⣿ ⣿⣿⣿⣿⣿ │",
-				5: "│        -18s  now │",
+				4: "│      0  █   █ █  │",
+				5: "│        -8s   now │",
 			},
 		},
 		{
 			name:    "short charts drop the time axis",
 			height:  6,
 			samples: []Sample{up},
-			rows:    map[int]string{4: "│      0       ⣿⣿  │"},
+			rows:    map[int]string{4: "│      0      ███  │"},
+		},
+		{
+			name:    "every check has a beat as wide as its bar",
+			height:  11,
+			samples: []Sample{up, {Millis: 100}, up},
+			rows: map[int]string{
+				6: "│      0 ██    ██  │",
+				7: "│                  │",
+				8: "│ checks ██ ██ ██  │",
+				9: "│        -6s   now │",
+			},
+		},
+		{
+			name:    "tall charts double the beat row",
+			height:  14,
+			samples: []Sample{up, {Millis: 100}, up},
+			rows: map[int]string{
+				10: "│ checks ██ ██ ██  │",
+				11: "│        ██ ██ ██  │",
+				12: "│        -6s   now │",
+			},
 		},
 	}
 
@@ -140,6 +161,7 @@ func TestAreaChartDraw(t *testing.T) {
 			chart.Samples = tt.samples
 			chart.Interval = 2 * time.Second
 			chart.EmptyMessage = "waiting"
+			chart.BarGradient = []ui.Style{ui.NewStyle(ui.ColorBlue)}
 			chart.SetRect(0, 0, 20, tt.height)
 			buf := ui.NewBuffer(chart.GetRect())
 			chart.Draw(buf)
@@ -155,17 +177,34 @@ func TestAreaChartDraw(t *testing.T) {
 
 func TestAreaChartStyles(t *testing.T) {
 	chart := NewAreaChart()
-	chart.Samples = []Sample{{Millis: 200, HasResponse: true}, {Millis: 40, IsUp: true}}
-	chart.BarStyle, chart.FailStyle = ui.NewStyle(ui.ColorBlue), ui.NewStyle(ui.ColorRed)
-	chart.SetRect(0, 0, 20, 7)
+	chart.Samples = []Sample{{Millis: 100, IsUp: true}, {Millis: 100, HasResponse: true}, {Millis: 100, IsUp: true}}
+	chart.BarGradient = []ui.Style{ui.NewStyle(ui.ColorBlue), ui.NewStyle(ui.ColorCyan)}
+	chart.FailStyle = ui.NewStyle(ui.ColorMagenta)
+	chart.UpStyle, chart.DownStyle = ui.NewStyle(ui.ColorGreen), ui.NewStyle(ui.ColorRed)
+	chart.PendingStyle = ui.NewStyle(ui.ColorWhite)
+	chart.SetRect(0, 0, 27, 11)
 	buf := ui.NewBuffer(chart.GetRect())
 	chart.Draw(buf)
 
-	if got := buf.GetCell(image.Pt(12, 4)).Style.Fg; got != ui.ColorRed {
-		t.Errorf("failed bar colour = %v, want red", got)
+	tests := []struct {
+		name string
+		at   image.Point
+		want ui.Color
+	}{
+		{"bar starts with the first gradient colour", image.Pt(21, 6), ui.ColorBlue},
+		{"bar ends with the last gradient colour", image.Pt(21, 1), ui.ColorCyan},
+		{"failed bar", image.Pt(17, 6), ui.ColorMagenta},
+		{"up beat", image.Pt(21, 8), ui.ColorGreen},
+		{"down beat", image.Pt(17, 8), ui.ColorRed},
+		{"pending beat", image.Pt(9, 8), ui.ColorWhite},
 	}
-	if got := buf.GetCell(image.Pt(15, 4)).Style.Fg; got != ui.ColorBlue {
-		t.Errorf("passing bar colour = %v, want blue", got)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := buf.GetCell(tt.at).Style.Fg; got != tt.want {
+				t.Errorf("colour at %v = %v, want %v", tt.at, got, tt.want)
+			}
+		})
 	}
 }
 
@@ -174,27 +213,4 @@ func TestAreaChartTinyRectDoesNotPanic(t *testing.T) {
 	chart.Samples = []Sample{{Millis: 1, IsUp: true}}
 	chart.SetRect(0, 0, 3, 1)
 	chart.Draw(ui.NewBuffer(chart.GetRect()))
-}
-
-func TestPulseDraw(t *testing.T) {
-	pulse := NewPulse()
-	pulse.Beats = []Sample{{IsUp: true}, {}, {IsUp: true}}
-	pulse.Facts = []Fact{{Label: "Address", Value: "1.2.3.4"}}
-	pulse.UpStyle, pulse.DownStyle = ui.NewStyle(ui.ColorGreen), ui.NewStyle(ui.ColorRed)
-	pulse.SetRect(0, 0, 22, 5)
-	buf := ui.NewBuffer(pulse.GetRect())
-	pulse.Draw(buf)
-
-	if got, want := rowText(buf, 1), "│ ···············┃┃┃ │"; got != want {
-		t.Errorf("beats row = %q, want %q", got, want)
-	}
-	if got, want := rowText(buf, 2), "│ Address  1.2.3.4   │"; got != want {
-		t.Errorf("facts row = %q, want %q", got, want)
-	}
-	if got := buf.GetCell(image.Pt(18, 1)).Style.Fg; got != ui.ColorRed {
-		t.Errorf("failed beat colour = %v, want red", got)
-	}
-	if got := buf.GetCell(image.Pt(19, 1)).Style.Fg; got != ui.ColorGreen {
-		t.Errorf("newest beat colour = %v, want green", got)
-	}
 }

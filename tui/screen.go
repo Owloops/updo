@@ -41,7 +41,6 @@ const (
 	_minChartHeight    = 5
 	_minLogsHeight     = 7
 	_logsPercent       = 30
-	_pulsePercent      = 58
 	_minPlaceWidth     = 4
 	_percent           = 100
 	_clockLayout       = "15:04:05"
@@ -62,6 +61,7 @@ const (
 	_assertPass        = "pass"
 	_assertFail        = "fail"
 	_headerSeparator   = "  "
+	_summarySeparator  = " · "
 	_headerRegionArrow = " › "
 )
 
@@ -77,7 +77,6 @@ type dashWidgets struct {
 	keybar *uw.Bar
 	tiles  *uw.StatTiles
 	chart  *uw.AreaChart
-	pulse  *uw.Pulse
 	search *uw.Framed
 	logs   *uw.Framed
 }
@@ -112,7 +111,6 @@ func (m *Manager) initStyledWidgets() {
 		keybar: uw.NewBar(),
 		tiles:  uw.NewStatTiles(),
 		chart:  uw.NewAreaChart(),
-		pulse:  uw.NewPulse(),
 		logs:   uw.NewFramed(d.LogsWidget, &d.LogsWidget.Block),
 	}
 	if m.searchWidget != nil {
@@ -236,9 +234,7 @@ func (m *Manager) layoutDash(rect image.Rectangle) []ui.Drawable {
 	y += max(chartHeight, 0)
 
 	if lowerHeight > 0 {
-		split := x + (rect.Max.X-x)*_pulsePercent/_percent
-		place(d.pulse, x, y, split, y+lowerHeight)
-		place(m.detailsManager.TimingBreakdownWidget, split, y, rect.Max.X, y+lowerHeight)
+		place(m.detailsManager.TimingBreakdownWidget, x, y, rect.Max.X, y+lowerHeight)
 		y += lowerHeight
 	}
 	if logsHeight > 0 {
@@ -264,14 +260,16 @@ func (m *Manager) prepareDash() {
 
 	d.header.Left, d.header.Right = m.headerSpans(view)
 	d.keybar.Left = m.keyHintSpans(focus)
+	d.keybar.Right = []uw.Span{{Text: checkSummary(view), Style: p.muted}}
 
 	d.tiles.Frame = frame(_overviewHeading, "", false)
 	d.tiles.LabelStyle = p.muted
 	d.tiles.Tiles = m.tiles(view)
 
 	chartAside := ""
-	if last := len(history) - 1; last >= 0 && (history[last].IsUp || history[last].HasResponse) {
-		chartAside = "last " + uw.FormatMillis(history[len(history)-1].Millis)
+	if view.stats.ChecksCount > 0 {
+		failed := view.stats.ChecksCount - view.stats.SuccessCount
+		chartAside = fmt.Sprintf("%d checks · %d failed", view.stats.ChecksCount, failed)
 	}
 	d.chart.Frame = frame(_responseHeading, chartAside, false)
 	d.chart.Samples = history
@@ -279,20 +277,10 @@ func (m *Manager) prepareDash() {
 	if view.hasTarget {
 		d.chart.Interval = view.target.GetRefreshInterval()
 	}
-	d.chart.BarStyle, d.chart.FailStyle = ui.NewStyle(p.accent.Fg), ui.NewStyle(p.bad.Fg)
+	d.chart.BarGradient, d.chart.FailStyle = p.chart, ui.NewStyle(p.bad.Fg)
+	d.chart.UpStyle, d.chart.DownStyle, d.chart.PendingStyle = p.good, p.bad, p.faint
 	d.chart.AxisStyle, d.chart.GridStyle = p.muted, p.faint
 	d.chart.EmptyMessage = _waitingForCheck
-
-	checksAside := ""
-	if view.stats.ChecksCount > 0 {
-		failed := view.stats.ChecksCount - view.stats.SuccessCount
-		checksAside = fmt.Sprintf("%d ok · %d failed", view.stats.SuccessCount, failed)
-	}
-	d.pulse.Frame = frame(_checksHeading, checksAside, false)
-	d.pulse.Beats = history
-	d.pulse.Facts = m.facts(view)
-	d.pulse.UpStyle, d.pulse.DownStyle = p.good, p.bad
-	d.pulse.TrackStyle, d.pulse.LabelStyle = p.faint, p.muted
 
 	timing := m.detailsManager.TimingBreakdownWidget
 	timingAside := ""
@@ -369,6 +357,9 @@ func (m *Manager) headerSpans(view detailView) (left, right []uw.Span) {
 	}
 	if view.hasTarget {
 		left = append(left, gap, uw.Span{Text: view.target.URL, Style: p.muted})
+	}
+	if address := resolvedAddress(view); address != "" {
+		left = append(left, uw.Span{Text: _summarySeparator + address, Style: p.faint})
 	}
 
 	if m.isSingle {
@@ -452,42 +443,25 @@ func (m *Manager) tiles(view detailView) []uw.Tile {
 	}
 }
 
-func (m *Manager) facts(view detailView) []uw.Fact {
-	p := m.pal
-	fact := func(label, value string) uw.Fact {
-		if value == "" {
-			return uw.Fact{Label: label, Value: _placeholder, ValueStyle: p.muted}
-		}
-		return uw.Fact{Label: label, Value: value, ValueStyle: p.text}
-	}
-
-	lastCheck, address := "", ""
-	if view.hasResult {
-		address = view.result.ResolvedIP
-		if !view.result.LastCheckTime.IsZero() {
-			checkedAt := view.result.LastCheckTime
-			lastCheck = fmt.Sprintf("%s · %s ago", checkedAt.Format(_clockLayout), time.Since(checkedAt).Truncate(time.Second))
-		}
-	}
-	if address == "" {
-		address = view.stats.LastIP
-	}
-
-	interval := ""
-	if view.hasTarget {
-		interval = "every " + view.target.GetRefreshInterval().String()
-	}
-	running := ""
+func checkSummary(view detailView) string {
+	var parts []string
 	if view.stats.TotalDuration > 0 {
-		running = utils.FormatDurationMinute(view.stats.TotalDuration)
+		parts = append(parts, "watching "+utils.FormatDurationMinute(view.stats.TotalDuration))
 	}
+	if view.hasTarget {
+		parts = append(parts, "every "+view.target.GetRefreshInterval().String())
+	}
+	if view.hasResult && !view.result.LastCheckTime.IsZero() {
+		parts = append(parts, fmt.Sprintf("checked %s ago", time.Since(view.result.LastCheckTime).Truncate(time.Second)))
+	}
+	return strings.Join(parts, _summarySeparator)
+}
 
-	return []uw.Fact{
-		fact("Last check", lastCheck),
-		fact("Address", address),
-		fact("Interval", interval),
-		fact("Watching", running),
+func resolvedAddress(view detailView) string {
+	if view.hasResult && view.result.ResolvedIP != "" {
+		return view.result.ResolvedIP
 	}
+	return view.stats.LastIP
 }
 
 func uptimeStyle(p palette, view detailView) ui.Style {

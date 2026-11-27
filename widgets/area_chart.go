@@ -12,7 +12,8 @@ import (
 
 const (
 	_axisWidth          = 7
-	_maxBarWidth        = 3
+	_minSlotWidth       = 2
+	_maxSlotWidth       = 4
 	_minRowsForMidTick  = 5
 	_msPerSecond        = 1000.0
 	_sparkPerRune       = 2
@@ -20,13 +21,18 @@ const (
 	_sparkFlatRatio     = 0.15
 	_brailleBase        = 0x2800
 	_minRowsForTimeAxis = 5
+	_minRowsForBeats    = 7
+	_minRowsForBeatGap  = 9
+	_minRowsForTallBeat = 12
+	_tallBeatRows       = 2
+	_beatRune           = '█'
+	_checksLabel        = "checks"
 	_nowLabel           = "now"
 )
 
 var (
 	_brailleDots = [_sparkPerRune][_sparkLevels]rune{{0x40, 0x04, 0x02, 0x01}, {0x80, 0x20, 0x10, 0x08}}
 	_niceSteps   = [...]float64{1, 1.5, 2, 3, 4, 5, 7.5, 10}
-	_fill        = []rune{' ', '⣀', '⣤', '⣶', '⣿'}
 )
 
 // Sample is the outcome of one check.
@@ -36,14 +42,17 @@ type Sample struct {
 	HasResponse bool
 }
 
-// AreaChart is a filled, right-anchored history chart of response times above a time axis.
+// AreaChart is a right-anchored history of response times with one status beat under each bar.
 type AreaChart struct {
 	ui.Block
 	Frame        Frame
 	Samples      []Sample
 	Interval     time.Duration
-	BarStyle     ui.Style
+	BarGradient  []ui.Style
 	FailStyle    ui.Style
+	UpStyle      ui.Style
+	DownStyle    ui.Style
+	PendingStyle ui.Style
 	AxisStyle    ui.Style
 	GridStyle    ui.Style
 	EmptyMessage string
@@ -69,6 +78,9 @@ func (c *AreaChart) Draw(buf *ui.Buffer) {
 	if hasTimeAxis {
 		plot.Max.Y--
 	}
+	beatHeight, beatGap := beatLayout(inner.Dy())
+	plot.Max.Y -= beatHeight + beatGap
+	beats := image.Rect(plot.Min.X, plot.Max.Y+beatGap, plot.Max.X, plot.Max.Y+beatGap+beatHeight)
 
 	if len(c.Samples) == 0 {
 		x := inner.Min.X + max((inner.Dx()-rw.StringWidth(c.EmptyMessage))/2, 0)
@@ -76,46 +88,59 @@ func (c *AreaChart) Draw(buf *ui.Buffer) {
 		return
 	}
 
-	width := barWidth(len(c.Samples), plot.Dx())
+	width := slotWidth(len(c.Samples), plot.Dx())
 	columns := plot.Dx() / width
 	visible := c.Samples[max(len(c.Samples)-columns, 0):]
 	highest := maxMillis(visible)
 	ceiling := NiceCeil(highest)
-	rows := plot.Dy()
+	levels := plot.Dy() * (len(ui.BARS) - 1)
 
 	if highest > 0 {
 		c.drawAxis(buf, inner, plot, ceiling)
 	}
 
-	steps := len(_fill) - 1
-	filled := max(width-1, 1)
-	left := plot.Max.X - len(visible)*width
-	for i, sample := range visible {
-		x := left + i*width
-		style := c.BarStyle
-		if !sample.IsUp {
-			if !sample.HasResponse {
-				continue
-			}
-			style = c.FailStyle
+	filled := width - 1
+	barGradient := c.BarGradient
+	if len(barGradient) == 0 {
+		barGradient = []ui.Style{ui.StyleClear}
+	}
+	pending := columns - len(visible)
+	for slot := range columns {
+		x := plot.Max.X - (columns-slot)*width
+		if slot < pending {
+			drawBeat(buf, x, filled, beats, c.PendingStyle)
+			continue
 		}
-		level := int(math.Round(sample.Millis / ceiling * float64(rows*steps)))
+
+		sample := visible[slot-pending]
+		gradient, beatStyle := barGradient, c.UpStyle
+		if !sample.IsUp {
+			gradient, beatStyle = []ui.Style{c.FailStyle}, c.DownStyle
+		}
+		drawBeat(buf, x, filled, beats, beatStyle)
+		if !sample.IsUp && !sample.HasResponse {
+			continue
+		}
+
+		level := min(max(int(math.Round(sample.Millis/ceiling*float64(levels))), 1), levels)
 		for dx := range filled {
-			drawColumn(buf, x+dx, plot.Max.Y-1, min(max(level, 1), rows*steps), style)
+			drawColumn(buf, x+dx, plot, level, gradient)
 		}
 	}
 
+	if !beats.Empty() {
+		DrawTextRight(buf, _checksLabel, c.AxisStyle, inner.Min.X, beats.Min.Y, plot.Min.X-1)
+	}
 	if hasTimeAxis {
-		c.drawTimeAxis(buf, plot, columns)
+		c.drawTimeAxis(buf, image.Pt(plot.Min.X, inner.Max.Y-1), plot.Max.X, columns)
 	}
 }
 
-func (c *AreaChart) drawTimeAxis(buf *ui.Buffer, plot image.Rectangle, columns int) {
-	y := plot.Max.Y
-	DrawTextRight(buf, _nowLabel, c.AxisStyle, plot.Min.X, y, plot.Max.X)
+func (c *AreaChart) drawTimeAxis(buf *ui.Buffer, start image.Point, maxX, columns int) {
+	DrawTextRight(buf, _nowLabel, c.AxisStyle, start.X, start.Y, maxX)
 	if c.Interval > 0 {
 		span := "-" + FormatSpan(time.Duration(columns)*c.Interval)
-		DrawText(buf, span, c.AxisStyle, plot.Min.X, y, plot.Max.X-len(_nowLabel)-1)
+		DrawText(buf, span, c.AxisStyle, start.X, start.Y, maxX-len(_nowLabel)-1)
 	}
 }
 
@@ -134,19 +159,33 @@ func (c *AreaChart) drawAxis(buf *ui.Buffer, inner, plot image.Rectangle, ceilin
 	}
 }
 
-// barWidth widens bars while history is short so a new chart is not mostly empty.
-func barWidth(samples, columns int) int {
-	return min(max(columns/samples, 1), _maxBarWidth)
+// slotWidth widens bars while history is short so a new chart is not mostly empty.
+func slotWidth(samples, columns int) int {
+	return min(max(columns/samples, _minSlotWidth), _maxSlotWidth)
 }
 
-func drawColumn(buf *ui.Buffer, x, bottomY, level int, style ui.Style) {
-	steps := len(_fill) - 1
-	full, partial := level/steps, level%steps
-	for row := range full {
-		buf.SetCell(ui.NewCell(_fill[steps], style), image.Pt(x, bottomY-row))
+func beatLayout(innerRows int) (height, gap int) {
+	switch {
+	case innerRows >= _minRowsForTallBeat:
+		return _tallBeatRows, 1
+	case innerRows >= _minRowsForBeatGap:
+		return 1, 1
+	case innerRows >= _minRowsForBeats:
+		return 1, 0
 	}
-	if partial > 0 {
-		buf.SetCell(ui.NewCell(_fill[partial], style), image.Pt(x, bottomY-full))
+	return 0, 0
+}
+
+func drawBeat(buf *ui.Buffer, x, width int, rows image.Rectangle, style ui.Style) {
+	buf.Fill(ui.NewCell(_beatRune, style), image.Rect(x, rows.Min.Y, x+width, rows.Max.Y))
+}
+
+func drawColumn(buf *ui.Buffer, x int, plot image.Rectangle, level int, gradient []ui.Style) {
+	steps := len(ui.BARS) - 1
+	for row := 0; row*steps < level; row++ {
+		style := gradient[row*len(gradient)/plot.Dy()]
+		glyph := ui.BARS[min(level-row*steps, steps)]
+		buf.SetCell(ui.NewCell(glyph, style), image.Pt(x, plot.Max.Y-1-row))
 	}
 }
 

@@ -53,6 +53,33 @@ func TestAccentFromEnv(t *testing.T) {
 	}
 }
 
+func TestChartGradient(t *testing.T) {
+	gradient := chartGradient(_colorBrandOrange)
+	if len(gradient) != _gradientSteps {
+		t.Fatalf("orange gradient has %d steps, want %d", len(gradient), _gradientSteps)
+	}
+
+	tests := []struct {
+		name string
+		got  ui.Color
+		want ui.Color
+	}{
+		{"starts at the brand orange", gradient[0].Fg, rgbColor(0xff, 0x87, 0x00)},
+		{"ends at the last stop", gradient[_gradientSteps-1].Fg, rgbColor(0xff, 0xd0, 0x55)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.got != tt.want {
+				t.Errorf("colour = %v, want %v", tt.got, tt.want)
+			}
+		})
+	}
+
+	if got := chartGradient(ui.ColorCyan); len(got) != 1 || got[0].Fg != ui.ColorCyan {
+		t.Errorf("theme accent gradient = %v, want the single accent colour", got)
+	}
+}
+
 func TestLayoutDashStaysInsideAndDoesNotOverlap(t *testing.T) {
 	sizes := []image.Point{{140, 46}, {80, 24}, {60, 14}, {30, 8}, {200, 60}}
 
