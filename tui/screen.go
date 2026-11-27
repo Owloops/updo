@@ -35,8 +35,7 @@ const (
 	_sidebarPercent    = 26
 	_sidebarMinWidth   = 24
 	_sidebarMaxWidth   = 38
-	_searchHeight      = 3
-	_tilesHeight       = 4
+	_topRowHeight      = 4
 	_lowerHeight       = 8
 	_minChartHeight    = 5
 	_minLogsHeight     = 7
@@ -210,14 +209,14 @@ func (m *Manager) layoutDash(rect image.Rectangle) []ui.Drawable {
 	x := rect.Min.X
 	if m.listWidget != nil {
 		sidebar := min(max(rect.Dx()*_sidebarPercent/_percent, _sidebarMinWidth), _sidebarMaxWidth)
-		place(d.search, x, top, x+sidebar, top+_searchHeight)
-		place(m.listWidget, x, top+_searchHeight, x+sidebar, bottom)
+		place(d.search, x, top, x+sidebar, top+_topRowHeight)
+		place(m.listWidget, x, top+_topRowHeight, x+sidebar, bottom)
 		x += sidebar
 	}
 
 	y := top
-	place(d.tiles, x, y, rect.Max.X, y+_tilesHeight)
-	y += _tilesHeight
+	place(d.tiles, x, y, rect.Max.X, y+_topRowHeight)
+	y += _topRowHeight
 
 	logsHeight := 0
 	if m.showLogs {
