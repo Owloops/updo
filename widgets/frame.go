@@ -27,11 +27,10 @@ type Frame struct {
 
 // Inner returns the content area left inside r once the chrome is drawn.
 func (f *Frame) Inner(r image.Rectangle) image.Rectangle {
-	inner := image.Rect(r.Min.X+_boxPadding, r.Min.Y+1, r.Max.X-_boxPadding, r.Max.Y-1)
-	if inner.Dx() <= 0 || inner.Dy() <= 0 {
+	if r.Dx() <= 2*_boxPadding || r.Dy() <= _frameMinSize {
 		return image.Rectangle{}
 	}
-	return inner
+	return image.Rect(r.Min.X+_boxPadding, r.Min.Y+1, r.Max.X-_boxPadding, r.Max.Y-1)
 }
 
 // Draw renders the chrome onto buf within r.

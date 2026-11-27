@@ -24,6 +24,8 @@ func TestFrameInner(t *testing.T) {
 	}{
 		{"pads content off the border", image.Rect(0, 0, 20, 6), image.Rect(2, 1, 18, 5)},
 		{"too small collapses to empty", image.Rect(0, 0, 3, 2), image.Rectangle{}},
+		{"too narrow collapses to empty", image.Rect(0, 0, 3, 6), image.Rectangle{}},
+		{"too short collapses to empty", image.Rect(0, 0, 20, 1), image.Rectangle{}},
 	}
 
 	for _, tt := range tests {
