@@ -40,6 +40,22 @@ func NewDetailsManager() *DetailsManager {
 }
 
 func (m *DetailsManager) InitializeWidgets(url string, refreshInterval time.Duration) {
+	m.createWidgets(url, refreshInterval)
+
+	termWidth, termHeight := ui.TerminalDimensions()
+
+	m.NormalGrid = ui.NewGrid()
+	m.NormalGrid.SetRect(0, 0, termWidth, termHeight)
+	m.setupNormalGrid()
+
+	m.LogsGrid = ui.NewGrid()
+	m.LogsGrid.SetRect(0, 0, termWidth, termHeight)
+	m.setupLogsGrid()
+
+	m.ActiveGrid = m.NormalGrid
+}
+
+func (m *DetailsManager) createWidgets(url string, refreshInterval time.Duration) {
 	m.QuitWidget = widgets.NewParagraph()
 	m.QuitWidget.Title = "Information"
 	m.QuitWidget.Text = "q:quit l:logs ↑↓:nav"
@@ -122,18 +138,6 @@ func (m *DetailsManager) InitializeWidgets(url string, refreshInterval time.Dura
 	m.LogsWidget.TitleStyle.Modifier = ui.ModifierBold
 	m.LogsWidget.TextStyle.Fg = ui.ColorWhite
 	m.LogsWidget.SelectedRowStyle = ui.NewStyle(ui.ColorBlack, ui.ColorMagenta, ui.ModifierBold)
-
-	termWidth, termHeight := ui.TerminalDimensions()
-
-	m.NormalGrid = ui.NewGrid()
-	m.NormalGrid.SetRect(0, 0, termWidth, termHeight)
-	m.setupNormalGrid()
-
-	m.LogsGrid = ui.NewGrid()
-	m.LogsGrid.SetRect(0, 0, termWidth, termHeight)
-	m.setupLogsGrid()
-
-	m.ActiveGrid = m.NormalGrid
 }
 
 func (m *DetailsManager) setupNormalGrid() {

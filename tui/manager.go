@@ -29,6 +29,7 @@ const (
 	_logBufferSize         = 1000
 	_dataChannelMultiplier = 2
 	_targetsTitle          = "Targets"
+	_sparkWidth            = 8
 )
 
 type Manager struct {
@@ -45,7 +46,7 @@ type Manager struct {
 	listWidget      *uw.FilteredList
 	searchWidget    *widgets.Paragraph
 	detailsManager  *DetailsManager
-	grid            *ui.Grid
+	grid            ui.Drawable
 	termWidth       int
 	termHeight      int
 	focusOnLogs     bool
@@ -53,6 +54,12 @@ type Manager struct {
 
 	itemToKeyIndex          []int
 	preserveHeaderSelection string
+
+	style     uiStyle
+	pal       palette
+	dash      *dashWidgets
+	history   map[string][]uw.Sample
+	liveStats map[string]stats.Stats
 }
 
 type PlotHistory struct {
@@ -75,18 +82,24 @@ func NewManager(targets []config.Target, options Options) *Manager {
 		currentKeyIndex: 0,
 		isSingle:        len(allKeys) == 1,
 		detailsManager:  NewDetailsManager(),
+		style:           styleFromEnv(),
+		pal:             newPalette(accentFromEnv()),
+		history:         make(map[string][]uw.Sample, len(allKeys)),
+		liveStats:       make(map[string]stats.Stats, len(allKeys)),
 	}
-
 	return m
 }
 
 func (m *Manager) getSSLExpiry(url string) int {
-	m.sslExpiryMu.RLock()
-	if days, exists := m.sslExpiry[url]; exists {
-		m.sslExpiryMu.RUnlock()
+	m.sslExpiryMu.Lock()
+	days, exists := m.sslExpiry[url]
+	if !exists {
+		m.sslExpiry[url] = 0
+	}
+	m.sslExpiryMu.Unlock()
+	if exists {
 		return days
 	}
-	m.sslExpiryMu.RUnlock()
 
 	if strings.HasPrefix(url, "https://") {
 		go func(sslURL string) {
@@ -124,6 +137,7 @@ func (m *Manager) InitializeLayout(width, height int) {
 		m.initializeMultiTargetWidgets()
 	}
 
+	m.initStyledWidgets()
 	m.setupGrid(width, height)
 }
 
@@ -156,7 +170,7 @@ func (m *Manager) updateTargetList() {
 		keys := targetGroups[targetName]
 		groupID := targetName
 
-		isCollapsed := m.listWidget != nil && m.listWidget.IsGroupCollapsed(groupID)
+		isCollapsed := m.listWidget.IsGroupCollapsed(groupID)
 		collapseIcon := "▼"
 		if isCollapsed {
 			collapseIcon = "▶"
@@ -171,49 +185,23 @@ func (m *Manager) updateTargetList() {
 			GroupID:      groupID,
 			IsHeader:     true,
 			IsSelectable: true,
+			Label:        targetName,
 		})
 		itemToKeyIndex = append(itemToKeyIndex, -1)
 
-		if !isCollapsed {
-			for _, key := range keys {
-
-				var icon, iconColor string
-
-				if data, exists := m.targetData[key.String()]; exists {
-					if data.Result.IsUp {
-						icon = _targetIcon
-						iconColor = "green"
-					} else {
-						icon = _targetIcon
-						iconColor = "red"
-					}
-				} else {
-					icon = _targetIcon
-					iconColor = "yellow"
-				}
-
-				region := "local"
-				if !key.IsLocal && key.Region != "" {
-					region = key.Region
-				}
-
-				coloredIcon := fmt.Sprintf("[%s](fg:%s)", icon, iconColor)
-				line := fmt.Sprintf("  %s %s", coloredIcon, region)
-
-				items = append(items, "  "+line)
-
-				metadata = append(metadata, uw.RowMetadata{
-					GroupID:      groupID,
-					IsHeader:     false,
-					IsSelectable: true,
-				})
-
-				itemToKeyIndex = append(itemToKeyIndex, keyIndex)
-
-				keyIndex++
-			}
-		} else {
+		if isCollapsed {
 			keyIndex += len(keys)
+			continue
+		}
+		for _, key := range keys {
+			region := _localRegion
+			if !key.IsLocal && key.Region != "" {
+				region = key.Region
+			}
+			items = append(items, "    "+m.targetRow(key, region))
+			metadata = append(metadata, m.targetRowMetadata(key, groupID, region))
+			itemToKeyIndex = append(itemToKeyIndex, keyIndex)
+			keyIndex++
 		}
 	}
 
@@ -245,6 +233,40 @@ func (m *Manager) updateTargetList() {
 	}
 
 	m.updateSelectionColors()
+}
+
+func (m *Manager) targetRow(key stats.TargetKey, label string) string {
+	iconColor := "yellow"
+	if data, exists := m.targetData[key.String()]; exists {
+		iconColor = "red"
+		if data.Result.IsUp {
+			iconColor = "green"
+		}
+	}
+	return fmt.Sprintf("[%s](fg:%s) %s", _targetIcon, iconColor, label)
+}
+
+func (m *Manager) targetRowMetadata(key stats.TargetKey, groupID, label string) uw.RowMetadata {
+	right, rightStyle := m.rowLatency(key)
+	return uw.RowMetadata{
+		GroupID:      groupID,
+		IsSelectable: true,
+		Label:        label,
+		Right:        right,
+		RightStyle:   rightStyle,
+		Spark:        uw.Sparkline(m.history[key.String()], _sparkWidth),
+	}
+}
+
+func (m *Manager) rowLatency(key stats.TargetKey) (string, ui.Style) {
+	data, exists := m.targetData[key.String()]
+	switch {
+	case !exists:
+		return _placeholder, m.pal.muted
+	case !data.Result.IsUp:
+		return "down", ui.NewStyle(m.pal.bad.Fg)
+	}
+	return formatDuration(data.Result.ResponseTime), m.pal.muted
 }
 
 func (m *Manager) getCurrentTargetKey() *stats.TargetKey {
@@ -412,6 +434,7 @@ func (m *Manager) updateActiveTarget(monitors map[string]*stats.Monitor) {
 
 	if monitor, exists := monitors[targetKeyStr]; exists {
 		freshStats := monitor.GetStats()
+		m.liveStats[targetKeyStr] = freshStats
 		if data, exists := m.targetData[targetKeyStr]; exists {
 			m.updateCurrentTargetWidgets(data.Result, freshStats)
 		} else {
@@ -436,8 +459,12 @@ func (m *Manager) updateActiveTarget(monitors map[string]*stats.Monitor) {
 func (m *Manager) UpdateTarget(data TargetData) {
 	targetKeyStr := data.TargetKey.String()
 	m.targetData[targetKeyStr] = data
+	if data.Stats.ChecksCount > 0 {
+		m.liveStats[targetKeyStr] = data.Stats
+	}
 
 	m.updatePlotDataForTarget(targetKeyStr, data.Result)
+	m.rememberSample(targetKeyStr, data.Result)
 
 	logAdded := false
 
@@ -520,6 +547,7 @@ func (m *Manager) RefreshStats(monitors map[string]*stats.Monitor) {
 
 	if monitor, exists := monitors[currentKey.String()]; exists {
 		freshStats := monitor.GetStats()
+		m.liveStats[currentKey.String()] = freshStats
 
 		m.detailsManager.UptimeWidget.Text = fmt.Sprintf("%.2f%%", freshStats.UptimePercent)
 		m.detailsManager.UpForWidget.Text = utils.FormatDurationMinute(freshStats.TotalDuration)
@@ -585,17 +613,7 @@ func (m *Manager) updateCurrentTargetWidgets(result net.WebsiteCheckResult, stat
 		m.detailsManager.AssertionWidget.Text = _failing
 	}
 
-	if result.TraceInfo != nil {
-		m.detailsManager.TimingBreakdownWidget.SetTimings(map[string]time.Duration{
-			uw.StageWait:     utils.SanitizeDuration(result.TraceInfo.Wait),
-			uw.StageDNS:      utils.SanitizeDuration(result.TraceInfo.DNSLookup),
-			uw.StageTCP:      utils.SanitizeDuration(result.TraceInfo.TCPConnection),
-			uw.StageTLS:      utils.SanitizeDuration(result.TraceInfo.TLSHandshake),
-			uw.StageTTFB:     utils.SanitizeDuration(result.TraceInfo.TimeToFirstByte),
-			uw.StageDownload: utils.SanitizeDuration(result.TraceInfo.DownloadDuration),
-		})
-	}
-
+	m.detailsManager.TimingBreakdownWidget.SetTimings(stageTimings(result))
 }
 
 func (m *Manager) restorePlotData(targetName string) {
@@ -630,4 +648,18 @@ func (m *Manager) updatePlotDataForTarget(targetName string, result net.WebsiteC
 	}
 
 	m.plotData[targetName] = history
+}
+
+func stageTimings(result net.WebsiteCheckResult) map[string]time.Duration {
+	if result.TraceInfo == nil {
+		return map[string]time.Duration{}
+	}
+	return map[string]time.Duration{
+		uw.StageWait:     utils.SanitizeDuration(result.TraceInfo.Wait),
+		uw.StageDNS:      utils.SanitizeDuration(result.TraceInfo.DNSLookup),
+		uw.StageTCP:      utils.SanitizeDuration(result.TraceInfo.TCPConnection),
+		uw.StageTLS:      utils.SanitizeDuration(result.TraceInfo.TLSHandshake),
+		uw.StageTTFB:     utils.SanitizeDuration(result.TraceInfo.TimeToFirstByte),
+		uw.StageDownload: utils.SanitizeDuration(result.TraceInfo.DownloadDuration),
+	}
 }

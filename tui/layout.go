@@ -10,15 +10,25 @@ import (
 )
 
 func (m *Manager) setupGrid(width, height int) {
-	m.grid = ui.NewGrid()
+	if m.style == _styleClassic {
+		m.grid = m.stockGrid()
+	} else {
+		m.grid = newScreen(m.drawDash)
+	}
 	m.grid.SetRect(0, 0, width, height)
 
+	ui.Render(m.grid)
+}
+
+func (m *Manager) stockGrid() *ui.Grid {
+	grid := ui.NewGrid()
+
 	if m.isSingle {
-		m.grid.Set(
+		grid.Set(
 			ui.NewRow(1.0, m.detailsManager.ActiveGrid),
 		)
 	} else {
-		m.grid.Set(
+		grid.Set(
 			ui.NewRow(1.0,
 				ui.NewCol(0.28,
 					ui.NewRow(1.0/7, m.searchWidget),
@@ -29,7 +39,7 @@ func (m *Manager) setupGrid(width, height int) {
 		)
 	}
 
-	ui.Render(m.grid)
+	return grid
 }
 
 func (m *Manager) Resize(width, height int) {
