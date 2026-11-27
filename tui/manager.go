@@ -13,7 +13,6 @@ import (
 	uw "github.com/Owloops/updo/widgets"
 
 	ui "github.com/Owloops/termui/v3"
-	"github.com/Owloops/termui/v3/widgets"
 )
 
 const (
@@ -36,7 +35,7 @@ type Manager struct {
 	currentKeyIndex int
 	isSingle        bool
 	listWidget      *uw.FilteredList
-	searchWidget    *widgets.Paragraph
+	searchWidget    *uw.SearchBox
 	detailsManager  *DetailsManager
 	grid            ui.Drawable
 	termWidth       int

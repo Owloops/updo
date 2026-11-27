@@ -76,7 +76,6 @@ type dashWidgets struct {
 	keybar *uw.Bar
 	tiles  *uw.StatTiles
 	chart  *uw.AreaChart
-	search *uw.Framed
 	logs   *uw.Framed
 }
 
@@ -111,9 +110,6 @@ func (m *Manager) initStyledWidgets() {
 		tiles:  uw.NewStatTiles(),
 		chart:  uw.NewAreaChart(),
 		logs:   uw.NewFramed(d.LogsWidget, &d.LogsWidget.Block),
-	}
-	if m.searchWidget != nil {
-		m.dash.search = uw.NewFramed(m.searchWidget, &m.searchWidget.Block)
 	}
 }
 
@@ -209,7 +205,7 @@ func (m *Manager) layoutDash(rect image.Rectangle) []ui.Drawable {
 	x := rect.Min.X
 	if m.listWidget != nil {
 		sidebar := min(max(rect.Dx()*_sidebarPercent/_percent, _sidebarMinWidth), _sidebarMaxWidth)
-		place(d.search, x, top, x+sidebar, top+_topRowHeight)
+		place(m.searchWidget, x, top, x+sidebar, top+_topRowHeight)
 		place(m.listWidget, x, top+_topRowHeight, x+sidebar, bottom)
 		x += sidebar
 	}
@@ -299,11 +295,7 @@ func (m *Manager) prepareDash() {
 		return
 	}
 
-	listAside := fmt.Sprintf("%d", len(m.keyRegistry.GetAllKeys()))
-	if focus == _focusSearch && m.listWidget.GetQuery() != "" {
-		listAside = fmt.Sprintf("%d of %s", m.matchingKeyCount(), listAside)
-	}
-	m.listWidget.Frame = frame(_targetsHeading, listAside, focus == _focusTargets)
+	m.listWidget.Frame = frame(_targetsHeading, "", focus == _focusTargets)
 	m.listWidget.Look = uw.ListLook{
 		Text:     p.text,
 		Header:   p.strong,
@@ -313,10 +305,14 @@ func (m *Manager) prepareDash() {
 		Selected: p.selected,
 	}
 
-	d.search.Frame = frame(_searchHeading, "", focus == _focusSearch)
-	m.searchWidget.TextStyle = p.muted
-	if focus == _focusSearch && m.listWidget.GetQuery() != "" {
+	isFiltering := focus == _focusSearch && m.listWidget.GetQuery() != ""
+	total := len(m.keyRegistry.GetAllKeys())
+	m.searchWidget.Frame = frame(_searchHeading, "", focus == _focusSearch)
+	m.searchWidget.TextStyle, m.searchWidget.NoteStyle = p.muted, p.faint
+	m.searchWidget.Note = fmt.Sprintf("%d targets", total)
+	if isFiltering {
 		m.searchWidget.TextStyle = p.strong
+		m.searchWidget.Note = fmt.Sprintf("%d of %d match", m.matchingKeyCount(), total)
 	}
 }
 

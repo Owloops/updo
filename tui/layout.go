@@ -2,7 +2,6 @@ package tui
 
 import (
 	ui "github.com/Owloops/termui/v3"
-	"github.com/Owloops/termui/v3/widgets"
 	"github.com/Owloops/updo/stats"
 	uw "github.com/Owloops/updo/widgets"
 )
@@ -26,7 +25,7 @@ func (m *Manager) Resize(width, height int) {
 }
 
 func (m *Manager) initializeMultiTargetWidgets() {
-	m.searchWidget = widgets.NewParagraph()
+	m.searchWidget = uw.NewSearchBox()
 	m.searchWidget.Text = _searchIdleHint
 
 	m.listWidget = uw.NewFilteredList()
