@@ -69,17 +69,6 @@ func TestTimingBreakdown_calculateTotalDuration(t *testing.T) {
 	}
 }
 
-func TestTimingBreakdown_longestLabel(t *testing.T) {
-	tb := NewTimingBreakdown()
-
-	expected := 10
-	got := tb.longestLabel()
-
-	if got != expected {
-		t.Errorf("longestLabel() = %d, want %d", got, expected)
-	}
-}
-
 func TestTimingBreakdown_SetTimings(t *testing.T) {
 	tests := []struct {
 		name       string

@@ -248,7 +248,6 @@ func (m *Manager) updateLogsWidgetForTargets(targetKeys []stats.TargetKey) {
 			Nodes: []*widgets.TreeNode{},
 		}
 		m.detailsManager.LogsWidget.SetNodes([]*widgets.TreeNode{emptyNode})
-		m.detailsManager.LogsWidget.Title = _recentLogsTitle
 		return
 	}
 
@@ -331,12 +330,6 @@ func (m *Manager) updateLogsWidgetForTargets(targetKeys []stats.TargetKey) {
 	if !foundSelected && prevSelectedRow >= 0 && prevSelectedRow < len(treeNodes) {
 		m.detailsManager.LogsWidget.SelectedRow = prevSelectedRow
 	}
-
-	title := fmt.Sprintf("Recent Logs (%d) - Press Enter to expand", len(logs))
-	if len(targetKeys) > 1 {
-		title = fmt.Sprintf("Recent Logs (%d from %d targets) - Press Enter to expand", len(logs), len(targetKeys))
-	}
-	m.detailsManager.LogsWidget.Title = title
 }
 
 func (m *Manager) NavigateLogs(direction int) {
@@ -377,14 +370,9 @@ func (m *Manager) IsLogsVisible() bool {
 
 func (m *Manager) ToggleLogsVisibility() {
 	m.showLogs = !m.showLogs
+	m.focusOnLogs = m.showLogs
 
 	if m.showLogs {
-		m.focusOnLogs = true
-		m.detailsManager.ActiveGrid = m.detailsManager.LogsGrid
-
-		m.detailsManager.LogsWidget.BorderStyle.Fg = ui.ColorGreen
-		m.detailsManager.LogsWidget.Title = "Recent Logs (FOCUSED) - ↑↓:nav Enter:expand l:hide"
-
 		keys := m.getKeysForCurrentSelection()
 		if len(keys) > 0 {
 			m.updateLogsWidgetForTargets(keys)
@@ -394,18 +382,6 @@ func (m *Manager) ToggleLogsVisibility() {
 				Nodes: []*widgets.TreeNode{},
 			}
 			m.detailsManager.LogsWidget.SetNodes([]*widgets.TreeNode{emptyNode})
-			m.detailsManager.LogsWidget.Title = _recentLogsTitle
-		}
-
-		if m.listWidget != nil {
-			m.listWidget.BorderStyle.Fg = ui.ColorCyan
-		}
-	} else {
-		m.focusOnLogs = false
-		m.detailsManager.ActiveGrid = m.detailsManager.NormalGrid
-
-		if m.listWidget != nil {
-			m.listWidget.BorderStyle.Fg = ui.ColorGreen
 		}
 	}
 

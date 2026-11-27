@@ -1,9 +1,12 @@
 package widgets
 
 import (
+	"image"
 	"strings"
 
+	ui "github.com/Owloops/termui/v3"
 	"github.com/Owloops/termui/v3/widgets"
+	rw "github.com/mattn/go-runewidth"
 )
 
 const (
@@ -11,12 +14,30 @@ const (
 	_backspaceKey    = "<Backspace>"
 	_ctrlBackspace   = "<C-8>"
 	_spaceKey        = "<Space>"
+	_selectionMarker = '▌'
+	_childIndent     = 2
+	_rightWidth      = 6
+	_minSparkWidth   = 3
 )
 
 type RowMetadata struct {
 	GroupID      string
 	IsHeader     bool
 	IsSelectable bool
+	Label        string
+	Right        string
+	RightStyle   ui.Style
+	Spark        []rune
+}
+
+// ListLook styles the rows of a framed FilteredList.
+type ListLook struct {
+	Text     ui.Style
+	Header   ui.Style
+	Chevron  ui.Style
+	Marker   ui.Style
+	Spark    ui.Style
+	Selected ui.Style
 }
 
 type FilteredList struct {
@@ -29,12 +50,99 @@ type FilteredList struct {
 	filteredRows    []string
 	collapsedGroups map[string]bool
 	OnSearchChange  func(query string, filteredIndices []int)
+
+	Frame  Frame
+	Look   ListLook
+	topRow int
 }
 
 func NewFilteredList() *FilteredList {
 	return &FilteredList{
 		List:            widgets.NewList(),
 		collapsedGroups: make(map[string]bool),
+	}
+}
+
+// Draw renders the rows inside the list's Frame.
+func (fl *FilteredList) Draw(buf *ui.Buffer) {
+	rect := fl.GetRect()
+	fl.Frame.Draw(buf, rect)
+	inner := fl.Frame.Inner(rect)
+	if inner.Empty() {
+		return
+	}
+
+	if fl.SelectedRow >= fl.topRow+inner.Dy() {
+		fl.topRow = fl.SelectedRow - inner.Dy() + 1
+	} else if fl.SelectedRow < fl.topRow {
+		fl.topRow = fl.SelectedRow
+	}
+	fl.topRow = max(min(fl.topRow, len(fl.Rows)-1), 0)
+
+	for row := fl.topRow; row < len(fl.Rows) && row-fl.topRow < inner.Dy(); row++ {
+		fl.drawRow(buf, row, inner, inner.Min.Y+row-fl.topRow)
+	}
+}
+
+func (fl *FilteredList) drawRow(buf *ui.Buffer, row int, inner image.Rectangle, y int) {
+	var meta RowMetadata
+	if row < len(fl.filteredIndices) && fl.filteredIndices[row] < len(fl.rowMetadata) {
+		meta = fl.rowMetadata[fl.filteredIndices[row]]
+	}
+
+	isSelected := row == fl.SelectedRow && len(fl.filteredIndices) > 0
+	restyle := func(style ui.Style) ui.Style {
+		if isSelected {
+			style.Bg = fl.Look.Selected.Bg
+			style.Modifier |= fl.Look.Selected.Modifier
+			if style.Fg == fl.Look.Text.Fg || style.Fg == fl.Look.Header.Fg {
+				style.Fg = fl.Look.Selected.Fg
+			}
+		}
+		return style
+	}
+
+	if isSelected {
+		buf.Fill(ui.NewCell(' ', restyle(fl.Look.Text)), image.Rect(inner.Min.X, y, inner.Max.X, y+1))
+		buf.SetCell(ui.NewCell(_selectionMarker, restyle(fl.Look.Marker)), image.Pt(inner.Min.X, y))
+	}
+
+	base := fl.Look.Text
+	text := fl.Rows[row]
+	if meta.IsHeader {
+		base = fl.Look.Header
+	} else if trimmed := strings.TrimLeft(text, " "); trimmed != text {
+		text = strings.Repeat(" ", _childIndent) + trimmed
+	}
+
+	cells := ui.ParseStyles(text, base)
+	x := inner.Min.X + _childIndent
+
+	rightStart := inner.Max.X - 1
+	if meta.Right != "" {
+		rightStart -= max(rw.StringWidth(meta.Right), _rightWidth)
+		DrawTextRight(buf, meta.Right, restyle(meta.RightStyle), rightStart, y, inner.Max.X-1)
+		rightStart--
+	}
+	if width := min(len(meta.Spark), rightStart-x-len(cells)-1); width >= _minSparkWidth {
+		style := fl.Look.Spark
+		if isSelected {
+			style = fl.Look.Marker
+		}
+		DrawText(buf, string(meta.Spark[len(meta.Spark)-width:]), restyle(style), rightStart-width, y, rightStart)
+		rightStart -= width + 1
+	}
+
+	for i, cell := range cells {
+		if x >= rightStart {
+			buf.SetCell(ui.NewCell(ui.ELLIPSES, restyle(base)), image.Pt(x-1, y))
+			break
+		}
+		style := cell.Style
+		if meta.IsHeader && i == 0 {
+			style = fl.Look.Chevron
+		}
+		x = DrawText(buf, string(cell.Rune), restyle(style), x, y, rightStart)
 	}
 }
 
@@ -156,8 +264,8 @@ func (fl *FilteredList) updateFiltered() {
 		query := strings.ToLower(fl.searchQuery)
 
 		matchingGroups := make(map[string]bool)
-		for i, row := range fl.allRows {
-			if strings.Contains(strings.ToLower(row), query) {
+		for i := range fl.allRows {
+			if fl.matches(i, query) {
 				if fl.rowMetadata[i].GroupID != "" {
 					matchingGroups[fl.rowMetadata[i].GroupID] = true
 				}
@@ -173,7 +281,7 @@ func (fl *FilteredList) updateFiltered() {
 					includeRow = false
 				}
 			} else {
-				includeRow = strings.Contains(strings.ToLower(row), query)
+				includeRow = fl.matches(i, query)
 			}
 
 			if includeRow {
@@ -197,6 +305,14 @@ func (fl *FilteredList) updateFiltered() {
 	if fl.OnSearchChange != nil {
 		fl.OnSearchChange(fl.searchQuery, fl.filteredIndices)
 	}
+}
+
+func (fl *FilteredList) matches(index int, query string) bool {
+	text := fl.allRows[index]
+	if label := fl.rowMetadata[index].Label; label != "" {
+		text = label
+	}
+	return strings.Contains(strings.ToLower(text), query)
 }
 
 func (fl *FilteredList) GetSelectableIndices() []int {
