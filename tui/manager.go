@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -18,17 +17,11 @@ import (
 )
 
 const (
-	_notAvailable          = "N/A"
-	_checking              = "Checking..."
-	_passing               = "Passing"
-	_failing               = "Failing"
 	_targetIcon            = "◉"
 	_backspaceKey          = "<Backspace>"
 	_ctrlBackspace         = "<C-8>"
-	_defaultRefresh        = 5
 	_logBufferSize         = 1000
 	_dataChannelMultiplier = 2
-	_targetsTitle          = "Targets"
 	_sparkWidth            = 8
 )
 
@@ -37,7 +30,6 @@ type Manager struct {
 	options         Options
 	keyRegistry     *stats.TargetKeyRegistry
 	targetData      map[string]TargetData
-	plotData        map[string]PlotHistory
 	logBuffer       *LogBuffer
 	sslExpiry       map[string]int
 	sslExpiryMu     sync.RWMutex
@@ -55,16 +47,10 @@ type Manager struct {
 	itemToKeyIndex          []int
 	preserveHeaderSelection string
 
-	style     uiStyle
 	pal       palette
 	dash      *dashWidgets
 	history   map[string][]uw.Sample
 	liveStats map[string]stats.Stats
-}
-
-type PlotHistory struct {
-	UptimeData       []float64
-	ResponseTimeData []float64
 }
 
 func NewManager(targets []config.Target, options Options) *Manager {
@@ -76,13 +62,11 @@ func NewManager(targets []config.Target, options Options) *Manager {
 		options:         options,
 		keyRegistry:     keyRegistry,
 		targetData:      make(map[string]TargetData, len(allKeys)),
-		plotData:        make(map[string]PlotHistory, len(allKeys)),
 		logBuffer:       NewLogBuffer(_logBufferSize),
 		sslExpiry:       make(map[string]int, len(targets)),
 		currentKeyIndex: 0,
 		isSingle:        len(allKeys) == 1,
 		detailsManager:  NewDetailsManager(),
-		style:           styleFromEnv(),
 		pal:             newPalette(accentFromEnv()),
 		history:         make(map[string][]uw.Sample, len(allKeys)),
 		liveStats:       make(map[string]stats.Stats, len(allKeys)),
@@ -116,22 +100,7 @@ func (m *Manager) InitializeLayout(width, height int) {
 	m.termWidth = width
 	m.termHeight = height
 
-	allKeys := m.keyRegistry.GetAllKeys()
-	if len(allKeys) > 0 {
-		firstKey := allKeys[0]
-		var firstTarget config.Target
-		for _, target := range m.targets {
-			if target.Name == firstKey.TargetName {
-				firstTarget = target
-				break
-			}
-		}
-		if m.isSingle && len(m.targets) > 0 {
-			m.detailsManager.InitializeWidgets(m.targets[0].URL, m.targets[0].GetRefreshInterval())
-		} else {
-			m.detailsManager.InitializeWidgets(firstTarget.URL, firstTarget.GetRefreshInterval())
-		}
-	}
+	m.detailsManager.InitializeWidgets()
 
 	if !m.isSingle {
 		m.initializeMultiTargetWidgets()
@@ -239,8 +208,6 @@ func (m *Manager) updateTargetList() {
 	if m.listWidget.SelectedRow >= len(items) || m.listWidget.SelectedRow < 0 {
 		m.listWidget.SelectedRow = 0
 	}
-
-	m.updateSelectionColors()
 }
 
 func (m *Manager) targetRow(key stats.TargetKey, label string) string {
@@ -355,18 +322,6 @@ func (m *Manager) getKeysForCurrentSelection() []stats.TargetKey {
 	return nil
 }
 
-func (m *Manager) getCurrentTarget() *config.Target {
-	currentKey := m.getCurrentTargetKey()
-	if currentKey == nil {
-		return nil
-	}
-
-	if currentKey.TargetIndex >= 0 && currentKey.TargetIndex < len(m.targets) {
-		return &m.targets[currentKey.TargetIndex]
-	}
-	return nil
-}
-
 func (m *Manager) isSelectedRowHeader() bool {
 	if m.isSingle || m.listWidget == nil {
 		return false
@@ -379,34 +334,6 @@ func (m *Manager) isSelectedRowHeader() bool {
 
 	row := m.listWidget.Rows[selectedRow]
 	return strings.HasPrefix(row, "▼") || strings.HasPrefix(row, "▶")
-}
-
-func (m *Manager) updateSelectionColors() {
-	if m.isSingle || m.listWidget == nil {
-		return
-	}
-
-	m.listWidget.SelectedRowStyle.Bg = ui.ColorBlue
-	m.listWidget.SelectedRowStyle.Modifier = ui.ModifierBold
-
-	if m.isSelectedRowHeader() {
-		m.listWidget.SelectedRowStyle.Fg = ui.ColorWhite
-		return
-	}
-	currentKey := m.getCurrentTargetKey()
-	if currentKey != nil {
-		if data, exists := m.targetData[currentKey.String()]; exists {
-			if data.Result.IsUp {
-				m.listWidget.SelectedRowStyle.Fg = ui.ColorGreen
-			} else {
-				m.listWidget.SelectedRowStyle.Fg = ui.ColorRed
-			}
-		} else {
-			m.listWidget.SelectedRowStyle.Fg = ui.ColorYellow
-		}
-	} else {
-		m.listWidget.SelectedRowStyle.Fg = ui.ColorCyan
-	}
 }
 
 func (m *Manager) SetActiveTargetKey(keyIndex int, monitors map[string]*stats.Monitor) {
@@ -423,34 +350,9 @@ func (m *Manager) updateActiveTarget(monitors map[string]*stats.Monitor) {
 		return
 	}
 
-	currentTarget := m.getCurrentTarget()
-	if currentTarget != nil && m.detailsManager.RefreshWidget != nil {
-		refreshInterval := currentTarget.RefreshInterval
-		if refreshInterval == 0 {
-			refreshInterval = _defaultRefresh
-		}
-		m.detailsManager.RefreshWidget.Text = fmt.Sprintf("%d seconds", refreshInterval)
-	}
-
-	if currentTarget != nil && m.detailsManager.URLWidget != nil {
-		m.detailsManager.URLWidget.Text = currentTarget.URL
-	}
-
 	targetKeyStr := currentKey.String()
-
-	m.restorePlotData(targetKeyStr)
-
 	if monitor, exists := monitors[targetKeyStr]; exists {
-		freshStats := monitor.GetStats()
-		m.liveStats[targetKeyStr] = freshStats
-		if data, exists := m.targetData[targetKeyStr]; exists {
-			m.updateCurrentTargetWidgets(data.Result, freshStats)
-		} else {
-			m.detailsManager.UpForWidget.Text = utils.FormatDurationMinute(freshStats.TotalDuration)
-			m.detailsManager.UptimeWidget.Text = fmt.Sprintf("%.2f%%", freshStats.UptimePercent)
-		}
-	} else if data, exists := m.targetData[targetKeyStr]; exists {
-		m.updateCurrentTargetWidgets(data.Result, data.Stats)
+		m.liveStats[targetKeyStr] = monitor.GetStats()
 	}
 
 	if m.showLogs {
@@ -471,7 +373,6 @@ func (m *Manager) UpdateTarget(data TargetData) {
 		m.liveStats[targetKeyStr] = data.Stats
 	}
 
-	m.updatePlotDataForTarget(targetKeyStr, data.Result)
 	m.rememberSample(targetKeyStr, data.Result)
 
 	logAdded := false
@@ -520,11 +421,6 @@ func (m *Manager) UpdateTarget(data TargetData) {
 
 	currentKey := m.getCurrentTargetKey()
 	if currentKey != nil && currentKey.String() == targetKeyStr {
-		if m.isSingle && m.detailsManager.URLWidget != nil {
-			m.detailsManager.URLWidget.Text = data.Target.URL
-		}
-		m.restorePlotData(targetKeyStr)
-		m.updateCurrentTargetWidgets(data.Result, data.Stats)
 		if m.showLogs && logAdded {
 			keys := m.getKeysForCurrentSelection()
 			if len(keys) > 0 {
@@ -544,118 +440,16 @@ func (m *Manager) RefreshStats(monitors map[string]*stats.Monitor) {
 		return
 	}
 
-	currentTarget := m.getCurrentTarget()
-	if currentTarget != nil && m.detailsManager.RefreshWidget != nil {
-		refreshInterval := currentTarget.RefreshInterval
-		if refreshInterval == 0 {
-			refreshInterval = _defaultRefresh
-		}
-		m.detailsManager.RefreshWidget.Text = fmt.Sprintf("%d seconds", refreshInterval)
-	}
-
-	if monitor, exists := monitors[currentKey.String()]; exists {
-		freshStats := monitor.GetStats()
-		m.liveStats[currentKey.String()] = freshStats
-
-		m.detailsManager.UptimeWidget.Text = fmt.Sprintf("%.2f%%", freshStats.UptimePercent)
-		m.detailsManager.UpForWidget.Text = utils.FormatDurationMinute(freshStats.TotalDuration)
-
-		if freshStats.ChecksCount > 0 {
-			m.detailsManager.AvgResponseTimeWidget.Text = utils.FormatDurationMillisecond(freshStats.AvgResponseTime)
-			m.detailsManager.MinResponseTimeWidget.Text = utils.FormatDurationMillisecond(freshStats.MinResponseTime)
-			m.detailsManager.MaxResponseTimeWidget.Text = utils.FormatDurationMillisecond(freshStats.MaxResponseTime)
-		} else {
-			m.detailsManager.AvgResponseTimeWidget.Text = _notAvailable
-			m.detailsManager.MinResponseTimeWidget.Text = _notAvailable
-			m.detailsManager.MaxResponseTimeWidget.Text = _notAvailable
-		}
-
-		if freshStats.ChecksCount >= 2 {
-			m.detailsManager.P95ResponseTimeWidget.Text = fmt.Sprintf("%d ms", freshStats.P95.Milliseconds())
-		} else {
-			m.detailsManager.P95ResponseTimeWidget.Text = _notAvailable
-		}
-
-		if !m.isSingle {
-			if !m.isSelectedRowHeader() {
-				m.updateTargetList()
-			}
-		}
-		ui.Render(m.grid)
-	}
-}
-
-func (m *Manager) updateCurrentTargetWidgets(result net.WebsiteCheckResult, stats stats.Stats) {
-	m.detailsManager.UptimeWidget.Text = fmt.Sprintf("%.2f%%", stats.UptimePercent)
-	m.detailsManager.UpForWidget.Text = utils.FormatDurationMinute(stats.TotalDuration)
-
-	if stats.ChecksCount > 0 {
-		m.detailsManager.AvgResponseTimeWidget.Text = utils.FormatDurationMillisecond(stats.AvgResponseTime)
-		m.detailsManager.MinResponseTimeWidget.Text = utils.FormatDurationMillisecond(stats.MinResponseTime)
-		m.detailsManager.MaxResponseTimeWidget.Text = utils.FormatDurationMillisecond(stats.MaxResponseTime)
-	} else {
-		m.detailsManager.AvgResponseTimeWidget.Text = _notAvailable
-		m.detailsManager.MinResponseTimeWidget.Text = _notAvailable
-		m.detailsManager.MaxResponseTimeWidget.Text = _notAvailable
-	}
-
-	if stats.ChecksCount >= 2 {
-		m.detailsManager.P95ResponseTimeWidget.Text = fmt.Sprintf("%d ms", stats.P95.Milliseconds())
-	} else {
-		m.detailsManager.P95ResponseTimeWidget.Text = _notAvailable
-	}
-
-	sslExpiry := m.getSSLExpiry(result.URL)
-	if sslExpiry > 0 {
-		m.detailsManager.SSLOkWidget.Text = fmt.Sprintf("%d days remaining", sslExpiry)
-	} else {
-		m.detailsManager.SSLOkWidget.Text = _checking
-	}
-
-	switch {
-	case result.AssertText == "":
-		m.detailsManager.AssertionWidget.Text = _notAvailable
-	case result.AssertionPassed:
-		m.detailsManager.AssertionWidget.Text = _passing
-	default:
-		m.detailsManager.AssertionWidget.Text = _failing
-	}
-
-	m.detailsManager.TimingBreakdownWidget.SetTimings(stageTimings(result))
-}
-
-func (m *Manager) restorePlotData(targetName string) {
-	if history, exists := m.plotData[targetName]; exists {
-		m.detailsManager.UptimePlot.Data[0] = slices.Clone(history.UptimeData)
-		m.detailsManager.ResponseTimePlot.Data[0] = slices.Clone(history.ResponseTimeData)
-	} else {
-		m.detailsManager.UptimePlot.Data[0] = nil
-		m.detailsManager.ResponseTimePlot.Data[0] = []float64{0.0, 0.0}
-	}
-}
-
-func (m *Manager) updatePlotDataForTarget(targetName string, result net.WebsiteCheckResult) {
-	history, exists := m.plotData[targetName]
+	monitor, exists := monitors[currentKey.String()]
 	if !exists {
-		history = PlotHistory{
-			ResponseTimeData: []float64{0.0, 0.0},
-		}
+		return
 	}
+	m.liveStats[currentKey.String()] = monitor.GetStats()
 
-	history.UptimeData = append(history.UptimeData, utils.BoolToFloat64(result.IsUp))
-	history.ResponseTimeData = append(history.ResponseTimeData, result.ResponseTime.Seconds())
-
-	maxLength := m.termWidth / 2
-
-	if len(history.UptimeData) > maxLength {
-		history.UptimeData = history.UptimeData[len(history.UptimeData)-maxLength:]
+	if !m.isSingle && !m.isSelectedRowHeader() {
+		m.updateTargetList()
 	}
-
-	if len(history.ResponseTimeData) > maxLength {
-		history.ResponseTimeData = history.ResponseTimeData[len(history.ResponseTimeData)-maxLength:]
-	}
-
-	m.plotData[targetName] = history
+	ui.Render(m.grid)
 }
 
 func stageTimings(result net.WebsiteCheckResult) map[string]time.Duration {

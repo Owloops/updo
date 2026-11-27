@@ -13,7 +13,7 @@ import (
 	"github.com/Owloops/updo/stats"
 )
 
-func newStyledManager(t *testing.T, style uiStyle, names ...string) *Manager {
+func newTestManager(t *testing.T, names ...string) *Manager {
 	t.Helper()
 
 	targets := make([]config.Target, 0, len(names))
@@ -22,37 +22,15 @@ func newStyledManager(t *testing.T, style uiStyle, names ...string) *Manager {
 	}
 
 	m := NewManager(targets, Options{})
-	m.style = style
 	for _, target := range targets {
 		m.sslExpiry[target.URL] = 0
 	}
-	first := targets[0]
-	m.detailsManager.createWidgets(first.URL, first.GetRefreshInterval())
+	m.detailsManager.InitializeWidgets()
 	if !m.isSingle {
 		m.initializeMultiTargetWidgets()
 	}
 	m.initStyledWidgets()
 	return m
-}
-
-func TestStyleFromEnv(t *testing.T) {
-	tests := []struct {
-		value string
-		want  uiStyle
-	}{
-		{"", _styleDash},
-		{" Classic ", _styleClassic},
-		{"nonsense", _styleDash},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.value, func(t *testing.T) {
-			t.Setenv(_styleEnv, tt.value)
-			if got := styleFromEnv(); got != tt.want {
-				t.Errorf("styleFromEnv() = %v, want %v", got, tt.want)
-			}
-		})
-	}
 }
 
 func TestAccentFromEnv(t *testing.T) {
@@ -80,7 +58,7 @@ func TestLayoutDashStaysInsideAndDoesNotOverlap(t *testing.T) {
 
 	for _, names := range [][]string{{"solo"}, {"one", "two", "three"}} {
 		for _, showLogs := range []bool{false, true} {
-			m := newStyledManager(t, _styleDash, names...)
+			m := newTestManager(t, names...)
 			m.showLogs = showLogs
 
 			for _, size := range sizes {
@@ -104,7 +82,7 @@ func TestLayoutDashStaysInsideAndDoesNotOverlap(t *testing.T) {
 }
 
 func TestDrawDash(t *testing.T) {
-	m := newStyledManager(t, _styleDash, "one", "two")
+	m := newTestManager(t, "one", "two")
 
 	key := m.keyRegistry.GetAllKeys()[0]
 	result := net.WebsiteCheckResult{
@@ -128,13 +106,13 @@ func TestDrawDash(t *testing.T) {
 	if got := rowString(buf, 0); !containsAll(got, _brand, "one", _statusUp, "https://one.test") {
 		t.Errorf("header = %q", got)
 	}
-	if m.listWidget.Frame == nil || m.detailsManager.TimingBreakdownWidget.Frame == nil {
-		t.Fatal("dash did not frame the shared widgets")
+	if got := rowString(buf, 1); !containsAll(got, "Search", "Overview") {
+		t.Errorf("panel headings = %q", got)
 	}
 }
 
 func TestTargetListIsFlatForLocalTargets(t *testing.T) {
-	m := newStyledManager(t, _styleDash, "one", "two")
+	m := newTestManager(t, "one", "two")
 	m.updateTargetList()
 
 	if got := len(m.listWidget.Rows); got != 2 {
@@ -161,7 +139,7 @@ func TestTargetListGroupsRegions(t *testing.T) {
 	for _, target := range targets {
 		m.sslExpiry[target.URL] = 0
 	}
-	m.detailsManager.createWidgets(targets[0].URL, targets[0].GetRefreshInterval())
+	m.detailsManager.InitializeWidgets()
 	m.initializeMultiTargetWidgets()
 	m.initStyledWidgets()
 	m.updateTargetList()
@@ -181,7 +159,7 @@ func TestTargetListGroupsRegions(t *testing.T) {
 }
 
 func TestRememberSampleCapsHistory(t *testing.T) {
-	m := newStyledManager(t, _styleDash, "solo")
+	m := newTestManager(t, "solo")
 	for range _historyCap + 25 {
 		m.rememberSample("solo", net.WebsiteCheckResult{IsUp: true, ResponseTime: time.Millisecond})
 	}

@@ -51,7 +51,7 @@ type FilteredList struct {
 	collapsedGroups map[string]bool
 	OnSearchChange  func(query string, filteredIndices []int)
 
-	Frame  *Frame
+	Frame  Frame
 	Look   ListLook
 	topRow int
 }
@@ -63,13 +63,8 @@ func NewFilteredList() *FilteredList {
 	}
 }
 
-// Draw renders the stock termui list, or the framed look when Frame is set.
+// Draw renders the rows inside the list's Frame.
 func (fl *FilteredList) Draw(buf *ui.Buffer) {
-	if fl.Frame == nil {
-		fl.List.Draw(buf)
-		return
-	}
-
 	rect := fl.GetRect()
 	fl.Frame.Draw(buf, rect)
 	inner := fl.Frame.Inner(rect)

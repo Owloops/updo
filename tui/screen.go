@@ -299,8 +299,7 @@ func (m *Manager) prepareDash() {
 	if view.hasResult && view.result.TraceInfo != nil {
 		timingAside = formatDuration(view.result.ResponseTime)
 	}
-	timingFrame := frame(_timingHeading, timingAside, false)
-	timing.Frame = &timingFrame
+	timing.Frame = frame(_timingHeading, timingAside, false)
 	timing.LabelStyle, timing.ValueStyle = p.muted, p.text
 	timing.EmptyMessage = _noTimingData
 	timing.SetTimings(stageTimings(view.result))
@@ -317,8 +316,7 @@ func (m *Manager) prepareDash() {
 	if focus == _focusSearch && m.listWidget.GetQuery() != "" {
 		listAside = fmt.Sprintf("%d of %s", m.matchingKeyCount(), listAside)
 	}
-	listFrame := frame(_targetsHeading, listAside, focus == _focusTargets)
-	m.listWidget.Frame = &listFrame
+	m.listWidget.Frame = frame(_targetsHeading, listAside, focus == _focusTargets)
 	m.listWidget.Look = uw.ListLook{
 		Text:     p.text,
 		Header:   p.strong,

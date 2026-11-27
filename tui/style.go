@@ -8,14 +8,7 @@ import (
 )
 
 const (
-	_styleDash uiStyle = iota
-	_styleClassic
-)
-
-const (
-	_styleEnv     = "UPDO_STYLE"
-	_accentEnv    = "UPDO_ACCENT"
-	_classicStyle = "classic"
+	_accentEnv = "UPDO_ACCENT"
 
 	_colorMuted       ui.Color = 245
 	_colorFaint       ui.Color = 240
@@ -31,8 +24,6 @@ var _accents = map[string]ui.Color{
 	"magenta": ui.ColorMagenta,
 	"green":   ui.ColorGreen,
 }
-
-type uiStyle int
 
 type palette struct {
 	text      ui.Style
@@ -65,13 +56,6 @@ func newPalette(accentColor ui.Color) palette {
 // Bold black renders as bright black in many terminals, which washes out on a coloured pill.
 func pill(style ui.Style) ui.Style {
 	return ui.NewStyle(ui.ColorBlack, style.Fg)
-}
-
-func styleFromEnv() uiStyle {
-	if strings.EqualFold(strings.TrimSpace(os.Getenv(_styleEnv)), _classicStyle) {
-		return _styleClassic
-	}
-	return _styleDash
 }
 
 func accentFromEnv() ui.Color {

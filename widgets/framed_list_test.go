@@ -12,7 +12,7 @@ import (
 func TestFilteredListFramedDraw(t *testing.T) {
 	selectedBg := ui.Color(237)
 	fl := NewFilteredList()
-	fl.Frame = &Frame{Heading: "Targets"}
+	fl.Frame = Frame{Heading: "Targets"}
 	fl.Look = ListLook{Selected: ui.NewStyle(ui.ColorWhite, selectedBg)}
 	fl.SetRowsWithMetadata(
 		[]string{"▼ GitHub", "    [◉](fg:green) local"},
@@ -50,7 +50,7 @@ func TestFilteredListFramedDraw(t *testing.T) {
 
 func TestFilteredListFramedScrollsToSelection(t *testing.T) {
 	fl := NewFilteredList()
-	fl.Frame = &Frame{}
+	fl.Frame = Frame{}
 	fl.SetRows([]string{"one", "two", "three", "four", "five"})
 	fl.SelectedRow = 4
 	fl.SetRect(0, 0, 16, 4)
@@ -64,7 +64,7 @@ func TestFilteredListFramedScrollsToSelection(t *testing.T) {
 
 func TestTimingBreakdownWaterfall(t *testing.T) {
 	tb := NewTimingBreakdown()
-	tb.Frame = &Frame{Heading: "Timing"}
+	tb.Frame = Frame{Heading: "Timing"}
 	tb.EmptyMessage = "no timing data"
 	tb.SetRect(0, 0, 40, 8)
 
